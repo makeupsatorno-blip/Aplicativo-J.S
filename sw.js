@@ -4,7 +4,7 @@
  * sem internet (ou rede muito lenta), usa a cópia guardada.
  * Ao publicar uma versão nova, aumente o número em VERSION.
  */
-var VERSION = 'js-v1.4.0';
+var VERSION = 'js-v1.4.1';
 var ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/style.css', './icons/favicon.svg',
   './js/config.js', './js/intro.js', './js/core.js', './js/regras.js', './js/ui.js', './js/anim.js', './js/store.js',
@@ -17,7 +17,11 @@ var ASSETS = [
 self.addEventListener('install', function (event) {
   // Se o cache falhar (ex.: sem espaço), instala mesmo assim: notificações e push
   // continuam funcionando, e o cache se completa com o uso (estratégia "rede primeiro").
-  event.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(ASSETS); })
+  // cache: 'reload' busca direto no servidor, sem a cópia de 10 min que o GitHub Pages
+  // manda o navegador guardar; assim a versão nova não fica com arquivos antigos.
+  event.waitUntil(caches.open(VERSION).then(function (c) {
+    return c.addAll(ASSETS.map(function (u) { return new Request(u, { cache: 'reload' }); }));
+  })
     .catch(function (err) { console.warn('Cache offline incompleto:', err && err.message); })
     .then(function () { return self.skipWaiting(); }));
 });
@@ -42,7 +46,11 @@ self.addEventListener('fetch', function (event) {
     function done(r) { if (!settled && r) { settled = true; resolve(r); } }
     // Rede lenta: depois de 4 s, responde com a cópia guardada (se houver).
     var timer = setTimeout(function () { fromCache(req).then(done); }, 4000);
-    fetch(req).then(function (res) {
+    // no-cache: sempre confere com o servidor (resposta rápida "304" quando nada mudou).
+    var fresh = req.mode === 'navigate'
+      ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
+      : fetch(new Request(req, { cache: 'no-cache' }));
+    fresh.then(function (res) {
       clearTimeout(timer);
       if (res && res.ok) { var copy = res.clone(); caches.open(VERSION).then(function (c) { c.put(req, copy); }); }
       done(res);

@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui;
-  var VERSION = '1.4.0';
+  var VERSION = '1.4.1';
   var lastToday = null;
   var deferredInstall = null;
 
@@ -77,12 +77,43 @@
     deferredInstall.userChoice.then(function () { deferredInstall = null; render(); }, function () { deferredInstall = null; render(); });
   }
 
+  var swReg = null, lastUpdateCheck = 0;
+
   function registerServiceWorker() {
     if (!('serviceWorker' in navigator) || location.protocol.indexOf('http') !== 0) return;
-    navigator.serviceWorker.register('sw.js').catch(function (err) { console.warn('Service worker não registrado:', err); });
+    var hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js').then(function (reg) { swReg = reg; })
+      .catch(function (err) { console.warn('Service worker não registrado:', err); });
     navigator.serviceWorker.addEventListener('message', function (e) {
       if (e.data && e.data.type === 'navigate' && e.data.route) go(e.data.route);
     });
+    // Versão nova assumiu: recarrega para usar os arquivos novos (na 1ª instalação não precisa).
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadController) { hadController = true; return; }
+      reloadForUpdate();
+    });
+    // O app instalado "volta" em vez de recarregar: confere se há versão nova ao voltar para a tela.
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') checkForUpdate(false); });
+  }
+
+  function reloadForUpdate() {
+    var busy = document.getElementById('sheet').open || document.getElementById('confirm').open;
+    if (busy) {
+      ui.toast('Nova versão do J.S. pronta.', { actionLabel: 'Atualizar', onAction: function () { location.reload(); }, timeout: 20000 });
+      return;
+    }
+    ui.toast('Atualizando o J.S. para a versão nova…');
+    setTimeout(function () { location.reload(); }, 700);
+  }
+
+  // Pergunta ao servidor se há sw.js novo. Se houver, ele instala e assume sozinho (controllerchange).
+  function checkForUpdate(manual) {
+    if (!swReg) return Promise.resolve('sem-service-worker');
+    if (!manual && Date.now() - lastUpdateCheck < 60000) return Promise.resolve('recente');
+    lastUpdateCheck = Date.now();
+    return swReg.update().then(function () {
+      return swReg.installing || swReg.waiting ? 'nova' : 'atual';
+    }).catch(function () { return 'erro'; });
   }
 
   function bindEvents() {
@@ -131,6 +162,7 @@
 
   JS.app = {
     VERSION: VERSION, render: render, go: go, route: route, install: install, isStandalone: isStandalone, isIOS: isIOS,
+    checkForUpdate: checkForUpdate,
     canInstall: function () { return !!deferredInstall; }
   };
 

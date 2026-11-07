@@ -327,6 +327,7 @@ p { margin: 0; }
 .switch:checked { background: var(--rose700); }
 .switch:checked::after { transform: translateX(20px); }
 .ok-line { display: flex; align-items: center; gap: 6px; color: var(--success); font-weight: 600; }
+.version-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 .sub-block { margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
 .sub-block h3 { display: flex; align-items: center; gap: 6px; font-size: 15px; color: var(--rose800); }
 .sub-block .btn-col { margin: 6px 0 2px; }

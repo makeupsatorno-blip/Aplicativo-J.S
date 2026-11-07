@@ -62,7 +62,9 @@
       (systemReducesMotion()
         ? sw('animations', 'Animações sempre ligadas', st.animations === 'on', 'Este aparelho está configurado para mostrar menos animações: a intro aparece sem os anéis girando e as pétalas flutuando. Ligue para ver a versão completa.', 'cfg-animations')
         : '') +
-      '<button type="button" class="btn soft full" data-action="intro-play">' + ui.icon('sparkle', 18) + 'Ver a intro agora</button></section>';
+      '<button type="button" class="btn soft full" data-action="intro-play">' + ui.icon('sparkle', 18) + 'Ver a intro agora</button>' +
+      '<div class="version-row"><span class="muted small">Versão instalada: <strong>' + esc(JS.app.VERSION) + '</strong></span>' +
+      '<button type="button" class="btn ghost small" data-action="app-update">' + ui.icon('download', 16) + 'Procurar atualização</button></div></section>';
 
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('bell', 18) + 'Notificações</h2>' + ui.tag(pt[0], pt[1]) + '</div>' +
       (perm === 'default' ? '<button type="button" class="btn primary full" data-action="notif-enable">Ativar notificações</button>' : '') +
@@ -93,7 +95,7 @@
       '<p class="hint">Remove todas as tarefas, tratamentos, refeições, contas e pagamentos deste aparelho.</p>' +
       '<button type="button" class="btn danger full" data-action="data-reset">' + ui.icon('trash', 18) + 'Apagar todos os dados</button></section>';
 
-    html += '<p class="about">J.S. • Julia Satorno • versão ' + esc(JS.app.VERSION) + '<br>Sem login, sem servidor: tudo fica no seu aparelho.</p>';
+    html += '<p class="about">J.S. • Julia Satorno • versão ' + esc(JS.app.VERSION) + '<br>Sem login: seus dados ficam no seu aparelho.</p>';
     return html;
   }
 
@@ -195,6 +197,16 @@
     ui.toast(el.checked ? 'A intro vai aparecer ao abrir o app.' : 'Intro desligada.');
   };
   JS.actions['intro-play'] = function () { JS.intro.play(true); };
+  JS.actions['app-update'] = function (d, el) {
+    busy(el, true, 'Procurando…');
+    JS.app.checkForUpdate(true).then(function (r) {
+      busy(el, false);
+      if (r === 'nova') ui.toast('Versão nova encontrada. Instalando…');
+      else if (r === 'atual') ui.toast('Você já está na versão mais nova (' + JS.app.VERSION + ').');
+      else if (r === 'sem-service-worker') ui.toast('Abra o J.S. pelo endereço publicado para receber atualizações.');
+      else ui.toast('Não foi possível procurar agora. Confira a internet.', { error: true });
+    });
+  };
 
   function busy(el, on, label) {
     if (!el) return;
