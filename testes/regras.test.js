@@ -309,6 +309,22 @@ test('valor da conta não aparece na notificação por padrão', () => {
   assert.ok(!/2\.000/.test(r.body));
 });
 
+test('lembretes futuros para o servidor (14 dias): só os que ainda vão acontecer', () => {
+  const s = R.emptyState();
+  R.createMeal(s, R.validateMeal({ type: 'lunch', time: '12:00', weekdays: [0, 1, 2, 3, 4, 5, 6], reminderEnabled: true }).value, NOW_ISO);
+  task(s, { title: 'Passado', dueDate: '2026-11-06', dueTime: '08:00', reminderMinutes: '0' });
+  task(s, { title: 'Daqui a 20 dias', dueDate: '2026-11-26', dueTime: '08:00', reminderMinutes: '0' });
+  bill(s, { title: 'Luz', dueDate: '2026-11-10', reminderDaysBefore: '1', reminderTime: '09:00' });
+  const lista = R.upcomingReminders(s, at('2026-11-06', '10:00'), 14);
+  const almocos = lista.filter(r => r.type === 'meal');
+  assert.equal(almocos.length, 14, 'almoço de hoje (12h, ainda vai acontecer) + 13 próximos dias');
+  assert.ok(!lista.some(r => r.title.includes('Passado')));
+  assert.ok(!lista.some(r => r.title.includes('20 dias')));
+  assert.deepEqual(lista.filter(r => r.type === 'bill').map(r => r.title), ['Luz vence em 1 dia.', 'Hoje vence: Luz']);
+  assert.ok(lista.every((r, i) => i === 0 || lista[i - 1].at <= r.at), 'ordenados por horário');
+  assert.equal(new Set(lista.map(r => r.key)).size, lista.length, 'chaves únicas');
+});
+
 /* ---------------- Migração / backup ---------------- */
 
 test('migração preenche campos ausentes e recusa versão futura', () => {

@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui;
-  var VERSION = '1.3.0';
+  var VERSION = '1.4.0';
   var lastToday = null;
   var deferredInstall = null;
 
@@ -126,6 +126,7 @@
       if (JS.store.loadError) ui.toast(JS.store.loadError, { error: true, timeout: 9000 });
       JS.notify.start();
     });
+    JS.push.start();
   }
 
   JS.app = {

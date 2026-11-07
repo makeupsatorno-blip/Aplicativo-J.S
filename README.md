@@ -1,7 +1,7 @@
 # J.S. — Julia Satorno
 
 Aplicativo pessoal de organização: **Rotina**, **Autocuidado** (cronograma capilar), **Alimentação** e **Financeiro**, com painel inicial, agenda unificada, lembretes e backup.
-Sem login e sem servidor: os dados ficam no próprio aparelho.
+Sem login: os dados ficam no próprio aparelho. O único servidor é opcional e serve só para os avisos chegarem com o app fechado (seção 4).
 
 Ele é um app web (PWA): abre no navegador e pode ser **instalado no celular pelo Chrome**, com ícone na tela inicial, abrindo em tela cheia e funcionando sem internet.
 
@@ -33,7 +33,7 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v1.3.1'`), faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v1.4.1'`), faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
@@ -44,9 +44,30 @@ Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-
 ## 4. Notificações
 
 - O J.S. pede permissão na primeira vez que você cria um lembrete. Se você responder "Agora não", ele só volta a perguntar depois de 7 dias. Também dá para ativar em **Configurações**.
-- Os avisos aparecem enquanto o app está aberto ou em segundo plano. **Com o app totalmente fechado, o celular pode não avisar na hora**: essa é uma limitação dos apps web sem servidor. Ao abrir o app, os lembretes das últimas 2 horas aparecem, e as pendências atrasadas ficam no painel.
+- **Sem o servidor**, os avisos aparecem enquanto o app está aberto ou em segundo plano. Ao abrir o app, os lembretes das últimas 2 horas aparecem, e as pendências atrasadas ficam no painel.
+- **Com "Avisos com o app fechado" ligado** (Configurações → Notificações), os avisos chegam na hora **mesmo com o app fechado**. Ao permitir as notificações, o app oferece ligar isso uma vez.
 - Funcionam melhor no Android com Chrome. No iPhone, só com o app instalado na tela de início (iOS 16.4 ou mais novo).
 - Por privacidade, o valor das contas não aparece na notificação. Isso pode ser ligado em Configurações.
+
+### Servidor de avisos (Web Push)
+
+Segue a mesma base do push do Meu Financeiro IA (Supabase + biblioteca `web-push` + chaves VAPID guardadas no banco), sem o Render:
+
+- **Função** `supabase/functions/js-push` (Supabase Edge Function), no projeto Supabase `jmjenkgmicqbftzndvrl`. O endereço está em `js/config.js`.
+- **Envio:** o `pg_cron` chama a função **a cada minuto** e ela manda o que venceu (lembretes atrasados mais de 2 h não são mais enviados). Cada lembrete sai uma vez só.
+- **Sem login:** cada aparelho gera um id e um segredo próprios. O servidor guarda só o hash do segredo, e as tabelas (`js_*`) são fechadas para acesso externo (RLS).
+- **O que vai para o servidor:** só a inscrição de push do aparelho e os lembretes dos próximos 14 dias (título, texto e horário). O app sincroniza sempre que algo muda, ao abrir e a cada 6 horas. Desligar apaga tudo do servidor. O segredo do aparelho não vai no backup.
+- Se o app ficar mais de 14 dias sem ser aberto, os lembretes depois disso só chegam quando ele for aberto de novo.
+
+Para publicar de novo, com a CLI do Supabase logada na conta dona do projeto, na pasta `aplicativo`:
+
+```
+supabase link --project-ref jmjenkgmicqbftzndvrl
+supabase db query --linked -f supabase/sql/01_tabelas.sql              # tabelas (só na primeira vez)
+supabase secrets set JS_CRON_SECRET=<valor-aleatório>                   # segredo do agendamento
+supabase functions deploy js-push --no-verify-jwt --use-api            # função
+# agendamento: troque SEU-PROJETO e SEU-SEGREDO em supabase/sql/02_agendamento.sql e rode com db query
+```
 
 ## 5. Logo e intro
 
@@ -91,9 +112,14 @@ aplicativo/
 │   ├── regras.js           regras de negócio de todos os módulos (testadas)
 │   ├── store.js            armazenamento local, migração e backup
 │   ├── notify.js           lembretes e permissão de notificação
+│   ├── push.js             avisos com o app fechado (inscrição e sincronização com o servidor)
+│   ├── config.js           endereço do servidor de avisos
 │   ├── ui.js               componentes de tela
 │   ├── app.js              navegação, instalação e inicialização
 │   └── telas/              inicio, rotina, autocuidado, alimentacao, financeiro, agenda, config
+├── supabase/
+│   ├── functions/js-push/  servidor de avisos (Edge Function)
+│   └── sql/                tabelas e agendamento a cada minuto
 └── testes/regras.test.js
 ```
 
@@ -101,5 +127,4 @@ A especificação original está em `../JS_Starter/docs/`.
 
 ## 8. Fora desta versão
 
-- Avisos garantidos com o app fechado (precisaria de um servidor de push).
-- Sincronização entre aparelhos (precisaria de armazenamento em nuvem e consentimento).
+- Sincronização dos dados entre aparelhos (precisaria de armazenamento em nuvem e consentimento).

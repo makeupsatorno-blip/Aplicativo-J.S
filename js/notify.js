@@ -81,12 +81,15 @@
           return;
         }
         return request().then(function (res) {
-          if (res === 'granted') JS.ui.toast('Pronto! Os lembretes vão aparecer como notificação.');
-          else JS.ui.toast('Cadastro salvo, mas as notificações foram bloqueadas. Os avisos aparecerão só dentro do app.', { timeout: 6000 });
+          if (res === 'granted') {
+            JS.ui.toast('Pronto! Os lembretes vão aparecer como notificação.');
+            setTimeout(function () { if (JS.push) JS.push.offer(); }, 700);
+          } else JS.ui.toast('Cadastro salvo, mas as notificações foram bloqueadas. Os avisos aparecerão só dentro do app.', { timeout: 6000 });
           JS.app.render();
         });
       });
     }
+    if (p === 'granted' && JS.push) return JS.push.offer();
     if (p === 'denied' && !warnedDenied) {
       warnedDenied = true;
       JS.ui.toast('Cadastro salvo. As notificações estão bloqueadas neste navegador; os avisos aparecerão só dentro do app.', { timeout: 6000 });

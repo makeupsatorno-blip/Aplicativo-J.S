@@ -4,3 +4,6 @@ desktop.ini
 .DS_Store
 # Dependências (o app não usa, mas por garantia)
 node_modules/
+# Arquivos locais da CLI do Supabase
+supabase/.temp/
+supabase/.branches/

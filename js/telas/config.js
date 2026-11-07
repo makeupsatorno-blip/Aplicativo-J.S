@@ -27,6 +27,26 @@
     return html;
   }
 
+  // Avisos com o app fechado (servidor de push).
+  function pushBlock() {
+    var P = JS.push, p = P.info(), why = P.unavailableReason();
+    var html = '<div class="sub-block"><h3>' + ui.icon('phone', 16) + 'Avisos com o app fechado</h3>';
+    if (P.active()) {
+      html += '<p class="ok-line">' + ui.icon('check', 16) + ' Ligado neste aparelho</p>' +
+        '<p class="muted small">' + (p.lastSyncAt ? (p.count || 0) + ' lembrete(s) agendado(s) para os próximos 14 dias • atualizado em ' + esc(C.formatTimestamp(p.lastSyncAt)) : 'Sincronizando…') + '</p>' +
+        (p.lastError ? '<p class="hint warn-text">' + ui.icon('alert', 14) + ' ' + esc(p.lastError) + '</p>' : '') +
+        '<div class="btn-col"><button type="button" class="btn soft" data-action="push-test">' + ui.icon('bell', 18) + 'Enviar teste pelo servidor</button>' +
+        '<button type="button" class="btn ghost" data-action="push-off">Desligar e apagar do servidor</button></div>';
+    } else if (why) {
+      html += '<p class="hint">' + esc(why) + '</p>';
+    } else {
+      html += '<p class="hint">Sem isto, os avisos só aparecem com o J.S. aberto ou recém-minimizado. Ligado, um servidor manda cada lembrete na hora, mesmo com o app fechado.</p>' +
+        '<button type="button" class="btn primary full" data-action="push-on">Ligar avisos com o app fechado</button>';
+    }
+    html += '<p class="hint">Privacidade: quando ligado, os títulos e horários dos lembretes dos próximos 14 dias (sem valores de contas, a menos que você ligue acima) vão para um servidor que só os usa para enviar o aviso. Desligar apaga esses dados do servidor.</p></div>';
+    return html;
+  }
+
   function render() {
     var s = JS.store.state, st = s.settings, n = st.notifications;
     var perm = JS.notify.permission();
@@ -53,7 +73,7 @@
       sw('meal', 'Alimentação', n.meal !== false, 'Horários de refeição', 'cfg-notif') +
       sw('bill', 'Financeiro', n.bill !== false, 'Vencimento de contas', 'cfg-notif') +
       sw('showAmounts', 'Mostrar valor das contas', !!st.showAmountsInNotifications, 'Por privacidade, vem desligado: o valor não aparece na tela bloqueada.', 'cfg-amounts') +
-      '<p class="hint">Como funciona: os avisos aparecem enquanto o J.S. está aberto ou em segundo plano. Se o app estiver totalmente fechado, o celular pode não mostrar o aviso na hora; ao abrir, o J.S. mostra o que ficou pendente. Android e iPhone também podem atrasar avisos no modo economia de bateria.</p>' +
+      pushBlock() +
       '</section>';
 
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('utensils', 18) + 'Alimentação</h2></div>' +
@@ -175,6 +195,28 @@
     ui.toast(el.checked ? 'A intro vai aparecer ao abrir o app.' : 'Intro desligada.');
   };
   JS.actions['intro-play'] = function () { JS.intro.play(true); };
+
+  function busy(el, on, label) {
+    if (!el) return;
+    el.disabled = on;
+    if (on) { el.dataset.label = el.textContent; el.textContent = label; } else if (el.dataset.label) el.textContent = el.dataset.label;
+  }
+  JS.actions['push-on'] = function (d, el) {
+    busy(el, true, 'Ligando…');
+    JS.push.enable().then(function () { ui.toast('Pronto! Os avisos vão chegar mesmo com o app fechado.'); })
+      .catch(function (e) { ui.toast(e.message, { error: true, timeout: 7000 }); })
+      .then(function () { busy(el, false); JS.app.render(); });
+  };
+  JS.actions['push-off'] = function () {
+    ui.confirm({ title: 'Desligar avisos com o app fechado?', message: 'Os lembretes deste aparelho serão apagados do servidor. Os avisos com o app aberto continuam.', confirmLabel: 'Desligar' })
+      .then(function (ok) { if (ok) JS.push.disable().then(function () { ui.toast('Avisos com o app fechado desligados.'); JS.app.render(); }); });
+  };
+  JS.actions['push-test'] = function (d, el) {
+    busy(el, true, 'Enviando…');
+    JS.push.test().then(function () { ui.toast('Teste enviado pelo servidor. Feche o app para ver chegar.', { timeout: 6000 }); })
+      .catch(function (e) { ui.toast(e.message, { error: true, timeout: 7000 }); })
+      .then(function () { busy(el, false); });
+  };
   JS.changes['cfg-animations'] = function (el) {
     JS.store.update(function (s) { s.settings.animations = el.checked ? 'on' : 'auto'; });
     document.documentElement.classList.toggle('reduce-motion', systemReducesMotion() && !el.checked);

@@ -4,17 +4,22 @@
  * sem internet (ou rede muito lenta), usa a cópia guardada.
  * Ao publicar uma versão nova, aumente o número em VERSION.
  */
-var VERSION = 'js-v1.3.0';
+var VERSION = 'js-v1.4.0';
 var ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/style.css', './icons/favicon.svg',
-  './js/intro.js', './js/core.js', './js/regras.js', './js/ui.js', './js/anim.js', './js/store.js', './js/notify.js', './js/app.js',
+  './js/config.js', './js/intro.js', './js/core.js', './js/regras.js', './js/ui.js', './js/anim.js', './js/store.js',
+  './js/notify.js', './js/push.js', './js/app.js',
   './js/telas/inicio.js', './js/telas/rotina.js', './js/telas/autocuidado.js', './js/telas/alimentacao.js',
   './js/telas/financeiro.js', './js/telas/agenda.js', './js/telas/config.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/badge-96.png'
 ];
 
 self.addEventListener('install', function (event) {
-  event.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(ASSETS); }).then(function () { return self.skipWaiting(); }));
+  // Se o cache falhar (ex.: sem espaço), instala mesmo assim: notificações e push
+  // continuam funcionando, e o cache se completa com o uso (estratégia "rede primeiro").
+  event.waitUntil(caches.open(VERSION).then(function (c) { return c.addAll(ASSETS); })
+    .catch(function (err) { console.warn('Cache offline incompleto:', err && err.message); })
+    .then(function () { return self.skipWaiting(); }));
 });
 
 self.addEventListener('activate', function (event) {
@@ -46,6 +51,16 @@ self.addEventListener('fetch', function (event) {
       fromCache(req).then(function (r) { if (!settled) { settled = true; resolve(r || Response.error()); } });
     });
   }));
+});
+
+// Aviso vindo do servidor (js-push), mesmo com o app fechado.
+// A "tag" é a mesma do aviso local: o celular mostra uma notificação só por lembrete.
+self.addEventListener('push', function (event) {
+  var d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = { body: event.data ? event.data.text() : '' }; }
+  var opts = { body: d.body || '', icon: 'icons/icon-192.png', badge: 'icons/badge-96.png', data: { route: d.route || 'inicio' } };
+  if (d.tag) opts.tag = d.tag;
+  event.waitUntil(self.registration.showNotification(d.title || 'J.S.', opts));
 });
 
 self.addEventListener('notificationclick', function (event) {

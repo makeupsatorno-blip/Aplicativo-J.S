@@ -59,18 +59,30 @@
     navigator.storage.persisted().then(function (p) { return p || navigator.storage.persist(); }).catch(function () {});
   }
 
+  // A inscrição de push e o segredo são deste aparelho: não vão no backup.
   function exportData() {
-    return { app: 'J.S.', tipo: 'backup', versao: R.SCHEMA_VERSION, exportadoEm: nowISO(), dados: state };
+    var copy = JSON.parse(JSON.stringify(state));
+    delete copy.settings.push;
+    delete copy.firedReminders;
+    return { app: 'J.S.', tipo: 'backup', versao: R.SCHEMA_VERSION, exportadoEm: nowISO(), dados: copy };
   }
 
   function importData(obj) {
     if (!obj || obj.app !== 'J.S.' || !obj.dados) throw new Error('Este arquivo não é um backup do J.S.');
+    var push = state && state.settings.push;
     state = R.migrate(obj.dados);
+    if (push) state.settings.push = push; else delete state.settings.push;
     save();
     emit();
   }
 
-  function reset() { state = R.emptyState(); save(); emit(); }
+  function reset() {
+    var push = state && state.settings.push;
+    state = R.emptyState();
+    if (push && push.enabled) state.settings.push = push; // continua inscrito; os lembretes somem na próxima sincronização
+    save();
+    emit();
+  }
 
   // Mantém duas abas abertas em sincronia.
   window.addEventListener('storage', function (e) {

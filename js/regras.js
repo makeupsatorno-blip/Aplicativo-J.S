@@ -716,10 +716,22 @@
   // Lista os lembretes de ontem até depois de amanhã, já com texto e chave
   // de idempotência no formato tipo:entidade:AAAA-MM-DDTHH:MM.
   function computeReminders(state, now) {
+    var today = C.toDateKey(now);
+    return remindersInRange(state, C.addDays(today, -1), C.addDays(today, 2));
+  }
+
+  // Lembretes que ainda vão acontecer nos próximos "days" dias (enviados ao servidor
+  // para chegarem mesmo com o app fechado). Não inclui os que já passaram.
+  function upcomingReminders(state, now, days) {
+    var today = C.toDateKey(now);
+    var limit = now.getTime() + days * 86400000;
+    return remindersInRange(state, today, C.addDays(today, days))
+      .filter(function (r) { var t = r.at.getTime(); return t > now.getTime() - 60000 && t <= limit; });
+  }
+
+  function remindersInRange(state, from, to) {
     var s = state.settings || {};
     var mods = s.notifications || {};
-    var today = C.toDateKey(now);
-    var from = C.addDays(today, -1), to = C.addDays(today, 2);
     var list = [];
     function push(type, id, at, title, body, route) {
       list.push({ key: type + ':' + id + ':' + C.toDateKey(at) + 'T' + C.toTimeKey(at), type: type, at: at, title: title, body: body, route: route });
@@ -750,7 +762,9 @@
       });
     }
     if (mods.meal !== false) {
-      [C.addDays(today, -1), today, C.addDays(today, 1)].forEach(function (d) {
+      var mealDays = [];
+      for (var md = from; md <= to; md = C.addDays(md, 1)) mealDays.push(md);
+      mealDays.forEach(function (d) {
         mealOccurrencesOn(state, d).forEach(function (o) {
           if (o.skipped || o.done || !o.meal.reminderEnabled) return;
           push('meal', o.meal.id, C.combine(d, o.time), 'Está na hora de ' + o.meal.name + '.', o.meal.description || 'Alimentação • ' + o.time, 'alimentacao');
@@ -853,7 +867,7 @@
     billPayments: billPayments, billPaidCents: billPaidCents, billsInMonth: billsInMonth,
     monthSummary: monthSummary, overdueBills: overdueBills, upcomingBills: upcomingBills, seriesBills: seriesBills,
     // lembretes, painel e agenda
-    computeReminders: computeReminders, dueReminders: dueReminders, pruneFired: pruneFired,
+    computeReminders: computeReminders, upcomingReminders: upcomingReminders, dueReminders: dueReminders, pruneFired: pruneFired,
     dashboard: dashboard, agendaForDate: agendaForDate, agendaMarkers: agendaMarkers
   };
 });

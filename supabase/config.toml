@@ -1,0 +1,6 @@
+# Configuração mínima para publicar a Edge Function do J.S. com a CLI do Supabase.
+project_id = "js-app"
+
+[functions.js-push]
+# O app não tem login: a função confere o segredo de cada aparelho e o segredo do agendamento.
+verify_jwt = false
