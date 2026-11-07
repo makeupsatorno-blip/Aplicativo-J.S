@@ -70,6 +70,8 @@
     var today = C.toDateKey(new Date());
     var v = e || Object.assign({ type: 'hydration', customName: '', date: today, time: '', products: '', notes: '', reminderMinutes: null }, preset || {});
     var locked = e && e.status === 'completed';
+    // Tudo com horário avisa: tratamento com hora e sem lembrete já abre com "Na hora".
+    if (!locked && v.time && v.reminderMinutes == null) v = Object.assign({}, v, { reminderMinutes: 0 });
     var body =
       ui.select({ label: 'Tipo', name: 'type', options: typeOptions(), value: v.type }) +
       ui.input({ label: 'Nome do tratamento', name: 'customName', value: v.customName, placeholder: 'Ex.: Umectação', attrs: 'maxlength="60"' }) +
@@ -81,7 +83,7 @@
       ui.textarea({ label: 'Observações (opcional)', name: 'notes', value: v.notes, attrs: 'maxlength="1000"' });
     ui.openSheet({
       title: e ? 'Editar tratamento' : 'Novo tratamento', body: body, submitLabel: e ? 'Salvar' : 'Adicionar',
-      onOpen: function (form) { bindCustomToggle(form, 'type'); },
+      onOpen: function (form) { bindCustomToggle(form, 'type'); JS.bindDefaultReminder(form, 'time', 0); },
       onSubmit: function (input) {
         if (locked) { input.date = e.date; input.time = e.time; input.reminderMinutes = e.reminderMinutes; }
         var r = R.validateHair(input);
@@ -172,6 +174,7 @@
       title: 'Gerar cronograma', body: body, submitLabel: 'Criar tratamentos',
       onOpen: function (form) {
         bindCustomToggle(form, 'seq');
+        JS.bindDefaultReminder(form, 'time', 0);
         function preview() {
           var r = R.planHairSchedule(collect(ui.formValues(form)));
           var el = form.querySelector('#plan-preview');

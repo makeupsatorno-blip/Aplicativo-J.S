@@ -1,9 +1,12 @@
 /*
  * J.S. — avisos com o app fechado (Web Push).
  * Quando ligado, o app envia ao servidor (supabase/functions/js-push) a inscrição de push
- * deste aparelho e os lembretes dos próximos 14 dias: título, texto e horário. O servidor
- * confere a cada minuto e manda a notificação na hora, mesmo com o app fechado.
- * O app sincroniza de novo sempre que algo muda, ao abrir e a cada 6 horas.
+ * deste aparelho e os lembretes futuros (título, texto e horário):
+ *  - com data marcada (tarefa, tratamento, conta): na data que for, até 2 anos à frente;
+ *  - que se repetem (refeições, tarefas recorrentes): 90 dias à frente, renovados ao abrir o app.
+ * O servidor confere a cada minuto e manda a notificação na hora, mesmo com o app fechado.
+ * Depois da primeira vez, o app envia só o que mudou (o resumo do que já foi enviado fica
+ * guardado neste aparelho). Se a contagem do servidor não bater, manda a lista inteira de novo.
  * Os avisos locais (js/notify.js) continuam funcionando; os dois usam a mesma
  * etiqueta (tag), então o celular mostra só uma notificação por lembrete.
  */
@@ -12,7 +15,9 @@
   var JS = window.JS = window.JS || {};
   var R = window.JSRegras, C = window.JSCore;
   var API = ((window.JS_CONFIG || {}).pushApi || '').replace(/\/+$/, '');
-  var DAYS = 14, MAX = 400;
+  var MAX = 3000;
+  var SYNC_KEY = 'js-push-enviados';   // resumo do que já está no servidor (só deste aparelho)
+  var MARGIN_MS = 15 * 60000;          // igual ao servidor: conferência ignora os próximos 15 min
   var syncTimer = null, syncing = null;
 
   function configured() { return !!API; }
@@ -80,27 +85,65 @@
   }
 
   function remindersPayload() {
-    return R.upcomingReminders(JS.store.state, new Date(), DAYS).slice(0, MAX).map(function (r) {
+    return R.futureReminders(JS.store.state, new Date()).slice(0, MAX).map(function (r) {
       return { key: r.key, at: r.at.toISOString(), title: r.title, body: r.body, route: r.route };
     });
   }
 
-  function syncNow() {
+  // Resumo curto de cada lembrete (para saber o que mudou desde o último envio).
+  function hash(s) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return h.toString(36);
+  }
+  function fingerprint(r) { return hash(r.at + '|' + r.title + '|' + (r.body || '') + '|' + r.route) + '|' + Date.parse(r.at); }
+  function loadSent() { try { return JSON.parse(localStorage.getItem(SYNC_KEY) || 'null'); } catch (e) { return null; } }
+  function saveSent(v) { try { if (v) localStorage.setItem(SYNC_KEY, JSON.stringify(v)); else localStorage.removeItem(SYNC_KEY); } catch (e) { /* sem espaço */ } }
+
+  // forceFull: manda a lista inteira (primeira vez, ou quando a contagem não bate).
+  function syncNow(forceFull) {
     if (!active() || !supported()) return Promise.resolve();
     if (syncing) return syncing;
+    var p = info();
+    var list = remindersPayload();
+    var entries = {};
+    list.forEach(function (r) { entries[r.key] = fingerprint(r); });
+    var prev = loadSent();
+    var full = forceFull || !prev || prev.deviceId !== p.deviceId || !prev.entries;
+    var upsert = list, remove = [];
+    if (!full) {
+      var now = Date.now();
+      upsert = list.filter(function (r) { return prev.entries[r.key] !== entries[r.key]; });
+      remove = Object.keys(prev.entries).filter(function (k) {
+        return !entries[k] && Number(prev.entries[k].split('|')[1]) > now; // os que já passaram, o servidor limpa sozinho
+      });
+      // Nada mudou e já conversou com o servidor há pouco: não gasta internet.
+      if (!upsert.length && !remove.length && p.lastSyncAt && now - Date.parse(p.lastSyncAt) < 6 * 3600 * 1000 && !p.lastError) {
+        return Promise.resolve();
+      }
+    }
+    var expected = list.filter(function (r) { return Date.parse(r.at) > Date.now() + MARGIN_MS; }).length;
     syncing = navigator.serviceWorker.ready.then(function (reg) {
       return reg.pushManager.getSubscription();
     }).then(function (sub) {
       if (!sub) throw new Error('A inscrição deste aparelho expirou. Desligue e ligue de novo.');
-      var p = info();
       var tz = '';
       try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* sem fuso */ }
-      return call('sync', { deviceId: p.deviceId, token: p.token, subscription: sub.toJSON(), reminders: remindersPayload(), tz: tz });
+      var body = { deviceId: p.deviceId, token: p.token, subscription: sub.toJSON(), tz: tz };
+      if (full) body.reminders = list; else { body.mode = 'diff'; body.upsert = upsert; body.remove = remove; }
+      return call('sync', body);
     }).then(function (res) {
-      savePush({ lastSyncAt: new Date().toISOString(), lastError: null, count: res.count || 0 });
+      saveSent({ deviceId: p.deviceId, entries: entries });
+      savePush({ lastSyncAt: new Date().toISOString(), lastError: null, count: list.length });
+      // O servidor tem uma quantidade diferente (ex.: inscrição recriada): manda tudo de novo.
+      if (!full && typeof res.pending === 'number' && Math.abs(res.pending - expected) > 1) return 'resync';
     }).catch(function (e) {
       savePush({ lastError: e.message });
-    }).then(function () { syncing = null; refreshConfig(); });
+    }).then(function (r) {
+      syncing = null;
+      if (r === 'resync') return syncNow(true);
+      refreshConfig();
+    });
     return syncing;
   }
 
@@ -127,7 +170,8 @@
     }).then(function () {
       var p = info();
       savePush({ enabled: true, deviceId: p.deviceId || C.uuid(), token: p.token || randomToken(), lastError: null });
-      return syncNow();
+      saveSent(null);
+      return syncNow(true);
     }).then(function () {
       var p = info();
       if (p.lastError) throw new Error(p.lastError);
@@ -142,6 +186,7 @@
       : Promise.resolve();
     return Promise.all([server, local]).then(function () {
       JS.store.silentUpdate(function (s) { s.settings.push = { enabled: false }; });
+      saveSent(null);
       refreshConfig();
     });
   }
@@ -157,7 +202,7 @@
     savePush({ offeredAt: new Date().toISOString() });
     return JS.ui.confirm({
       title: 'Avisar mesmo com o app fechado?',
-      message: 'Para isso, os títulos e horários dos seus lembretes dos próximos 14 dias vão para um servidor seguro, que só os usa para mandar o aviso na hora. Você pode desligar quando quiser em Configurações.',
+      message: 'Para isso, os títulos e horários dos seus lembretes futuros vão para um servidor seguro, que só os usa para mandar o aviso na hora. Você pode desligar quando quiser em Configurações.',
       confirmLabel: 'Ligar', cancelLabel: 'Agora não'
     }).then(function (ok) {
       if (!ok) return;

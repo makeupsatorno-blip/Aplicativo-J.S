@@ -27,13 +27,33 @@
     return html;
   }
 
+  // Itens com horário que ainda não têm lembrete (criados antes do lembrete vir ligado por padrão).
+  function missingReminders() {
+    var s = JS.store.state, today = C.toDateKey(new Date());
+    var tasks = s.tasks.filter(function (t) {
+      return t.status !== 'cancelled' && t.dueDate && t.dueTime && t.reminderMinutes == null &&
+        ((t.recurrence || 'none') !== 'none' ? (!t.endDate || t.endDate >= today) : t.dueDate >= today);
+    });
+    var hair = s.hairEvents.filter(function (e) { return R.hairPending(e) && e.time && e.reminderMinutes == null && e.date >= today; });
+    return { tasks: tasks, hair: hair, total: tasks.length + hair.length };
+  }
+  JS.missingReminders = missingReminders;
+  function missingBlock() {
+    var m = missingReminders();
+    if (!m.total) return '';
+    return '<div class="banner soft compact-banner"><span class="banner-ic">' + ui.icon('belloff', 20) + '</span><div><strong>' + m.total +
+      (m.total === 1 ? ' item com horário está sem lembrete' : ' itens com horário estão sem lembrete') + '</strong>' +
+      '<p>Tarefas avisam 15 min antes; tratamentos, na hora.</p></div>' +
+      '<button type="button" class="btn primary small" data-action="reminders-fix">Ligar todos</button></div>';
+  }
+
   // Avisos com o app fechado (servidor de push).
   function pushBlock() {
     var P = JS.push, p = P.info(), why = P.unavailableReason();
     var html = '<div class="sub-block"><h3>' + ui.icon('phone', 16) + 'Avisos com o app fechado</h3>';
     if (P.active()) {
       html += '<p class="ok-line">' + ui.icon('check', 16) + ' Ligado neste aparelho</p>' +
-        '<p class="muted small">' + (p.lastSyncAt ? (p.count || 0) + ' lembrete(s) agendado(s) para os próximos 14 dias • atualizado em ' + esc(C.formatTimestamp(p.lastSyncAt)) : 'Sincronizando…') + '</p>' +
+        '<p class="muted small">' + (p.lastSyncAt ? (p.count || 0) + ' lembrete(s) agendado(s) no servidor • atualizado em ' + esc(C.formatTimestamp(p.lastSyncAt)) : 'Sincronizando…') + '</p>' +
         (p.lastError ? '<p class="hint warn-text">' + ui.icon('alert', 14) + ' ' + esc(p.lastError) + '</p>' : '') +
         '<div class="btn-col"><button type="button" class="btn soft" data-action="push-test">' + ui.icon('bell', 18) + 'Enviar teste pelo servidor</button>' +
         '<button type="button" class="btn ghost" data-action="push-off">Desligar e apagar do servidor</button></div>';
@@ -43,7 +63,7 @@
       html += '<p class="hint">Sem isto, os avisos só aparecem com o J.S. aberto ou recém-minimizado. Ligado, um servidor manda cada lembrete na hora, mesmo com o app fechado.</p>' +
         '<button type="button" class="btn primary full" data-action="push-on">Ligar avisos com o app fechado</button>';
     }
-    html += '<p class="hint">Privacidade: quando ligado, os títulos e horários dos lembretes dos próximos 14 dias (sem valores de contas, a menos que você ligue acima) vão para um servidor que só os usa para enviar o aviso. Desligar apaga esses dados do servidor.</p></div>';
+    html += '<p class="hint">Privacidade: quando ligado, os títulos e horários dos lembretes futuros (com data marcada, em qualquer data até 2 anos; os que se repetem, 90 dias à frente, renovados ao abrir o app; sem valores de contas, a menos que você ligue acima) vão para um servidor que só os usa para enviar o aviso. Desligar apaga esses dados do servidor.</p></div>';
     return html;
   }
 
@@ -70,6 +90,7 @@
       (perm === 'default' ? '<button type="button" class="btn primary full" data-action="notif-enable">Ativar notificações</button>' : '') +
       (perm === 'denied' ? '<p class="hint">Para liberar, toque no cadeado ao lado do endereço (ou em Configurações do site) e permita notificações.</p>' : '') +
       (perm === 'granted' ? '<button type="button" class="btn soft full" data-action="notif-test">Enviar notificação de teste</button>' : '') +
+      missingBlock() +
       sw('task', 'Rotina', n.task !== false, 'Tarefas com horário', 'cfg-notif') +
       sw('hair', 'Autocuidado', n.hair !== false, 'Tratamentos capilares', 'cfg-notif') +
       sw('meal', 'Alimentação', n.meal !== false, 'Horários de refeição', 'cfg-notif') +
@@ -197,6 +218,16 @@
     ui.toast(el.checked ? 'A intro vai aparecer ao abrir o app.' : 'Intro desligada.');
   };
   JS.actions['intro-play'] = function () { JS.intro.play(true); };
+  JS.actions['reminders-fix'] = function () {
+    var m = missingReminders();
+    var taskIds = m.tasks.map(function (t) { return t.id; }), hairIds = m.hair.map(function (e) { return e.id; });
+    JS.store.update(function (s, n) {
+      s.tasks.forEach(function (t) { if (taskIds.indexOf(t.id) >= 0) { t.reminderMinutes = 15; t.updatedAt = n; } });
+      s.hairEvents.forEach(function (e) { if (hairIds.indexOf(e.id) >= 0) { e.reminderMinutes = 0; e.updatedAt = n; } });
+    });
+    ui.toast('Lembrete ligado em ' + m.total + (m.total === 1 ? ' item.' : ' itens.'));
+    JS.notify.askIfNeeded();
+  };
   JS.actions['app-update'] = function (d, el) {
     busy(el, true, 'Procurando…');
     JS.app.checkForUpdate(true).then(function (r) {

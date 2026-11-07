@@ -29,6 +29,13 @@
       html += '<div class="banner"><span class="banner-ic">' + ui.icon('phone', 20) + '</span><div><strong>Instale o J.S.</strong><p>Abra direto da tela inicial, como um aplicativo.</p></div>' +
         '<button type="button" class="btn primary small" data-action="install">Instalar</button></div>';
     }
+    var miss = JS.missingReminders ? JS.missingReminders() : { total: 0 };
+    if (miss.total) {
+      html += '<div class="banner"><span class="banner-ic">' + ui.icon('belloff', 20) + '</span><div><strong>' + miss.total +
+        (miss.total === 1 ? ' item com horário está sem lembrete' : ' itens com horário estão sem lembrete') + '</strong>' +
+        '<p>Sem lembrete, você não é avisada.</p></div>' +
+        '<button type="button" class="btn primary small" data-action="reminders-fix">Ligar todos</button></div>';
+    }
     var lb = s.settings.lastBackupAt;
     if (!dismissedBackup && R.hasAnyData(s) && (!lb || C.diffDays(C.toDateKey(new Date(lb)), today) >= 14)) {
       html += '<div class="banner soft"><span class="banner-ic">' + ui.icon('shield', 20) + '</span><div><strong>' + (lb ? 'Hora de um novo backup' : 'Faça um backup') + '</strong>' +

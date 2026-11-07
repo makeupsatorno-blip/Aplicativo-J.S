@@ -43,6 +43,7 @@ Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-
 
 ## 4. Notificações
 
+- **Tudo com horário avisa por padrão:** ao pôr a hora numa tarefa, o lembrete vira "15 min antes"; num tratamento, "na hora". Refeições avisam na hora e contas 1 dia antes e no dia. Dá para mudar ou desligar em cada item. Itens antigos sem lembrete aparecem num aviso no painel e em Configurações, com o botão **Ligar todos**.
 - O J.S. pede permissão na primeira vez que você cria um lembrete. Se você responder "Agora não", ele só volta a perguntar depois de 7 dias. Também dá para ativar em **Configurações**.
 - **Sem o servidor**, os avisos aparecem enquanto o app está aberto ou em segundo plano. Ao abrir o app, os lembretes das últimas 2 horas aparecem, e as pendências atrasadas ficam no painel.
 - **Com "Avisos com o app fechado" ligado** (Configurações → Notificações), os avisos chegam na hora **mesmo com o app fechado**. Ao permitir as notificações, o app oferece ligar isso uma vez.
@@ -56,8 +57,10 @@ Segue a mesma base do push do Meu Financeiro IA (Supabase + biblioteca `web-push
 - **Função** `supabase/functions/js-push` (Supabase Edge Function), no projeto Supabase `jmjenkgmicqbftzndvrl`. O endereço está em `js/config.js`.
 - **Envio:** o `pg_cron` chama a função **a cada minuto** e ela manda o que venceu (lembretes atrasados mais de 2 h não são mais enviados). Cada lembrete sai uma vez só.
 - **Sem login:** cada aparelho gera um id e um segredo próprios. O servidor guarda só o hash do segredo, e as tabelas (`js_*`) são fechadas para acesso externo (RLS).
-- **O que vai para o servidor:** só a inscrição de push do aparelho e os lembretes dos próximos 14 dias (título, texto e horário). O app sincroniza sempre que algo muda, ao abrir e a cada 6 horas. Desligar apaga tudo do servidor. O segredo do aparelho não vai no backup.
-- Se o app ficar mais de 14 dias sem ser aberto, os lembretes depois disso só chegam quando ele for aberto de novo.
+- **O que vai para o servidor:** só a inscrição de push do aparelho e os lembretes futuros (título, texto e horário):
+  - **com data marcada** (tarefa, tratamento, conta): na data que for, até 2 anos à frente;
+  - **que se repetem** (refeições, tarefas diárias/semanais/mensais): 90 dias à frente, renovados toda vez que o app abre. Se o app ficar mais de 90 dias sem ser aberto, os repetidos depois disso só voltam quando ele for aberto.
+- **Envio econômico:** a lista inteira vai uma vez; depois, só o que mudou. Se a contagem do servidor não bater com a do app, ele reenvia tudo sozinho. O app sincroniza sempre que algo muda e ao abrir. Desligar apaga tudo do servidor. O segredo do aparelho não vai no backup.
 
 Para publicar de novo, com a CLI do Supabase logada na conta dona do projeto, na pasta `aplicativo`:
 

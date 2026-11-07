@@ -3,6 +3,23 @@
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui, esc = ui.esc;
   var view = { mode: 'hoje', month: null };
+  var DEFAULT_REMINDER = 15; // minutos antes (tarefas com horário avisam por padrão)
+
+  // Ao preencher a hora, liga o lembrete padrão; ao apagar a hora, desliga.
+  // Se a pessoa mexer no lembrete, a escolha dela é respeitada.
+  function bindDefaultReminder(form, timeName, minutes) {
+    var time = form.elements[timeName], rem = form.elements.reminderMinutes;
+    if (!time || !rem) return;
+    var touched = false;
+    rem.addEventListener('change', function () { touched = true; });
+    function apply() {
+      if (touched) return;
+      rem.value = time.value ? String(minutes) : '';
+    }
+    time.addEventListener('input', apply);
+    time.addEventListener('change', apply);
+  }
+  JS.bindDefaultReminder = bindDefaultReminder;
 
   function isRecurring(t) { return t.recurrence && t.recurrence !== 'none'; }
 
@@ -76,6 +93,8 @@
     var today = C.toDateKey(new Date());
     var v = t ? Object.assign({}, t, { dueDate: occDate || t.dueDate })
       : Object.assign({ title: '', description: '', category: 'Pessoal', priority: 'normal', dueDate: today, dueTime: '', recurrence: 'none', reminderMinutes: null }, preset || {});
+    // Tudo com horário avisa: tarefa antiga com hora e sem lembrete já abre com o padrão sugerido.
+    if (v.dueTime && v.reminderMinutes == null) v.reminderMinutes = DEFAULT_REMINDER;
     var recurring = t && isRecurring(t);
     var body =
       ui.input({ label: 'Título', name: 'title', value: v.title, required: true, placeholder: 'Ex.: Consulta no dentista', attrs: 'maxlength="120"' }) +
@@ -91,6 +110,7 @@
     ui.openSheet({
       title: t ? 'Editar tarefa' : 'Nova tarefa', body: body, submitLabel: t ? 'Salvar' : 'Adicionar',
       onOpen: function (form) {
+        bindDefaultReminder(form, 'dueTime', DEFAULT_REMINDER);
         form.querySelectorAll('[data-set-date]').forEach(function (b) {
           b.addEventListener('click', function () {
             var x = b.dataset.setDate, el = form.elements;
@@ -190,6 +210,12 @@
       title: t.title, subtitle: sub, detail: detail,
       actions: [
         { label: done ? 'Marcar como pendente' : 'Concluir', icon: done ? 'undo' : 'check', run: function () { toggle({ id: id, date: date || '' }); } },
+        date && t.dueTime && t.reminderMinutes == null ? { label: 'Avisar 15 min antes', icon: 'bell', run: function () {
+          JS.anim.mark(itemSel(t.id), 'flash', { closest: '.item' });
+          JS.store.update(function (s, n) { var x = R.byId(s.tasks, t.id); if (x) { x.reminderMinutes = DEFAULT_REMINDER; x.updatedAt = n; } });
+          ui.toast('Lembrete ligado: 15 min antes.');
+          JS.notify.askIfNeeded();
+        } } : null,
         { label: 'Editar', icon: 'edit', run: function () { openTaskForm(t, date); } },
         date && !done ? { label: 'Adiar', icon: 'clock', run: function () { postponeForm(t, date); } } : null,
         { label: 'Excluir', icon: 'trash', danger: true, run: function () { deleteTaskFlow(t, date); } }

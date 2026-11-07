@@ -4,7 +4,7 @@
  * sem internet (ou rede muito lenta), usa a cópia guardada.
  * Ao publicar uma versão nova, aumente o número em VERSION.
  */
-var VERSION = 'js-v1.4.1';
+var VERSION = 'js-v1.5.0';
 var ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/style.css', './icons/favicon.svg',
   './js/config.js', './js/intro.js', './js/core.js', './js/regras.js', './js/ui.js', './js/anim.js', './js/store.js',

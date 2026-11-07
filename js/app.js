@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui;
-  var VERSION = '1.4.1';
+  var VERSION = '1.5.0';
   var lastToday = null;
   var deferredInstall = null;
 

@@ -729,7 +729,33 @@
       .filter(function (r) { var t = r.at.getTime(); return t > now.getTime() - 60000 && t <= limit; });
   }
 
-  function remindersInRange(state, from, to) {
+  // Todos os lembretes futuros para o servidor de avisos:
+  //  - com data marcada (tarefa única, tratamento, conta): em qualquer data, até singleDays à frente;
+  //  - que se repetem (tarefa recorrente, refeição): só recurringDays à frente (não têm fim),
+  //    renovados toda vez que o app abre.
+  var SERVER_RECURRING_DAYS = 90, SERVER_SINGLE_DAYS = 730;
+  function futureReminders(state, now, opts) {
+    opts = opts || {};
+    var recurringDays = opts.recurringDays || SERVER_RECURRING_DAYS;
+    var singleDays = opts.singleDays || SERVER_SINGLE_DAYS;
+    var today = C.toDateKey(now);
+    var near = remindersInRange(state, today, C.addDays(today, recurringDays));
+    var far = remindersInRange(state, C.addDays(today, recurringDays), C.addDays(today, singleDays), { singleOnly: true });
+    var seen = {}, out = [];
+    var min = now.getTime() - 60000, max = now.getTime() + singleDays * 86400000;
+    near.concat(far).forEach(function (r) {
+      var t = r.at.getTime();
+      if (seen[r.key] || t <= min || t > max) return;
+      seen[r.key] = true;
+      out.push(r);
+    });
+    return out.sort(function (a, b) { return a.at - b.at; });
+  }
+
+  // opts.singleOnly: só lembretes de data marcada (sem tarefas recorrentes e refeições).
+  function remindersInRange(state, from, to, opts) {
+    var singleOnly = !!(opts && opts.singleOnly);
+    if (singleOnly) state = Object.assign({}, state, { tasks: state.tasks.filter(function (t) { return (t.recurrence || 'none') === 'none'; }) });
     var s = state.settings || {};
     var mods = s.notifications || {};
     var list = [];
@@ -761,7 +787,7 @@
         push('hair', e.id, at, title, 'Autocuidado • ' + e.time, 'autocuidado');
       });
     }
-    if (mods.meal !== false) {
+    if (mods.meal !== false && !singleOnly) {
       var mealDays = [];
       for (var md = from; md <= to; md = C.addDays(md, 1)) mealDays.push(md);
       mealDays.forEach(function (d) {
@@ -867,7 +893,9 @@
     billPayments: billPayments, billPaidCents: billPaidCents, billsInMonth: billsInMonth,
     monthSummary: monthSummary, overdueBills: overdueBills, upcomingBills: upcomingBills, seriesBills: seriesBills,
     // lembretes, painel e agenda
-    computeReminders: computeReminders, upcomingReminders: upcomingReminders, dueReminders: dueReminders, pruneFired: pruneFired,
+    computeReminders: computeReminders, upcomingReminders: upcomingReminders, futureReminders: futureReminders,
+    SERVER_RECURRING_DAYS: SERVER_RECURRING_DAYS, SERVER_SINGLE_DAYS: SERVER_SINGLE_DAYS,
+    dueReminders: dueReminders, pruneFired: pruneFired,
     dashboard: dashboard, agendaForDate: agendaForDate, agendaMarkers: agendaMarkers
   };
 });

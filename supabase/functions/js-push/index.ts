@@ -19,8 +19,10 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CRON_SECRET = Deno.env.get("JS_CRON_SECRET") ?? "";
 const SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:js-app@users.noreply.github.com";
 
-const MAX_REMINDERS = 400;          // por aparelho
-const WINDOW_DAYS = 15;             // aceita lembretes até 15 dias à frente
+const MAX_REMINDERS = 3000;         // por aparelho
+const WINDOW_DAYS = 732;            // aceita lembretes até ~2 anos à frente
+const CHUNK = 500;                  // linhas por gravação
+const CHECK_MARGIN_MS = 15 * 60000; // conferência de contagem ignora os próximos 15 min (relógios diferentes)
 const CATCHUP_MS = 2 * 3600 * 1000; // lembrete atrasado mais de 2 h não é mais enviado
 const ROUTES = ["inicio", "rotina", "autocuidado", "alimentacao", "financeiro", "agenda", "config"];
 // Só manda para serviços de push conhecidos (evita usar o servidor para chamar outros endereços).
@@ -101,6 +103,41 @@ async function device(body: Body, allowNew: boolean) {
   return { row: data, hash };
 }
 
+function toRows(deviceId: string, list: unknown) {
+  const now = Date.now();
+  const rows: Record<string, unknown>[] = [];
+  const seen = new Set<string>();
+  for (const r of (Array.isArray(list) ? list.slice(0, MAX_REMINDERS) : []) as any[]) {
+    const key = str(r?.key, 200), title = str(r?.title, 160);
+    const at = Date.parse(r?.at);
+    if (!key || !title || !Number.isFinite(at) || seen.has(key)) continue;
+    if (at < now - 5 * 60000 || at > now + WINDOW_DAYS * 86400000) continue;
+    seen.add(key);
+    rows.push({
+      device_id: deviceId, key, title, at: new Date(at).toISOString(),
+      body: str(r?.body, 240) || null, route: ROUTES.includes(r?.route) ? r.route : "inicio",
+    });
+  }
+  return rows;
+}
+
+async function inChunks<T>(items: T[], size: number, fn: (part: T[]) => Promise<{ error: unknown }>) {
+  for (let i = 0; i < items.length; i += size) {
+    const { error } = await fn(items.slice(i, i + size));
+    if (error) return error;
+  }
+  return null;
+}
+
+// Quantos lembretes pendentes o aparelho tem depois de "agora + margem" (o app confere com a lista dele).
+async function pendingAfterMargin(deviceId: string) {
+  const { count } = await db.from("js_reminders").select("key", { count: "exact", head: true })
+    .eq("device_id", deviceId).is("sent_at", null).gt("at", new Date(Date.now() + CHECK_MARGIN_MS).toISOString());
+  return count ?? 0;
+}
+
+// mode "full": substitui todos os pendentes pela lista enviada.
+// mode "diff": aplica só as mudanças (upsert = novos/alterados, remove = chaves que saíram).
 async function handleSync(body: Body, req: Request) {
   const d = await device(body, true);
   if (d.error) return d.error;
@@ -108,21 +145,8 @@ async function handleSync(body: Body, req: Request) {
   if (!sub || !validEndpoint(sub.endpoint) || typeof sub.keys?.p256dh !== "string" || typeof sub.keys?.auth !== "string") {
     return json({ error: "invalid-subscription" }, 400);
   }
-  const now = Date.now();
-  const list = Array.isArray(body.reminders) ? body.reminders.slice(0, MAX_REMINDERS) : [];
-  const rows: Record<string, unknown>[] = [];
-  const seen = new Set<string>();
-  for (const r of list) {
-    const key = str(r?.key, 200), title = str(r?.title, 160);
-    const at = Date.parse(r?.at);
-    if (!key || !title || !Number.isFinite(at) || seen.has(key)) continue;
-    if (at < now - 5 * 60000 || at > now + WINDOW_DAYS * 86400000) continue;
-    seen.add(key);
-    rows.push({
-      device_id: body.deviceId, key, title, at: new Date(at).toISOString(),
-      body: str(r?.body, 240) || null, route: ROUTES.includes(r?.route) ? r.route : "inicio",
-    });
-  }
+  const diff = body.mode === "diff";
+  const rows = toRows(body.deviceId, diff ? body.upsert : body.reminders);
 
   // O mesmo navegador só pode estar em um aparelho (ex.: dados apagados e app reativado).
   await db.from("js_devices").delete().eq("endpoint", sub.endpoint).neq("id", body.deviceId);
@@ -133,14 +157,23 @@ async function handleSync(body: Body, req: Request) {
   }, { onConflict: "id" });
   if (upErr) { console.error("sync/device", upErr); return json({ error: "save-failed" }, 500); }
 
-  // Substitui os lembretes pendentes; os já enviados ficam (para não repetir).
-  const { error: delErr } = await db.from("js_reminders").delete().eq("device_id", body.deviceId).is("sent_at", null);
-  if (delErr) { console.error("sync/delete", delErr); return json({ error: "save-failed" }, 500); }
-  if (rows.length) {
-    const { error: insErr } = await db.from("js_reminders").upsert(rows, { onConflict: "device_id,key", ignoreDuplicates: true });
+  if (diff) {
+    // Remove os que saíram (só pendentes) e grava os novos/alterados. Os já enviados não mudam.
+    const remove = (Array.isArray(body.remove) ? body.remove : []).map((k: unknown) => str(k, 200)).filter(Boolean).slice(0, MAX_REMINDERS);
+    const delErr = await inChunks(remove, 100, (part) =>
+      db.from("js_reminders").delete().eq("device_id", body.deviceId).is("sent_at", null).in("key", part));
+    if (delErr) { console.error("sync/remove", delErr); return json({ error: "save-failed" }, 500); }
+    const saveErr = await inChunks(rows, CHUNK, (part) => db.from("js_reminders").upsert(part, { onConflict: "device_id,key" }));
+    if (saveErr) { console.error("sync/upsert", saveErr); return json({ error: "save-failed" }, 500); }
+  } else {
+    // Substitui os lembretes pendentes; os já enviados ficam (para não repetir).
+    const { error: delErr } = await db.from("js_reminders").delete().eq("device_id", body.deviceId).is("sent_at", null);
+    if (delErr) { console.error("sync/delete", delErr); return json({ error: "save-failed" }, 500); }
+    const insErr = await inChunks(rows, CHUNK, (part) =>
+      db.from("js_reminders").upsert(part, { onConflict: "device_id,key", ignoreDuplicates: true }));
     if (insErr) { console.error("sync/insert", insErr); return json({ error: "save-failed" }, 500); }
   }
-  return json({ ok: true, count: rows.length });
+  return json({ ok: true, count: rows.length, pending: await pendingAfterMargin(body.deviceId) });
 }
 
 async function handleUnsubscribe(body: Body) {

@@ -325,6 +325,30 @@ test('lembretes futuros para o servidor (14 dias): só os que ainda vão acontec
   assert.equal(new Set(lista.map(r => r.key)).size, lista.length, 'chaves únicas');
 });
 
+test('servidor: lembretes de data marcada em qualquer data; repetidos só 90 dias', () => {
+  const s = R.emptyState();
+  const now = at('2026-11-06', '10:00');
+  task(s, { title: 'Daqui a 8 meses', dueDate: '2027-07-10', dueTime: '09:00', reminderMinutes: '60' });
+  task(s, { title: 'Daqui a 3 anos', dueDate: '2029-11-10', dueTime: '09:00', reminderMinutes: '0' });
+  task(s, { title: 'Todo dia', dueDate: '2026-11-06', dueTime: '21:00', recurrence: 'daily', reminderMinutes: '0' });
+  R.createHairEvent(s, R.validateHair({ type: 'nutrition', date: '2027-03-01', time: '20:00', reminderMinutes: '0' }).value, NOW_ISO);
+  bill(s, { title: 'IPVA', dueDate: '2027-01-20', reminderDaysBefore: '3', reminderTime: '09:00' });
+  R.createMeal(s, R.validateMeal({ type: 'lunch', time: '12:00', weekdays: [0, 1, 2, 3, 4, 5, 6], reminderEnabled: true }).value, NOW_ISO);
+  const lista = R.futureReminders(s, now);
+  const titulos = lista.map(r => r.title);
+  assert.ok(titulos.includes('Lembrete: Daqui a 8 meses'), 'tarefa única daqui a 8 meses vai');
+  assert.ok(!titulos.some(t => t.includes('3 anos')), 'passa de 2 anos não vai');
+  assert.ok(titulos.includes('01/03 é dia de nutrição capilar.') || titulos.some(t => t.includes('nutrição capilar')), 'tratamento daqui a 4 meses vai');
+  assert.deepEqual(lista.filter(r => r.type === 'bill').map(r => r.title), ['IPVA vence em 3 dias.', 'Hoje vence: IPVA']);
+  const diarias = lista.filter(r => r.title === 'Está na hora: Todo dia');
+  // 90 dias + 7 de folga (a busca inclui uma semana extra para lembretes com antecedência)
+  assert.ok(diarias.length >= 90 && diarias.length <= 98, 'tarefa diária: ~90 dias à frente, não infinita (' + diarias.length + ')');
+  const almocos = lista.filter(r => r.type === 'meal');
+  assert.ok(almocos.length >= 90 && almocos.length <= 92, 'refeição diária: ~90 dias (' + almocos.length + ')');
+  assert.equal(new Set(lista.map(r => r.key)).size, lista.length, 'sem chaves repetidas');
+  assert.ok(lista.every(r => r.at > now), 'só futuros');
+});
+
 /* ---------------- Migração / backup ---------------- */
 
 test('migração preenche campos ausentes e recusa versão futura', () => {
