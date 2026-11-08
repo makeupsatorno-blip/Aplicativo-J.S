@@ -92,10 +92,9 @@
   var howtoOpen = null;
   function howtoBody(ex, it) {
     if (howtoOpen !== it.id) return '';
-    var v = JS.exVideo(ex && ex.id ? ex : { id: it.exerciseId });
-    return '<div class="howto-body">' + (v && v.yt ? JS.videoPlayer(v) : '') +
-      '<p>' + esc((ex && ex.tips) || 'Sem dica cadastrada para este exercício.') + '</p>' +
-      (v && v.yt ? '' : '<a href="' + esc(v && v.url ? v.url : JS.videoSearchUrl(it.name)) + '" target="_blank" rel="noopener">Ver execução em vídeo (YouTube)</a>') + '</div>';
+    var e = ex && ex.id ? ex : { id: it.exerciseId, name: it.name };
+    return '<div class="howto-body">' + JS.exPlayer(e) +
+      '<p>' + esc((ex && ex.tips) || 'Sem dica cadastrada para este exercício.') + '</p></div>';
   }
 
   function stepper(label, field, value, unit, step) {
@@ -143,10 +142,12 @@
   //  - em outra tela, 2 batidas levam ao treino (e, em Treino → Hoje, iniciam o treino do dia).
   function onDouble() {
     if (JS.intro && JS.intro.isRunning()) return;
+    // Telinha do peso aberta: as 2 batidas de novo confirmam e registram a série.
+    if (quick && document.getElementById('sheet').open) { quick.confirm(); return; }
     if (document.getElementById('sheet').open || document.getElementById('confirm').open || document.querySelector('.countdown')) return;
     var s = JS.store.state, r = JS.app.route();
-    if (r === 'sessao') { registerSet('toque-atras'); return; }
-    if (T.activeSession(s)) { JSToque.vibrate(40); ui.toast('Toque atrás: voltando ao treino.'); JS.app.go('sessao'); return; }
+    if (r === 'sessao') { openQuickSet(); return; }
+    if (T.activeSession(s)) { JS.app.go('sessao'); setTimeout(openQuickSet, 250); return; }
     if (!s.workoutPlans.length) { JS.treinoView.mode = 'hoje'; JS.app.go('treino'); ui.toast('Monte uma ficha para usar o toque atrás no treino.'); return; }
     var p = T.planForDate(s, C.toDateKey(new Date()));
     if (r === 'treino' && JS.treinoView.mode === 'hoje') {
@@ -263,6 +264,66 @@
   }
   JS.registerSet = registerSet;
 
+  // Telinha do toque atrás: mostra o exercício atual com a carga e as repetições para ajustar
+  // (botões grandes de + e −, ou digitar). "Registrar série" (ou bater 2 vezes de novo) salva.
+  var quick = null;
+  function openQuickSet() {
+    var x = session(), it = T.currentItem(x);
+    if (!x || !it) return;
+    if (window.JSToque) { JSToque.vibrate([30, 40, 30]); JSToque.beep(740, 90); }
+    var step = JS.store.state.settings && JS.store.state.workout.loadStep || 1;
+    var vals = { load: Number(it.load) || 0, reps: Number(it.reps) || 0 };
+    var no = it.sets.length + 1;
+    function fmt(v) { return JS.graf.fmtNum(v, 1); }
+    var body = '<div class="quick-set">' +
+      '<p class="qs-ex">' + esc(it.name) + '</p><p class="qs-sub">Série ' + no + ' de ' + it.targetSets + ' • meta ' + esc(it.targetReps) + ' rep. • última: ' +
+      (it.sets.length ? JS.kg(it.sets[it.sets.length - 1].load) + ' × ' + it.sets[it.sets.length - 1].reps : '—') + '</p>' +
+      '<div class="qs-row"><span class="qs-label">Peso</span><div class="qs-step">' +
+      '<button type="button" class="qs-btn" data-q="load" data-d="-' + step + '" aria-label="Diminuir o peso">−</button>' +
+      '<label class="qs-val"><input name="load" type="text" inputmode="decimal" autocomplete="off" value="' + fmt(vals.load) + '" aria-label="Peso em kg"><small>kg</small></label>' +
+      '<button type="button" class="qs-btn" data-q="load" data-d="' + step + '" aria-label="Aumentar o peso">+</button></div>' +
+      '<div class="quick-chips qs-chips">' + [-5, -2.5, 2.5, 5].map(function (d) { return '<button type="button" class="chip" data-q="load" data-d="' + d + '">' + (d > 0 ? '+' : '−') + fmt(Math.abs(d)) + ' kg</button>'; }).join('') + '</div></div>' +
+      '<div class="qs-row"><span class="qs-label">Repetições</span><div class="qs-step">' +
+      '<button type="button" class="qs-btn" data-q="reps" data-d="-1" aria-label="Menos repetições">−</button>' +
+      '<label class="qs-val"><input name="reps" type="text" inputmode="numeric" autocomplete="off" value="' + vals.reps + '" aria-label="Repetições"><small>rep.</small></label>' +
+      '<button type="button" class="qs-btn" data-q="reps" data-d="1" aria-label="Mais repetições">+</button></div></div>' +
+      '<p class="qs-hint">' + ui.icon('phone', 14) + ' Bata 2 vezes atrás de novo para registrar.</p></div>';
+    var form = ui.openSheet({
+      title: 'Peso desta série', body: body, submitLabel: 'Registrar série', cancelLabel: 'Só salvar o peso',
+      onOpen: function (fm) {
+        fm.querySelectorAll('[data-q]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var inp = fm.elements[b.dataset.q], cur = Number(String(inp.value).replace(',', '.')) || 0;
+            var v = Math.max(0, Math.round((cur + Number(b.dataset.d)) * 10) / 10);
+            inp.value = b.dataset.q === 'load' ? fmt(v) : String(Math.round(v));
+            JS.anim.restartClass(inp.closest('.qs-val'), 'bump');
+          });
+        });
+        // "Só salvar o peso": guarda carga/repetições sem registrar a série.
+        var ghost = fm.querySelector('.sheet-foot .btn.ghost');
+        if (ghost) ghost.addEventListener('click', function () { save(fm, false); }, true);
+      },
+      onSubmit: function (v, fm) { return save(fm, true); }
+    });
+    function read(fm) {
+      var load = Number(String(fm.elements.load.value).replace(',', '.')), reps = Number(String(fm.elements.reps.value).replace(',', '.'));
+      return { load: load >= 0 && load <= 999 ? load : null, reps: reps >= 0 && reps <= 999 ? Math.round(reps) : null };
+    }
+    function save(fm, register) {
+      var r = read(fm);
+      if (r.load == null) return { errors: { load: 'Peso inválido.' } };
+      var cur = session(), item = cur && T.currentItem(cur);
+      if (!item) return;
+      JS.store.silentUpdate(function (st) { T.setItemValues(st, cur.id, item.id, { load: r.load, reps: r.reps == null ? item.reps : r.reps }); });
+      quick = null;
+      if (register) { lastSetAt = 0; setTimeout(function () { registerSet('toque-atras'); }, 60); }
+      else { ui.toast('Peso salvo: ' + JS.kg(r.load) + '.'); setTimeout(function () { JS.app.render(); }, 230); }
+    }
+    quick = { confirm: function () { if (form && form.isConnected) form.requestSubmit(); } };
+    document.getElementById('sheet').addEventListener('close', function () { quick = null; }, { once: true });
+  }
+  JS.openQuickSet = openQuickSet;
+
   function finish() {
     var x = session();
     if (!x) return;
@@ -367,5 +428,5 @@
     JS.actions['ses-sensor']();
   };
 
-  JS.telas.sessao = { title: 'Treino em andamento', render: render, enter: enter, leave: leave };
+  JS.telas.sessao = { title: 'Treino em andamento', render: render, enter: enter, leave: leave, after: function (main) { JS.startDrawings(main); } };
 })();

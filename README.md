@@ -35,7 +35,7 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.1.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.2.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
@@ -45,14 +45,14 @@ Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-
 
 ## 3.1 Treino
 
-- **Fichas:** monte fichas (ex.: "Treino A — Pernas") com exercícios da biblioteca (48 exercícios por grupo muscular, com dica de execução e link para ver em vídeo) ou criados por você, com séries, repetições, carga e descanso.
+- **Fichas:** monte fichas (ex.: "Treino A — Pernas") com exercícios da biblioteca (48 exercícios por grupo muscular, cada um com desenho animado da execução e dica) ou criados por você, com séries, repetições, carga e descanso.
 - **Semana fixa e troca do dia:** em Treino → Semana, cada dia da semana recebe uma ficha (ou descanso). Para mudar só um dia (ex.: na terça treinar braço em vez de perna), use **Trocar** em Hoje ou toque no dia em **Mês**. As próximas semanas continuam iguais.
 - **Calendário do mês:** mostra a ficha de cada dia (letra e cor), os treinos feitos (✓) e os descansos.
 - **Execução:** "Iniciar treino" faz uma contagem 3-2-1 e abre o treino em tela cheia, com a tela sempre acesa. Ajuste a carga e as repetições com **+/−** e toque em **Série feita**. O descanso começa sozinho e avisa com bipe e vibração quando acaba. Ao terminar, aparece o resumo (duração, séries, volume e recordes) e a ficha passa a sugerir a última carga usada.
-- **Toque atrás:** com o J.S. aberto no treino, **bata 2 vezes na parte de trás do celular** para registrar a série, como no app Tap Fit. Funciona no Android e no iPhone, pelo sensor de movimento. No iPhone o app pede permissão para usar o sensor. Em Configurações → Treino dá para mudar a sensibilidade e **testar e calibrar** com as suas batidas. Com o app fechado, nenhum site instalado consegue ouvir o sensor. Por isso, o toque atrás do próprio celular (Samsung Good Lock/RegiStar, Pixel "Toque rápido") pode ser configurado para **abrir o J.S.**, que vai direto para o treino em andamento.
-- **Toque atrás em qualquer tela:** com o app aberto, as 2 batidas levam ao treino (e, em Treino → Hoje, iniciam o treino do dia); no treino em andamento, registram a série.
+- **Toque atrás:** com o J.S. aberto no treino, **bata 2 vezes na parte de trás do celular** para abrir a **telinha do peso**: mostra o exercício atual com o peso e as repetições em botões grandes (+, −, +2,5 kg, +5 kg, ou digitar). "Registrar série" (ou bater 2 vezes de novo) salva a série com esse peso; "Só salvar o peso" muda a carga sem registrar. O descanso começa sozinho. Funciona no Android e no iPhone, pelo sensor de movimento. No iPhone o app pede permissão para usar o sensor. Em Configurações → Treino dá para mudar a sensibilidade e **testar e calibrar** com as suas batidas. Com o app fechado, nenhum site instalado consegue ouvir o sensor. Por isso, o toque atrás do próprio celular (Samsung Good Lock/RegiStar, Pixel "Toque rápido") pode ser configurado para **abrir o J.S.**, que vai direto para o treino em andamento.
+- **Toque atrás em qualquer tela:** com o app aberto, as 2 batidas levam ao treino (e, em Treino → Hoje, iniciam o treino do dia); com treino em andamento, abrem a telinha do peso.
 - **Abrir direto no treino:** como o toque atrás do celular só abre o app, o J.S. abre (sem a intro) na execução quando há treino em andamento, e em Treino → Hoje nos dias de treino ainda não feitos. Ajuste em Configurações → "Ao abrir o app" (dias de treino / sempre Treino / sempre Início).
-- **Vídeo de execução:** na lista de exercícios cada um tem uma miniatura; tocar abre o vídeo ali mesmo (YouTube, em português; os 48 vídeos foram conferidos) com a dica e o botão de escolher. No treino, "Como fazer" mostra o vídeo e a dica. Exercício criado por você usa o link que você colocar. Precisa de internet.
+- **Desenho da execução (sem internet):** cada um dos 48 exercícios tem um desenho animado próprio do app (`js/exanim.js` + `js/dados/animacoes.js`) mostrando o movimento, com o aparelho, barra ou halteres. Na lista de exercícios a miniatura mostra a posição inicial e a final; tocar abre o desenho animado ali mesmo, com a dica e o botão de escolher. No treino, "Como fazer" mostra o desenho animado. Exercício criado por você pode ter um link de vídeo seu.
 - **Evolução:** para cada aparelho, um gráfico da carga máxima por treino e o volume, mostrando se a carga está aumentando ou diminuindo em relação ao treino anterior e ao primeiro.
 - **Lembrete:** em Treino → Semana, escolha um horário para ser avisada nos dias que têm ficha.
 
@@ -150,6 +150,7 @@ aplicativo/
 │   ├── regras-nutricao.js  TACO, diário, meta e cardápio (testadas)
 │   ├── toque.js            reconhecimento das 2 batidas atrás do celular
 │   ├── graficos.js         gráficos em SVG (sem bibliotecas)
+│   ├── exanim.js           desenhos animados da execução dos exercícios
 │   ├── dados/              biblioteca de exercícios, Tabela TACO e opções de cardápio
 │   ├── store.js            armazenamento local, migração e backup
 │   ├── notify.js           lembretes e permissão de notificação

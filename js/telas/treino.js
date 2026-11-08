@@ -11,24 +11,24 @@
   function kg(v) { return (v == null ? '—' : JS.graf.fmtNum(v, 1)) + ' kg'; }
   JS.kg = kg;
 
-  /* ---------------- Vídeo de execução ---------------- */
-  // Biblioteca: vídeos do YouTube conferidos (js/dados/videos-exercicios.js). Exercício criado
-  // pela usuária: o link que ela colocou. Sem vídeo: abre uma busca no YouTube.
-  function ytId(url) { var m = String(url || '').match(/(?:youtu\.be\/|[?&]v=|shorts\/|embed\/)([\w-]{11})/); return m ? m[1] : null; }
-  function exVideo(ex) {
-    if (!ex) return null;
-    if (ex.videoUrl) { var y = ytId(ex.videoUrl); return y ? { yt: y } : { url: ex.videoUrl }; }
-    var V = window.JSVideos && window.JSVideos[String(ex.id).replace(/^ex:/, '')];
-    return V ? { yt: V.id, channel: V.channel } : null;
+  /* ---------------- Desenho da execução (funciona sem internet) ---------------- */
+  // Biblioteca: desenho animado de cada exercício (js/dados/animacoes.js + js/exanim.js).
+  // Exercício criado pela usuária: sem desenho; se ela colocou um link, dá para abrir.
+  function exAnim(ex) { return ex && window.JSAnimacoes ? window.JSAnimacoes[String(ex.id).replace(/^ex:/, '')] || null : null; }
+  function exThumb(ex) { var a = exAnim(ex); return a ? JSExAnim.still(a, 'exa exa-thumb') : ''; }
+  // Lugar do desenho animado (a animação começa depois de entrar na tela, com startDrawings).
+  function exPlayer(ex) {
+    var a = exAnim(ex);
+    if (a) return '<div class="exa-box" data-exa="' + esc(ex.id) + '" aria-label="Desenho animado da execução de ' + esc(ex.name) + '">' + JSExAnim.still(a) + '</div>';
+    return ex && ex.videoUrl ? '<a class="btn soft small" href="' + esc(ex.videoUrl) + '" target="_blank" rel="noopener">' + ui.icon('play', 16) + 'Abrir o vídeo que você salvou</a>' : '';
   }
-  function searchUrl(name) { return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name + ' execução correta'); }
-  function videoPlayer(v) {
-    if (!v || !v.yt) return '';
-    return '<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/' + esc(v.yt) + '?rel=0&modestbranding=1&playsinline=1&autoplay=1&mute=1" title="Vídeo de execução" ' +
-      'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>' +
-      (v.channel ? '<p class="yt-credit">Vídeo: ' + esc(v.channel) + ' (YouTube). Precisa de internet.</p>' : '<p class="yt-credit">Precisa de internet.</p>');
+  function startDrawings(rootEl) {
+    (rootEl || document).querySelectorAll('.exa-box[data-exa]').forEach(function (box) {
+      if (box._exa) return;
+      box._exa = JSExAnim.play(box, exAnim({ id: box.dataset.exa }));
+    });
   }
-  JS.exVideo = exVideo; JS.videoPlayer = videoPlayer; JS.videoSearchUrl = searchUrl;
+  JS.exAnim = exAnim; JS.exPlayer = exPlayer; JS.startDrawings = startDrawings;
   function badge(s, plan) {
     return '<span class="plan-badge" style="--pc:' + esc(plan.color) + '" aria-hidden="true">' + esc(T.planLetter(s, plan)) + '</span>';
   }
@@ -369,31 +369,33 @@
             return (!group || e.group === group) && (!term || (window.JSNutri ? JSNutri.fold(e.name) : e.name.toLowerCase()).indexOf(term) >= 0);
           });
           listEl.innerHTML = items.length ? items.map(function (e) {
-            var v = exVideo(e);
-            var thumb = v && v.yt
-              ? '<button type="button" class="pick-thumb" data-prev="' + esc(e.id) + '" aria-label="Ver o vídeo de execução: ' + esc(e.name) + '">' +
-                '<img src="https://i.ytimg.com/vi/' + esc(v.yt) + '/mqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><span class="pt-play">' + ui.icon('play', 16) + '</span></button>'
-              : '<a class="pick-thumb none" href="' + esc(v && v.url ? v.url : searchUrl(e.name)) + '" target="_blank" rel="noopener" aria-label="Ver vídeo de ' + esc(e.name) + ' (abre o YouTube)"><span class="pt-play">' + ui.icon('play', 16) + '</span></a>';
+            var drawing = exThumb(e);
+            var thumb = drawing
+              ? '<button type="button" class="pick-thumb" data-prev="' + esc(e.id) + '" aria-label="Ver a execução de ' + esc(e.name) + '">' + drawing + '<span class="pt-play">' + ui.icon('play', 12) + '</span></button>'
+              : e.videoUrl
+                ? '<a class="pick-thumb none" href="' + esc(e.videoUrl) + '" target="_blank" rel="noopener" aria-label="Abrir o vídeo salvo de ' + esc(e.name) + '"><span class="pt-play">' + ui.icon('play', 16) + '</span></a>'
+                : '<span class="pick-thumb none" aria-hidden="true">' + ui.icon('dumbbell', 22) + '</span>';
             return '<div class="pick-row" data-row="' + esc(e.id) + '">' + thumb +
               '<button type="button" class="pick" data-id="' + esc(e.id) + '"><strong>' + esc(e.name) + '</strong><span>' + esc(T.GRUPOS[e.group] || '') + (e.equipment ? ' • ' + esc(e.equipment) : '') + '</span></button></div>';
           }).join('') : '<p class="muted small">Nada encontrado. Crie o exercício abaixo.</p>';
         }
-        // Tocar na miniatura abre o vídeo ali mesmo, com a dica e o botão de escolher.
+        // Tocar na miniatura abre o desenho animado ali mesmo, com a dica e o botão de escolher.
         function preview(id) {
           var open = listEl.querySelector('.pick-video');
           var same = open && open.dataset.for === id;
           if (open) open.remove();
           listEl.querySelectorAll('.pick-row.open').forEach(function (r) { r.classList.remove('open'); });
           if (same) return;
-          var ex = T.exerciseById(s, id), v = exVideo(ex), row = listEl.querySelector('[data-row="' + id + '"]');
-          if (!ex || !v || !row) return;
+          var ex = T.exerciseById(s, id), row = listEl.querySelector('[data-row="' + id + '"]');
+          if (!ex || !exAnim(ex) || !row) return;
           var box = document.createElement('div');
           box.className = 'pick-video';
           box.dataset.for = id;
-          box.innerHTML = videoPlayer(v) + (ex.tips ? '<p class="small">' + esc(ex.tips) + '</p>' : '') +
+          box.innerHTML = exPlayer(ex) + (ex.tips ? '<p class="small">' + esc(ex.tips) + '</p>' : '') +
             '<button type="button" class="btn primary full" data-choose="' + esc(id) + '">' + ui.icon('check', 18) + 'Escolher ' + esc(ex.name) + '</button>';
           row.classList.add('open');
           row.after(box);
+          startDrawings(box);
           box.scrollIntoView({ block: 'nearest', behavior: JS.anim.reduced() ? 'auto' : 'smooth' });
         }
         draw();

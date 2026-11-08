@@ -4,13 +4,13 @@
  * sem internet (ou rede muito lenta), usa a cópia guardada.
  * Ao publicar uma versão nova, aumente o número em VERSION.
  */
-var VERSION = 'js-v2.1.0';
+var VERSION = 'js-v2.2.0';
 var ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/style.css', './css/v2.css', './icons/favicon.svg',
   './js/config.js', './js/intro.js', './js/core.js', './js/regras.js', './js/ui.js', './js/anim.js', './js/store.js',
   './js/notify.js', './js/push.js', './js/app.js', './js/graficos.js', './js/toque.js',
   './js/regras-treino.js', './js/regras-corpo.js', './js/regras-nutricao.js',
-  './js/dados/exercicios.js', './js/dados/videos-exercicios.js', './js/dados/alimentos.js', './js/dados/cardapios.js',
+  './js/dados/exercicios.js', './js/exanim.js', './js/dados/animacoes.js', './js/dados/alimentos.js', './js/dados/cardapios.js',
   './js/telas/inicio.js', './js/telas/rotina.js', './js/telas/autocuidado.js', './js/telas/alimentacao.js',
   './js/telas/financeiro.js', './js/telas/agenda.js', './js/telas/config.js',
   './js/telas/treino.js', './js/telas/sessao.js', './js/telas/corpo.js', './js/telas/graficos.js', './js/telas/mais.js',
