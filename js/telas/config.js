@@ -106,9 +106,10 @@
       '<p class="hint top">Com o J.S. aberto, bata 2 vezes na parte de trás do celular: no treino em andamento registra a série (o descanso começa sozinho); em qualquer outra tela leva ao treino, e em Treino → Hoje inicia o treino do dia. Funciona no Android e no iPhone.</p>' +
       sw('backTap', 'Toque atrás (2 batidas)', !!bt.enabled, Tq && !Tq.supported() ? 'Este aparelho/navegador não tem sensor de movimento.' : 'Usa o sensor de movimento enquanto o app está aberto.', 'cfg-backtap') +
       '<div class="field"><label for="cfg-open">Ao abrir o app</label><select id="cfg-open" data-change="cfg-open">' +
-      [['auto', 'Ir para o treino nos dias de treino (recomendado)'], ['sempre', 'Sempre abrir no Treino'], ['nunca', 'Sempre abrir no Início']].map(function (o) {
-        return '<option value="' + o[0] + '"' + ((st.openWorkout || 'auto') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
-      }).join('') + '</select><p class="hint">O toque atrás do próprio celular só consegue abrir o app; com isto ele já cai no treino (sem a intro). Com treino em andamento, sempre abre na execução para registrar a carga.</p></div>' +
+      [['auto', 'Início, com a intro (recomendado)'], ['dias', 'Treino, nos dias de treino'], ['sempre', 'Sempre no Treino']].map(function (o) {
+        var cur = st.openWorkout === 'dias' || st.openWorkout === 'sempre' ? st.openWorkout : 'auto';
+        return '<option value="' + o[0] + '"' + (cur === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join('') + '</select><p class="hint">Com treino em andamento, o app sempre abre direto na execução do treino, sem a intro. Se você usa o toque atrás do próprio celular para abrir o app, "Treino, nos dias de treino" faz ele já cair no treino do dia.</p></div>' +
       '<div class="field"><label for="cfg-bt-sens">Sensibilidade</label><select id="cfg-bt-sens" data-change="cfg-bt-sens">' +
       [[1, 'Baixa (precisa bater mais forte)'], [2, 'Média-baixa'], [3, 'Média'], [4, 'Média-alta'], [5, 'Alta (batidas leves)']].map(function (o) {
         return '<option value="' + o[0] + '"' + (Number(bt.sensitivity || 3) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
@@ -292,9 +293,9 @@
       .then(function (ok) { if (ok) JS.registro.disable().then(function () { ui.toast('Atalho do iPhone desativado.'); }); });
   };
   JS.changes['cfg-open'] = function (el) {
-    var v = ['auto', 'sempre', 'nunca'].indexOf(el.value) >= 0 ? el.value : 'auto';
+    var v = ['auto', 'dias', 'sempre'].indexOf(el.value) >= 0 ? el.value : 'auto';
     JS.store.update(function (s) { s.settings.openWorkout = v; });
-    ui.toast(v === 'nunca' ? 'O app vai abrir no Início.' : v === 'sempre' ? 'O app vai abrir no Treino.' : 'Nos dias de treino, o app abre no Treino.');
+    ui.toast(v === 'sempre' ? 'O app vai abrir no Treino.' : v === 'dias' ? 'Nos dias de treino, o app abre no Treino.' : 'O app abre no Início, com a intro. Com treino em andamento, direto no treino.');
   };
   JS.changes['cfg-bt-sens'] = function (el) { JS.store.update(function (s) { s.settings.backTap.sensitivity = Number(el.value) || 3; }); if (JS.backTap) JS.backTap.start(); ui.toast('Sensibilidade salva.'); };
 

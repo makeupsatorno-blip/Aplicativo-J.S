@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui;
-  var VERSION = '2.4.1';
+  var VERSION = '2.4.2';
   var lastToday = null;
   var deferredInstall = null;
 
@@ -175,7 +175,7 @@
 
   // O app instalado "volta" em vez de reabrir. Ao voltar:
   //  - com treino em andamento (fora por 3 s ou mais): vai para a execução do treino;
-  //  - num dia de treino ainda não feito, depois de 5 min fora: vai para Treino → Hoje.
+  //  - se a usuária escolheu abrir no Treino (dias de treino/sempre), depois de 5 min fora: Treino → Hoje.
   function watchReopen() {
     var hiddenAt = null;
     document.addEventListener('visibilitychange', function () {

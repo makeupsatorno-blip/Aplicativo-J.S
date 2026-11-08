@@ -13,9 +13,10 @@
       var d = {};
       try { d = JSON.parse(localStorage.getItem('js-app-dados') || '{}') || {}; } catch (e) { /* sem dados */ }
       var s = d.settings || {};
-      // Para onde o app abre. O toque atrás do próprio celular só consegue "abrir o app";
-      // então, com treino em andamento ou num dia de treino ainda não feito, ele abre direto no treino.
-      // settings.openWorkout: 'auto' (padrão) | 'sempre' | 'nunca'.
+      // Para onde o app abre. Com treino em andamento: direto na execução, sem a intro.
+      // Sem treino em andamento: como sempre (intro + Início), a menos que a usuária escolha o Treino.
+      // settings.openWorkout: 'auto' (padrão: Início) | 'dias' (Treino nos dias de treino) | 'sempre' (Treino).
+      // ('nunca', de versões antigas, vale como 'auto'.)
       window.JS_OPEN = function (d, now) {
         if (!d || typeof d !== 'object') return null;
         var st = d.settings || {}, mode = st.openWorkout || 'auto';
@@ -32,7 +33,7 @@
         for (var i = 0; i < ses.length; i++) {
           if (ses[i] && ses[i].status === 'active' && (ses[i].date === key || now - lastAct(ses[i]) < 6 * 3600000)) return 'sessao';
         }
-        if (mode === 'nunca') return null;
+        if (mode !== 'dias' && mode !== 'sempre') return null;
         var plans = d.workoutPlans || [];
         if (!plans.length) return null;
         if (mode === 'sempre') return 'treino';

@@ -177,7 +177,7 @@
     if (document.visibilityState === 'hidden') { st.hiddenAt = Date.now(); return; }
     var since = st.hiddenAt;
     st.hiddenAt = null;
-    // Voltando para o treino (em andamento ou do dia), não mostra a intro: é para ser rápido.
+    // Voltando para o treino em andamento (ou para o Treino, se escolhido), não mostra a intro: é para ser rápido.
     if (since && Date.now() - since > RESUME_MS && !st.running && !openingWorkout()) play();
   });
   function openingWorkout() {
