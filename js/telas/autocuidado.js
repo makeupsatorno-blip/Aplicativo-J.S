@@ -1,4 +1,4 @@
-/* J.S. — Autocuidado / cronograma capilar */
+/* J.S. — Cronograma capilar */
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui, esc = ui.esc;
@@ -35,7 +35,7 @@
     var s = JS.store.state;
     var up = R.hairUpcoming(s), hist = R.hairHistory(s);
     var shown = view.showAll ? up : up.slice(0, 10);
-    var html = '<h1 class="page-title">Autocuidado</h1><p class="page-sub">Seu cronograma capilar, do seu jeito.</p>' +
+    var html = '<h1 class="page-title">Cronograma capilar</h1><p class="page-sub">Hidratação, nutrição e reconstrução, do seu jeito.</p>' +
       '<div class="btn-row"><button type="button" class="btn soft" data-action="hair-new">' + ui.icon('plus', 18) + 'Tratamento</button>' +
       '<button type="button" class="btn soft" data-action="hair-plan">' + ui.icon('sparkle', 18) + 'Gerar cronograma</button></div>';
     html += ui.section('Próximos',
@@ -249,5 +249,5 @@
 
   JS.forms.hair = function (preset) { openHairForm(null, preset); };
   JS.render.hairItem = hairItem;
-  JS.telas.autocuidado = { title: 'Autocuidado', render: render, fab: { label: 'Novo tratamento', action: 'hair-new' } };
+  JS.telas.autocuidado = { title: 'Cronograma capilar', render: render, fab: { label: 'Novo tratamento', action: 'hair-new' } };
 })();

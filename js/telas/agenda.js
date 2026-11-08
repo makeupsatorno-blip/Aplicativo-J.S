@@ -3,7 +3,7 @@
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui, esc = ui.esc;
   var view = { month: null, selected: null, filters: { task: true, hair: true, meal: true, bill: true } };
-  var MODS = [['task', 'Rotina'], ['hair', 'Autocuidado'], ['meal', 'Alimentação'], ['bill', 'Financeiro']];
+  var MODS = [['task', 'Rotina'], ['hair', 'Capilar'], ['meal', 'Alimentação'], ['bill', 'Financeiro']];
 
   function render(now) {
     var s = JS.store.state, today = C.toDateKey(now);
@@ -32,7 +32,7 @@
     var a = R.agendaForDate(s, view.selected);
     var parts = '';
     if (view.filters.task && a.tasks.length) parts += ui.section('Rotina', a.tasks.map(function (o) { return JS.render.taskItem(o, now); }).join(''));
-    if (view.filters.hair && a.hair.length) parts += ui.section('Autocuidado', a.hair.map(function (e) { return JS.render.hairItem(e, now); }).join(''));
+    if (view.filters.hair && a.hair.length) parts += ui.section('Cronograma capilar', a.hair.map(function (e) { return JS.render.hairItem(e, now); }).join(''));
     if (view.filters.meal && a.meals.length) parts += ui.section('Alimentação', a.meals.map(function (o) { return JS.render.mealItem(o, now); }).join(''));
     if (view.filters.bill && a.bills.length) parts += ui.section('Financeiro', a.bills.map(function (b) { return JS.render.billItem(b, now, { compact: true }); }).join(''));
     html += '<div class="day-detail"><h2 class="day-title">' + esc(C.formatDateLong(view.selected)) + '</h2>' +

@@ -92,14 +92,29 @@
       (perm === 'granted' ? '<button type="button" class="btn soft full" data-action="notif-test">Enviar notificação de teste</button>' : '') +
       missingBlock() +
       sw('task', 'Rotina', n.task !== false, 'Tarefas com horário', 'cfg-notif') +
-      sw('hair', 'Autocuidado', n.hair !== false, 'Tratamentos capilares', 'cfg-notif') +
+      sw('hair', 'Cronograma capilar', n.hair !== false, 'Tratamentos capilares', 'cfg-notif') +
       sw('meal', 'Alimentação', n.meal !== false, 'Horários de refeição', 'cfg-notif') +
       sw('bill', 'Financeiro', n.bill !== false, 'Vencimento de contas', 'cfg-notif') +
+      sw('workout', 'Treino', n.workout !== false, 'No horário escolhido em Treino → Semana', 'cfg-notif') +
       sw('showAmounts', 'Mostrar valor das contas', !!st.showAmountsInNotifications, 'Por privacidade, vem desligado: o valor não aparece na tela bloqueada.', 'cfg-amounts') +
       pushBlock() +
       '</section>';
 
+    var bt = st.backTap || {};
+    var Tq = window.JSToque;
+    html += '<section class="card" id="cfg-backtap"><div class="card-head"><h2>' + ui.icon('dumbbell', 18) + 'Treino: toque atrás</h2>' + ui.tag(bt.enabled ? 'Ligado' : 'Desligado', bt.enabled ? 'success' : 'muted') + '</div>' +
+      '<p class="hint top">Durante o treino, com o J.S. aberto, bata 2 vezes na parte de trás do celular para registrar a série (o descanso começa sozinho). Funciona no Android e no iPhone.</p>' +
+      sw('backTap', 'Registrar série com 2 batidas atrás', !!bt.enabled, Tq && !Tq.supported() ? 'Este aparelho/navegador não tem sensor de movimento.' : 'Usa o sensor de movimento só durante o treino.', 'cfg-backtap') +
+      '<div class="field"><label for="cfg-bt-sens">Sensibilidade</label><select id="cfg-bt-sens" data-change="cfg-bt-sens">' +
+      [[1, 'Baixa (precisa bater mais forte)'], [2, 'Média-baixa'], [3, 'Média'], [4, 'Média-alta'], [5, 'Alta (batidas leves)']].map(function (o) {
+        return '<option value="' + o[0] + '"' + (Number(bt.sensitivity || 3) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join('') + '</select><p class="hint">' + (bt.threshold ? 'Calibrado para as suas batidas.' : 'Ainda não calibrado: use o teste abaixo para ajustar ao seu celular.') + '</p></div>' +
+      '<button type="button" class="btn soft full" data-action="bt-calibrate">' + ui.icon('phone', 18) + 'Testar e calibrar o toque atrás</button>' +
+      '<button type="button" class="btn ghost full" data-action="bt-help">Com o app fechado (atalhos do celular)</button></section>';
+
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('utensils', 18) + 'Alimentação</h2></div>' +
+      '<button type="button" class="week-row plain" data-action="nutri-settings"><span class="wd-name">Meta de calorias</span><span class="week-plan">' +
+      (st.nutrition && st.nutrition.kcalTarget ? JS.graf.fmtNum(st.nutrition.kcalTarget, 0) + ' kcal' : 'Automática') + '</span>' + ui.icon('right', 16) + '</button>' +
       sw('mealHistory', 'Registrar refeições feitas', st.mealHistory !== false, 'Mostra o botão de marcar como feita e um histórico simples.', 'cfg-mealhistory') + '</section>';
 
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('shield', 18) + 'Backup</h2></div>' +
@@ -113,7 +128,7 @@
       '<p class="muted small" id="persist-status"></p></section>';
 
     html += '<section class="card danger-zone"><div class="card-head"><h2>Apagar dados</h2></div>' +
-      '<p class="hint">Remove todas as tarefas, tratamentos, refeições, contas e pagamentos deste aparelho.</p>' +
+      '<p class="hint">Remove todas as tarefas, tratamentos, refeições, contas, treinos, medições e alimentos registrados deste aparelho.</p>' +
       '<button type="button" class="btn danger full" data-action="data-reset">' + ui.icon('trash', 18) + 'Apagar todos os dados</button></section>';
 
     html += '<p class="about">J.S. • Julia Satorno • versão ' + esc(JS.app.VERSION) + '<br>Sem login: seus dados ficam no seu aparelho.</p>';
@@ -166,7 +181,8 @@
       try { obj = JSON.parse(txt); } catch (e) { throw new Error('O arquivo não é um backup válido.'); }
       if (!obj || obj.app !== 'J.S.' || !obj.dados) throw new Error('Este arquivo não é um backup do J.S.');
       var test = R.migrate(obj.dados);
-      var resumo = test.tasks.length + ' tarefas, ' + test.hairEvents.length + ' tratamentos, ' + test.meals.length + ' horários de refeição e ' + test.bills.length + ' contas';
+      var resumo = test.tasks.length + ' tarefas, ' + test.hairEvents.length + ' tratamentos, ' + test.meals.length + ' horários de refeição, ' + test.bills.length + ' contas, ' +
+        test.workoutPlans.length + ' fichas de treino, ' + test.bodyRecords.length + ' medições e ' + test.foodLogs.length + ' alimentos registrados';
       return ui.confirm({
         title: 'Restaurar backup?',
         message: 'Backup de ' + (obj.exportadoEm ? C.formatTimestamp(obj.exportadoEm) : 'data desconhecida') + ' com ' + resumo + '. Os dados atuais deste aparelho serão substituídos.',
@@ -213,6 +229,107 @@
   JS.changes['cfg-notif'] = function (el) { JS.store.update(function (s) { s.settings.notifications[el.name] = el.checked; }); };
   JS.changes['cfg-amounts'] = function (el) { JS.store.update(function (s) { s.settings.showAmountsInNotifications = el.checked; }); };
   JS.changes['cfg-mealhistory'] = function (el) { JS.store.update(function (s) { s.settings.mealHistory = el.checked; }); };
+  JS.changes['cfg-backtap'] = function (el) {
+    var on = el.checked;
+    // No iPhone, pede a permissão do sensor já neste toque.
+    if (on && window.JSToque && JSToque.needsPermission()) JSToque.requestPermission().then(function (r) { JS.sessaoPerm = r; });
+    JS.store.update(function (s) { s.settings.backTap.enabled = on; });
+    ui.toast(on ? 'Toque atrás ligado para os treinos.' : 'Toque atrás desligado.');
+  };
+  JS.changes['cfg-bt-sens'] = function (el) { JS.store.update(function (s) { s.settings.backTap.sensitivity = Number(el.value) || 3; }); ui.toast('Sensibilidade salva.'); };
+
+  /* ---------------- Toque atrás: teste e calibração ---------------- */
+
+  // 1) 2 s parado (mede o "ruído"); 2) a pessoa bate 2 vezes atrás, algumas vezes; 3) o limite
+  // fica no meio do caminho entre o ruído e as batidas. Depois, um teste ao vivo.
+  JS.actions['bt-calibrate'] = function () {
+    var Tq = window.JSToque;
+    if (!Tq || !Tq.supported()) { ui.toast('Este aparelho não tem sensor de movimento.', { error: true }); return; }
+    Tq.unlockAudio();
+    Tq.requestPermission().then(function (perm) {
+      JS.sessaoPerm = perm;
+      if (perm !== 'granted') { ui.toast('Sem permissão para o sensor de movimento.', { error: true }); return; }
+      var phase = 'rest', rest = [], samples = [], t0 = performance.now(), lis = null, timer = null, hits = 0;
+      var body = '<p class="bt-step" data-step>Deixe o celular parado na mão por 2 segundos…</p>' +
+        '<div class="bt-meter"><span data-meter></span><i data-line></i></div>' +
+        '<p class="hint" data-info>Medindo o movimento parado.</p>' +
+        '<div class="bt-result" data-result hidden></div>';
+      var form = ui.openSheet({
+        title: 'Toque atrás', subtitle: 'Teste e calibração', body: body, submitLabel: 'Pronto', cancelLabel: 'Cancelar',
+        onSubmit: function () { stop(); },
+        onOpen: function (f) { f.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', stop); }); }
+      });
+      var meter = form.querySelector('[data-meter]'), line = form.querySelector('[data-line]'), step = form.querySelector('[data-step]'), info = form.querySelector('[data-info]'), res = form.querySelector('[data-result]');
+      function stop() { if (lis) lis.stop(); lis = null; clearTimeout(timer); }
+      function show(score, th) {
+        var max = Math.max(6, th * 2.2);
+        meter.style.width = Math.min(100, score / max * 100) + '%';
+        if (th) line.style.left = Math.min(100, th / max * 100) + '%';
+      }
+      lis = Tq.listen({
+        threshold: 999,
+        onNoSensor: function () { step.textContent = 'Nenhum dado do sensor chegou. Este aparelho pode não ter acelerômetro.'; },
+        onSample: function (r) {
+          var t = performance.now() - t0;
+          if (phase === 'rest') {
+            rest.push(r.score); show(r.score, 0);
+            if (t > 2000) {
+              phase = 'taps'; t0 = performance.now();
+              step.textContent = 'Agora bata 2 vezes atrás do celular (toc-toc), 3 vezes, com uma pausa entre elas.';
+              info.textContent = 'Batidas firmes com a ponta do dedo, como no treino.';
+              Tq.beep(880, 120);
+            }
+          } else if (phase === 'taps') {
+            samples.push({ t: t, score: r.score }); show(r.score, 0);
+            if (t > 7000) finishCal();
+          } else if (phase === 'test') {
+            show(r.score, lis.detector.threshold);
+          }
+        },
+        onDouble: function () {
+          if (phase !== 'test') return;
+          hits++;
+          Tq.confirmSet();
+          res.innerHTML = '<p class="ok-line">' + ui.icon('check', 18) + ' Toque duplo reconhecido! (' + hits + ')</p>';
+          JS.anim.restartClass(res, 'pop-in');
+        }
+      });
+      function finishCal() {
+        var noise = Tq.median(rest) * 3;
+        var peaks = Tq.findPeaks(samples, Math.max(0.8, noise));
+        var th = Tq.calibrationThreshold(peaks, rest);
+        if (!th || peaks.length < 2) {
+          phase = 'test';
+          step.textContent = 'Não percebi batidas suficientes. Tente bater um pouco mais forte, ou aumente a sensibilidade.';
+          var cur = Tq.thresholdFor(JS.store.state.settings.backTap);
+          lis.setThreshold(cur);
+          info.textContent = 'Teste ao vivo com o ajuste atual: bata 2 vezes atrás.';
+          res.hidden = false;
+          return;
+        }
+        JS.store.silentUpdate(function (s) { s.settings.backTap.threshold = th; s.settings.backTap.enabled = true; });
+        phase = 'test';
+        var eff = Tq.thresholdFor(JS.store.state.settings.backTap);
+        lis.setThreshold(eff);
+        step.textContent = 'Calibrado! Agora teste: bata 2 vezes atrás do celular.';
+        info.textContent = peaks.length + ' batidas percebidas. A barra precisa passar da linha para contar.';
+        res.hidden = false;
+        res.innerHTML = '<p class="muted small">Esperando o toque duplo…</p>';
+        Tq.beep(990, 160);
+      }
+    });
+  };
+
+  JS.actions['bt-help'] = function () {
+    var body = '<p>O J.S. reconhece as 2 batidas pelo sensor enquanto está <strong>aberto</strong> no treino (a tela fica acesa durante o treino).</p>' +
+      '<h3 class="form-sub">Android</h3><p>Alguns celulares têm toque atrás próprio, que pode <strong>abrir o J.S.</strong> direto no treino em andamento:</p>' +
+      '<ul class="help-list"><li><strong>Samsung:</strong> app Good Lock → módulo RegiStar → Back-Tap → Abrir app → J.S.</li>' +
+      '<li><strong>Google Pixel:</strong> Configurações → Sistema → Gestos → Toque rápido → Abrir app → J.S.</li>' +
+      '<li><strong>Outros:</strong> procure "toque duplo atrás" ou "back tap" nas configurações.</li></ul>' +
+      '<h3 class="form-sub">iPhone</h3><p>Ajustes → Acessibilidade → Toque → <strong>Tocar Atrás</strong>. Com o J.S. aberto no treino, use as 2 batidas normalmente.</p>' +
+      '<p class="hint">Com o app totalmente fechado, nenhum site instalado consegue ouvir o sensor; por isso o atalho do celular serve para abrir o J.S. no treino.</p>';
+    ui.openSheet({ title: 'Toque atrás com o app fechado', body: body });
+  };
   JS.changes['cfg-intro'] = function (el) {
     JS.store.update(function (s) { s.settings.intro = el.checked; });
     ui.toast(el.checked ? 'A intro vai aparecer ao abrir o app.' : 'Intro desligada.');

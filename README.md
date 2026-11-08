@@ -1,7 +1,9 @@
 # J.S. — Julia Satorno
 
-Aplicativo pessoal de organização: **Rotina**, **Autocuidado** (cronograma capilar), **Alimentação** e **Financeiro**, com painel inicial, agenda unificada, lembretes e backup.
+Aplicativo pessoal de organização: **Rotina**, **Treino**, **Alimentação** (com tabela nutricional e cardápio), **Cronograma capilar**, **Corpo** (bioimpedância), **Financeiro** e **Gráficos**, com painel inicial, agenda unificada, lembretes e backup.
 Sem login: os dados ficam no próprio aparelho. O único servidor é opcional e serve só para os avisos chegarem com o app fechado (seção 4).
+
+No celular, a barra de baixo tem **Início, Rotina, Treino, Alimentação e Mais** (Cronograma capilar, Financeiro, Corpo, Gráficos, Agenda e Configurações). Em tablet deitado ou computador, a barra vira uma coluna lateral com todos os módulos e as telas usam duas colunas.
 
 Ele é um app web (PWA): abre no navegador e pode ser **instalado no celular pelo Chrome**, com ícone na tela inicial, abrindo em tela cheia e funcionando sem internet.
 
@@ -33,13 +35,32 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v1.4.1'`), faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.0.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
 - Os dados ficam **só no aparelho e no navegador onde foram cadastrados**. O que você cadastrar no computador não aparece no celular, e vice-versa.
 - Limpar os dados do navegador, desinstalar o app ou perder o celular **apaga tudo**, a menos que exista um backup.
 - Em **Configurações → Backup** dá para salvar um arquivo, enviá-lo por WhatsApp, e-mail ou Drive, e restaurá-lo em outro aparelho. O painel lembra de fazer backup a cada 14 dias.
+
+## 3.1 Treino
+
+- **Fichas:** monte fichas (ex.: "Treino A — Pernas") com exercícios da biblioteca (48 exercícios por grupo muscular, com dica de execução e link para ver em vídeo) ou criados por você, com séries, repetições, carga e descanso.
+- **Semana fixa e troca do dia:** em Treino → Semana, cada dia da semana recebe uma ficha (ou descanso). Para mudar só um dia (ex.: na terça treinar braço em vez de perna), use **Trocar** em Hoje ou toque no dia em **Mês**. As próximas semanas continuam iguais.
+- **Calendário do mês:** mostra a ficha de cada dia (letra e cor), os treinos feitos (✓) e os descansos.
+- **Execução:** "Iniciar treino" faz uma contagem 3-2-1 e abre o treino em tela cheia, com a tela sempre acesa. Ajuste a carga e as repetições com **+/−** e toque em **Série feita**. O descanso começa sozinho e avisa com bipe e vibração quando acaba. Ao terminar, aparece o resumo (duração, séries, volume e recordes) e a ficha passa a sugerir a última carga usada.
+- **Toque atrás:** com o J.S. aberto no treino, **bata 2 vezes na parte de trás do celular** para registrar a série, como no app Tap Fit. Funciona no Android e no iPhone, pelo sensor de movimento. No iPhone o app pede permissão para usar o sensor. Em Configurações → Treino dá para mudar a sensibilidade e **testar e calibrar** com as suas batidas. Com o app fechado, nenhum site instalado consegue ouvir o sensor. Por isso, o toque atrás do próprio celular (Samsung Good Lock/RegiStar, Pixel "Toque rápido") pode ser configurado para **abrir o J.S.**, que vai direto para o treino em andamento.
+- **Evolução:** para cada aparelho, um gráfico da carga máxima por treino e o volume, mostrando se a carga está aumentando ou diminuindo em relação ao treino anterior e ao primeiro.
+- **Lembrete:** em Treino → Semana, escolha um horário para ser avisada nos dias que têm ficha.
+
+## 3.2 Alimentação e Corpo
+
+- **Diário:** registre o que comeu em cada refeição. Os nutrientes de cada alimento, de cada refeição e do dia vêm da **Tabela TACO** (Tabela Brasileira de Composição de Alimentos, 4ª edição, NEPA/UNICAMP), com 597 alimentos. A tabela completa tem energia, macronutrientes, fibras, sódio, colesterol, minerais e vitaminas. Valores que a TACO não analisou aparecem como "—", nunca como zero. Dá para salvar porções (ex.: "1 unidade = 50 g") e cadastrar alimentos que não estão na tabela.
+- **Meta de calorias:** definida por você ou estimada automaticamente pelo metabolismo basal (da bioimpedância ou, sem ela, pela fórmula de Mifflin-St Jeor com peso, altura e idade) × nível de atividade.
+- **Cardápio:** sugestões para as refeições do dia (as de Horários; sem horários, 4 refeições), montadas com alimentos da TACO e com as porções ajustadas à meta. Há "Outra opção" e "Usar no diário". São sugestões gerais e equilibradas, que não substituem a orientação de uma nutricionista.
+- **Corpo:** registre os dados da balança de bioimpedância (peso, % de gordura, massa muscular, massa magra, água, gordura visceral, metabolismo basal, massa óssea, proteína, idade metabólica) e medidas com fita. O app mostra a diferença para a medição anterior, a **indicação de massa muscular** (ganhando, estável ou perdendo, % do peso e kg/m²), o IMC (faixas da OMS), a faixa de gordura (referência geral da ACE) e gráficos.
+- **Gráficos:** painel com treinos, volume, carga, peso, gordura, massa muscular, calorias, macronutrientes, tarefas, contas pagas e cronograma capilar, em 30 dias, 90 dias ou 12 meses. Toque num gráfico para ver o valor; cada gráfico tem a tabela equivalente.
+- **Tarefas:** além de concluir, dá para **Começar agora** (botão ▶ nas tarefas de hoje). A tarefa ganha uma animação de largada e fica "Em andamento" com cronômetro. Ao concluir, o app mostra quanto tempo levou.
 
 ## 4. Notificações
 
@@ -92,10 +113,10 @@ supabase functions deploy js-push --no-verify-jwt --use-api            # funçã
 
 ## 6. Testes
 
-As regras de negócio têm testes automáticos: recorrência, centavos, contas recorrentes, lembretes e backup.
+As regras de negócio têm testes automáticos. `regras.test.js` cobre recorrência, centavos, contas recorrentes, lembretes e backup. `v2.test.js` cobre fichas, troca do dia, execução, evolução de carga, corpo, TACO, cardápio, tarefa em andamento e o reconhecimento do toque atrás com sinais simulados.
 
 ```
-node --test testes/regras.test.js
+node --test testes/regras.test.js testes/v2.test.js
 ```
 
 ## 7. Estrutura
@@ -107,23 +128,31 @@ aplicativo/
 ├── sw.js                   funcionamento offline e toque nas notificações
 ├── servidor.js             servidor local para testes (opcional)
 ├── css/style.css           visual (paleta do design system em ../JS_Starter/docs)
+├── css/v2.css              telas da versão 2 e layout para tablet/computador
 ├── icons/                  ícones do app gerados a partir da logo
 ├── js/
 │   ├── intro.js            intro animada e interativa
-│   ├── anim.js             animações do app
+│   ├── anim.js             animações do app (inclui contagem 3-2-1 e faíscas)
 │   ├── core.js             datas, dinheiro em centavos, rótulos
 │   ├── regras.js           regras de negócio de todos os módulos (testadas)
+│   ├── regras-treino.js    fichas, semana, execução e evolução (testadas)
+│   ├── regras-corpo.js     bioimpedância e indicações (testadas)
+│   ├── regras-nutricao.js  TACO, diário, meta e cardápio (testadas)
+│   ├── toque.js            reconhecimento das 2 batidas atrás do celular
+│   ├── graficos.js         gráficos em SVG (sem bibliotecas)
+│   ├── dados/              biblioteca de exercícios, Tabela TACO e opções de cardápio
 │   ├── store.js            armazenamento local, migração e backup
 │   ├── notify.js           lembretes e permissão de notificação
 │   ├── push.js             avisos com o app fechado (inscrição e sincronização com o servidor)
 │   ├── config.js           endereço do servidor de avisos
 │   ├── ui.js               componentes de tela
 │   ├── app.js              navegação, instalação e inicialização
-│   └── telas/              inicio, rotina, autocuidado, alimentacao, financeiro, agenda, config
+│   └── telas/              inicio, rotina, treino, sessao (execução), alimentacao, autocuidado (cronograma capilar),
+│                           corpo, financeiro, graficos, mais, agenda, config
 ├── supabase/
 │   ├── functions/js-push/  servidor de avisos (Edge Function)
 │   └── sql/                tabelas e agendamento a cada minuto
-└── testes/regras.test.js
+└── testes/                 regras.test.js e v2.test.js
 ```
 
 A especificação original está em `../JS_Starter/docs/`.
@@ -131,3 +160,4 @@ A especificação original está em `../JS_Starter/docs/`.
 ## 8. Fora desta versão
 
 - Sincronização dos dados entre aparelhos (precisaria de armazenamento em nuvem e consentimento).
+- Registrar série com o iPhone totalmente fechado (precisaria de um Atalho do iOS chamando o servidor de avisos, com uma fila de toques que o app aplica ao abrir).

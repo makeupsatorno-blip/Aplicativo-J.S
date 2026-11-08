@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui;
-  var VERSION = '1.5.0';
+  var VERSION = '2.0.0';
   var lastToday = null;
   var deferredInstall = null;
 
@@ -16,7 +16,9 @@
     else location.hash = '#/' + r;
   }
 
-  var TAB_ORDER = ['inicio', 'rotina', 'autocuidado', 'alimentacao', 'financeiro'];
+  var TAB_ORDER = ['inicio', 'rotina', 'treino', 'alimentacao', 'mais', 'autocuidado', 'financeiro', 'corpo', 'graficos', 'agenda', 'config'];
+  // No celular essas telas ficam dentro de "Mais" (a aba Mais fica marcada nelas).
+  var MORE_GROUP = ['mais', 'autocuidado', 'financeiro', 'corpo', 'graficos'];
   var lastRoute = null;
 
   // Direção da animação ao trocar de tela: segue a posição das abas.
@@ -33,6 +35,10 @@
     var main = document.getElementById('main');
     var enter = opts.enter || (r !== lastRoute ? routeEnter(lastRoute, r) : null);
     var routeChanged = r !== lastRoute;
+    if (routeChanged) {
+      var prev = lastRoute && JS.telas[lastRoute];
+      if (prev && prev.leave) { try { prev.leave(); } catch (e) { console.error(e); } }
+    }
     lastRoute = r;
     try { main.innerHTML = tela.render(new Date()); }
     catch (e) {
@@ -41,10 +47,12 @@
     }
     document.title = r === 'inicio' ? 'J.S.' : tela.title + ' • J.S.';
     document.querySelectorAll('[data-route-link]').forEach(function (a) {
-      var on = a.dataset.routeLink === r;
+      var on = a.dataset.routeLink === r || (a.dataset.routeLink === 'mais' && MORE_GROUP.indexOf(r) >= 0) ||
+        (a.dataset.routeLink === 'treino' && r === 'sessao');
       a.classList.toggle('active', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
+    document.documentElement.dataset.route = r;
     var fab = document.getElementById('fab');
     if (tela.fab) {
       var wasHidden = fab.hidden;
@@ -52,6 +60,8 @@
       if (wasHidden || routeChanged) JS.anim.restartClass(fab, 'fab-in');
     } else fab.hidden = true;
     if (tela.after) tela.after(main);
+    if (routeChanged && tela.enter) { try { tela.enter(); } catch (e) { console.error(e); } }
+    if (JS.graf) JS.graf.mountAll(main);
     JS.anim.afterRender(main, enter);
   }
 
@@ -146,6 +156,12 @@
 
   function init() {
     JS.store.load();
+    // Abriu o app (ex.: pelo toque atrás do próprio celular) com um treino em andamento
+    // nas últimas 3 horas: vai direto para a execução do treino.
+    var act = window.JSTreino && JSTreino.activeSession(JS.store.state);
+    if (act && !(location.hash || '').replace(/^#\/?/, '') && Date.now() - new Date(act.startedAt).getTime() < 3 * 3600000) {
+      history.replaceState(null, '', '#/sessao');
+    }
     lastToday = C.toDateKey(new Date());
     JS.store.silentUpdate(function (s, n) { R.ensureRecurringBills(s, lastToday, n); });
     JS.store.subscribe(render);

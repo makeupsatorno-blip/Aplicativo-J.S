@@ -144,8 +144,61 @@
     });
   }
 
+  /* ---------------- Começar: contagem 3-2-1 e faíscas ---------------- */
+
+  // Contagem antes do treino (toque pula). No modo "menos animação", vai direto.
+  function countdown(done) {
+    if (reduced()) { done(); return; }
+    var ov = document.createElement('div');
+    ov.className = 'countdown';
+    ov.setAttribute('role', 'status');
+    ov.innerHTML = '<div class="cd-ring"></div><div class="cd-ring r2"></div><strong class="cd-num"></strong><span class="cd-sub">Prepare-se</span>';
+    document.body.appendChild(ov);
+    var num = ov.querySelector('.cd-num'), steps = ['3', '2', '1', 'Vai!'], i = 0, finished = false, timer = null;
+    function finish() {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      ov.classList.add('out');
+      setTimeout(function () { ov.remove(); }, 320);
+      done();
+    }
+    function next() {
+      if (i >= steps.length) { finish(); return; }
+      num.textContent = steps[i];
+      restartClass(num, 'tick');
+      if (window.JSToque) window.JSToque.beep(i < 3 ? 660 : 990, i < 3 ? 110 : 260);
+      if (i === 3) { ov.classList.add('go'); petals(window.innerWidth / 2, window.innerHeight / 2, { count: 16, spread: 160, fall: 80 }); }
+      i++;
+      timer = setTimeout(next, i === steps.length ? 520 : 620);
+    }
+    ov.addEventListener('click', finish);
+    next();
+  }
+
+  // Faíscas coloridas saindo de um elemento (começar tarefa).
+  var SPARK = ['#B96788', '#2A78D6', '#C98500', '#D98EAA', '#8F6BB3'];
+  function sparks(el) {
+    if (!el || reduced() || !Element.prototype.animate) return;
+    var r = el.getBoundingClientRect(), l = layer();
+    var cx = r.left + 30, cy = r.top + r.height / 2;
+    for (var i = 0; i < 14; i++) {
+      var s = document.createElement('i');
+      s.className = 'fx-spark';
+      s.style.left = cx + 'px'; s.style.top = cy + 'px';
+      s.style.background = SPARK[i % SPARK.length];
+      l.appendChild(s);
+      var a = (i / 14) * Math.PI * 2 + Math.random() * 0.4, d = 40 + Math.random() * 50;
+      s.animate([
+        { transform: 'translate(-50%,-50%) scale(1)', opacity: 1 },
+        { transform: 'translate(calc(-50% + ' + (Math.cos(a) * d).toFixed(1) + 'px), calc(-50% + ' + (Math.sin(a) * d).toFixed(1) + 'px)) scale(.2)', opacity: 0 }
+      ], { duration: 650 + Math.random() * 300, easing: 'cubic-bezier(.2,.8,.3,1)' }).onfinish = (function (e) { return function () { e.remove(); }; })(s);
+    }
+  }
+
   JS.anim = {
     reduced: reduced, afterRender: afterRender, mark: mark, petals: petals, petalsFrom: petalsFrom,
-    celebrate: celebrate, removeThen: removeThen, countUp: countUp, restartClass: restartClass
+    celebrate: celebrate, removeThen: removeThen, countUp: countUp, restartClass: restartClass,
+    countdown: countdown, sparks: sparks
   };
 })();

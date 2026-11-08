@@ -23,6 +23,30 @@
 
   function isRecurring(t) { return t.recurrence && t.recurrence !== 'none'; }
 
+  function minutesBetween(a, b) {
+    var m = Math.max(0, Math.round((new Date(b) - new Date(a)) / 60000));
+    return m < 1 ? 'menos de 1 min' : m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + C.pad(m % 60) + ' min';
+  }
+  function sinceLabel(iso) { return minutesBetween(iso, new Date().toISOString()); }
+  // Atualiza o "há quanto tempo" das tarefas em andamento sem redesenhar a tela.
+  setInterval(function () {
+    document.querySelectorAll('[data-since]').forEach(function (el) { el.textContent = sinceLabel(el.dataset.since); });
+  }, 30000);
+
+  // "Começar agora": a tarefa fica em andamento com cronômetro, com uma animação de largada.
+  function startTask(id, date) {
+    var s = JS.store.state, t = R.byId(s.tasks, id);
+    if (!t) return;
+    var sel = itemSel(id, date || '');
+    var el = document.querySelector(sel);
+    var item = el && el.closest('.item');
+    if (item) JS.anim.sparks(item);
+    JS.anim.mark(sel, 'starting', { closest: '.item', ms: 1300 });
+    JS.store.update(function (st, n) { R.startTask(st, id, date || null, n); });
+    if (window.JSToque) { JSToque.unlockAudio(); JSToque.beep(660, 90); JSToque.beep(990, 140, 0.1); JSToque.vibrate(40); }
+    ui.toast('Começou: ' + t.title + '. Bora! ⏱');
+  }
+
   function taskItem(o, now, opts) {
     var t = o.task, today = C.toDateKey(now);
     var overdue = !o.done && o.date && R.isPast(o.date, o.time, now);
@@ -30,17 +54,22 @@
     if (opts && opts.showDate && o.date) meta.push(C.formatDayLabel(o.date, today));
     if (o.time) meta.push(o.time);
     meta.push(t.category);
-    var flags = (t.priority === 'high' ? ui.tag('Alta', 'high') : '') + (overdue ? ui.tag('Atrasada', 'danger') : '');
+    var doing = o.doing && !o.done;
+    var flags = (doing ? '<span class="tag doing-tag"><i class="pulse-dot"></i>Em andamento • <span data-since="' + esc(o.startedAt) + '">' + sinceLabel(o.startedAt) + '</span></span>' : '') +
+      (o.done && o.startedAt && o.completedAt ? ui.tag('Feita em ' + minutesBetween(o.startedAt, o.completedAt), 'success') : '') +
+      (t.priority === 'high' ? ui.tag('Alta', 'high') : '') + (overdue && !doing ? ui.tag('Atrasada', 'danger') : '');
     var icons = (isRecurring(t) ? ui.icon('repeat', 14) : '') + (t.reminderMinutes != null && o.time ? ui.icon('bell', 14) : '');
     var ids = ' data-id="' + esc(t.id) + '" data-date="' + esc(o.date || '') + '"';
-    return '<div class="item task' + (o.done ? ' done' : '') + (overdue ? ' overdue' : '') + '">' +
+    return '<div class="item task' + (o.done ? ' done' : '') + (overdue ? ' overdue' : '') + (doing ? ' doing' : '') + '">' +
       '<button type="button" class="check' + (o.done ? ' on' : '') + '" data-action="task-toggle"' + ids +
       ' aria-label="' + (o.done ? 'Desmarcar' : 'Concluir') + ': ' + esc(t.title) + '">' + ui.icon('check', 16) + '</button>' +
       '<button type="button" class="item-main" data-action="task-menu"' + ids + '>' +
       '<span class="item-title"><span class="tt">' + esc(t.title) + '</span></span>' +
       '<span class="item-meta">' + meta.map(esc).join(' • ') + (icons ? ' <span class="item-icons">' + icons + '</span>' : '') + '</span>' +
       (flags ? '<span class="item-flags">' + flags + '</span>' : '') +
-      '</button></div>';
+      '</button>' +
+      (!o.done && !doing && o.date === today ? '<button type="button" class="start-mini" data-action="task-start"' + ids + ' aria-label="Começar agora: ' + esc(t.title) + '" title="Começar agora">' + ui.icon('play', 14) + '</button>' : '') +
+      '</div>';
   }
 
   function groups(occ, now) {
@@ -201,15 +230,19 @@
     var today = C.toDateKey(new Date());
     var o = s.taskOcc[R.occKey(id, date)];
     var done = !!(o && o.status === 'done');
+    var doing = !!(o && o.status === 'doing');
     var sub = [date ? C.formatDayLabel(date, today) + ' (' + C.formatDayMonth(date) + ')' : 'Sem data',
       date && t.dueTime ? t.dueTime : null, isRecurring(t) ? C.TASK_RECURRENCES[t.recurrence] : null, t.category].filter(Boolean).join(' • ');
     var detail = (t.description ? '<p>' + esc(t.description) + '</p>' : '') +
       (t.reminderMinutes != null && t.dueTime ? '<p class="muted">' + ui.icon('bell', 14) + ' Lembrete: ' + esc(C.minutesLabel(t.reminderMinutes)) + '</p>' : '') +
-      (done && o.completedAt ? '<p class="muted">' + ui.icon('check', 14) + ' Concluída em ' + esc(C.formatTimestamp(o.completedAt)) + '</p>' : '');
+      (done && o.completedAt ? '<p class="muted">' + ui.icon('check', 14) + ' Concluída em ' + esc(C.formatTimestamp(o.completedAt)) + (o.startedAt ? ' (levou ' + esc(minutesBetween(o.startedAt, o.completedAt)) + ')' : '') + '</p>' : '') +
+      (doing ? '<p class="muted">' + ui.icon('clock', 14) + ' Em andamento há ' + esc(sinceLabel(o.startedAt)) + '</p>' : '');
     ui.actionSheet({
       title: t.title, subtitle: sub, detail: detail,
       actions: [
+        !done && !doing ? { label: 'Começar agora', icon: 'play', run: function () { startTask(id, date); } } : null,
         { label: done ? 'Marcar como pendente' : 'Concluir', icon: done ? 'undo' : 'check', run: function () { toggle({ id: id, date: date || '' }); } },
+        doing ? { label: 'Parar (voltar para pendente)', icon: 'pause', run: function () { JS.store.update(function (st) { R.stopTask(st, id, date || null); }); ui.toast('Tarefa voltou para pendente.'); } } : null,
         date && t.dueTime && t.reminderMinutes == null ? { label: 'Avisar 15 min antes', icon: 'bell', run: function () {
           JS.anim.mark(itemSel(t.id), 'flash', { closest: '.item' });
           JS.store.update(function (s, n) { var x = R.byId(s.tasks, t.id); if (x) { x.reminderMinutes = DEFAULT_REMINDER; x.updatedAt = n; } });
@@ -243,7 +276,8 @@
         JS.anim.mark('.done-msg', 'pop-in', { ms: 800 });
         JS.app.render();
       } else {
-        ui.toast('Concluída: ' + t.title, {
+        var oc = JS.store.state.taskOcc[R.occKey(d.id, date)];
+        ui.toast('Concluída: ' + t.title + (oc && oc.startedAt ? ' (em ' + minutesBetween(oc.startedAt, oc.completedAt) + ')' : ''), {
           actionLabel: 'Desfazer',
           onAction: function () { JS.store.update(function (st, n) { R.setTaskDone(st, d.id, date, false, n); }); }
         });
@@ -278,6 +312,7 @@
   JS.actions['task-new'] = function (d) { openTaskForm(null, null, d && d.date ? { dueDate: d.date } : null); };
   JS.actions['task-toggle'] = toggle;
   JS.actions['task-menu'] = function (d) { taskMenu(d.id, d.date || null); };
+  JS.actions['task-start'] = function (d) { startTask(d.id, d.date || null); };
 
   JS.forms.task = function (preset) { openTaskForm(null, null, preset); };
   JS.render.taskItem = taskItem;

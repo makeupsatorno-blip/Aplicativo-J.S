@@ -11,7 +11,7 @@
 })(typeof self !== 'undefined' ? self : this, function (C) {
   'use strict';
 
-  var SCHEMA_VERSION = 1;
+  var SCHEMA_VERSION = 2;
   // Tarefas recorrentes não concluídas contam como atrasadas só nos últimos N dias,
   // para uma tarefa diária esquecida não gerar centenas de pendências.
   var RECURRING_OVERDUE_LOOKBACK = 7;
@@ -28,7 +28,10 @@
         notifications: { task: true, hair: true, meal: true, bill: true },
         showAmountsInNotifications: false,
         mealHistory: true,
-        lastBackupAt: null
+        lastBackupAt: null,
+        body: { heightCm: null, sex: 'f', birthYear: null },
+        nutrition: { kcalTarget: null, activity: 'moderada' },
+        backTap: { enabled: true, sensitivity: 3, threshold: null }
       },
       tasks: [],
       taskOcc: {},          // "idTarefa|AAAA-MM-DD" -> { status: 'done'|'skipped', completedAt }
@@ -38,9 +41,21 @@
       mealLogs: [],
       bills: [],
       payments: [],
+      // Treino (versão 2 dos dados)
+      workoutPlans: [],     // fichas: { id, name, color, items: [{ id, exerciseId, sets, reps, load, restSec, notes }] }
+      exercises: [],        // exercícios criados pela usuária (a biblioteca padrão fica no código)
+      workoutSessions: [],  // treinos feitos/em andamento, com cada série registrada
+      workout: { week: emptyWeek(), overrides: {}, reminderTime: null, loadStep: 1 },
+      // Corpo (bioimpedância e medidas)
+      bodyRecords: [],
+      // Diário alimentar
+      foodLogs: [],         // { id, date, meal, foodId, name, grams, createdAt }
+      customFoods: [],      // alimentos cadastrados pela usuária, valores por 100 g
+      foodPortions: {},     // idAlimento -> [{ label, grams }]
       firedReminders: {}    // chave do lembrete -> ISO de quando foi exibido
     };
   }
+  function emptyWeek() { return { 0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null }; }
 
   function isObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
   function hasId(x) { return isObj(x) && typeof x.id === 'string' && x.id.length > 0; }
@@ -52,12 +67,23 @@
     var base = emptyState();
     var out = Object.assign({}, base, data);
     out.settings = Object.assign({}, base.settings, isObj(data.settings) ? data.settings : {});
-    out.settings.notifications = Object.assign({}, base.settings.notifications,
-      isObj(data.settings) && isObj(data.settings.notifications) ? data.settings.notifications : {});
-    ['tasks', 'hairEvents', 'meals', 'mealLogs', 'bills', 'payments'].forEach(function (k) {
+    var ds = isObj(data.settings) ? data.settings : {};
+    ['notifications', 'body', 'nutrition', 'backTap'].forEach(function (k) {
+      out.settings[k] = Object.assign({}, base.settings[k], isObj(ds[k]) ? ds[k] : {});
+    });
+    ['tasks', 'hairEvents', 'meals', 'mealLogs', 'bills', 'payments',
+      'workoutPlans', 'exercises', 'workoutSessions', 'bodyRecords', 'foodLogs', 'customFoods'].forEach(function (k) {
       out[k] = Array.isArray(out[k]) ? out[k].filter(hasId) : [];
     });
-    ['taskOcc', 'mealExceptions', 'firedReminders'].forEach(function (k) { if (!isObj(out[k])) out[k] = {}; });
+    ['taskOcc', 'mealExceptions', 'firedReminders', 'foodPortions'].forEach(function (k) { if (!isObj(out[k])) out[k] = {}; });
+    // v1 -> v2: estruturas de treino, corpo e diário alimentar (os dados antigos ficam iguais).
+    var w = isObj(data.workout) ? data.workout : {};
+    out.workout = Object.assign({}, base.workout, w);
+    out.workout.week = Object.assign(emptyWeek(), isObj(w.week) ? w.week : {});
+    if (!isObj(out.workout.overrides)) out.workout.overrides = {};
+    out.workoutPlans.forEach(function (p) { if (!Array.isArray(p.items)) p.items = []; });
+    out.workoutSessions.forEach(function (s) { if (!Array.isArray(s.items)) s.items = []; s.items.forEach(function (i) { if (!Array.isArray(i.sets)) i.sets = []; }); });
+    out.foodLogs = out.foodLogs.filter(function (l) { return C.isDateKey(l.date) && Number(l.grams) > 0; });
     out.tasks = out.tasks.filter(function (t) { return typeof t.title === 'string'; });
     out.bills = out.bills.filter(function (b) { return Number.isInteger(b.amountCents) && b.amountCents >= 0 && C.isDateKey(b.dueDate); });
     out.payments = out.payments.filter(function (p) { return Number.isInteger(p.amountCents) && p.amountCents >= 0; });
@@ -68,7 +94,18 @@
   }
 
   function hasAnyData(state) {
-    return state.tasks.length + state.hairEvents.length + state.meals.length + state.bills.length > 0;
+    return state.tasks.length + state.hairEvents.length + state.meals.length + state.bills.length +
+      (state.workoutPlans || []).length + (state.bodyRecords || []).length + (state.foodLogs || []).length > 0;
+  }
+
+  // Ficha de treino de um dia: troca feita só naquele dia > ficha fixa do dia da semana.
+  // Retorna o id da ficha, 'rest' (descanso marcado) ou null.
+  function workoutPlanIdForDate(state, date) {
+    var w = state.workout || {};
+    var ov = w.overrides && w.overrides[date];
+    if (ov) return ov;
+    var id = w.week ? w.week[C.weekday(date)] : null;
+    return id && byId(state.workoutPlans || [], id) ? id : null;
   }
 
   /* ================= Utilitários de validação ================= */
@@ -134,7 +171,8 @@
     var o = state.taskOcc[key];
     return {
       task: t, date: date, time: date ? (t.dueTime || null) : null, key: key,
-      done: !!(o && o.status === 'done'), completedAt: o && o.completedAt || null
+      done: !!(o && o.status === 'done'), completedAt: o && o.completedAt || null,
+      doing: !!(o && o.status === 'doing'), startedAt: o && o.startedAt || null
     };
   }
 
@@ -223,10 +261,28 @@
     return t;
   }
 
+  // Concluir guarda quando a tarefa foi começada (se foi), para mostrar quanto tempo levou.
   function setTaskDone(state, taskId, date, done, nowISO) {
-    var key = occKey(taskId, date);
-    if (done) state.taskOcc[key] = { status: 'done', completedAt: nowISO };
-    else if (state.taskOcc[key] && state.taskOcc[key].status === 'done') delete state.taskOcc[key];
+    var key = occKey(taskId, date), cur = state.taskOcc[key];
+    if (done) {
+      state.taskOcc[key] = { status: 'done', completedAt: nowISO };
+      if (cur && cur.startedAt) state.taskOcc[key].startedAt = cur.startedAt;
+    } else if (cur && cur.status === 'done') {
+      if (cur.startedAt) state.taskOcc[key] = { status: 'doing', startedAt: cur.startedAt };
+      else delete state.taskOcc[key];
+    }
+  }
+
+  // "Começar agora": a tarefa fica em andamento (com cronômetro) até ser concluída.
+  function startTask(state, taskId, date, nowISO) {
+    var key = occKey(taskId, date), cur = state.taskOcc[key];
+    if (cur && (cur.status === 'done' || cur.status === 'skipped')) return false;
+    state.taskOcc[key] = { status: 'doing', startedAt: nowISO };
+    return true;
+  }
+  function stopTask(state, taskId, date) {
+    var key = occKey(taskId, date), cur = state.taskOcc[key];
+    if (cur && cur.status === 'doing') delete state.taskOcc[key];
   }
 
   function skipTaskOccurrence(state, taskId, date) {
@@ -784,8 +840,20 @@
         var title = e.type === 'custom'
           ? (dia === 'Hoje' ? 'Hoje é dia de ' : dia === 'Amanhã' ? 'Amanhã é dia de ' : dia + ' é dia de ') + nome + '.'
           : (dia === 'Hoje' ? 'Hoje é dia de ' : dia === 'Amanhã' ? 'Amanhã é dia de ' : dia + ' é dia de ') + nome.toLowerCase() + ' capilar.';
-        push('hair', e.id, at, title, 'Autocuidado • ' + e.time, 'autocuidado');
+        push('hair', e.id, at, title, 'Cronograma capilar • ' + e.time, 'autocuidado');
       });
+    }
+    // Treino: aviso no horário escolhido, nos dias que têm ficha (fixa ou trocada no dia).
+    var wk = state.workout || {};
+    if (mods.workout !== false && !singleOnly && wk.reminderTime && C.isTimeKey(wk.reminderTime)) {
+      for (var wd = from; wd <= to; wd = C.addDays(wd, 1)) {
+        var pid = workoutPlanIdForDate(state, wd);
+        var plan = pid && pid !== 'rest' ? byId(state.workoutPlans || [], pid) : null;
+        if (!plan) continue;
+        var doneThatDay = (state.workoutSessions || []).some(function (x) { return x.date === wd && x.status === 'done'; });
+        if (doneThatDay) continue;
+        push('workout', 'dia', C.combine(wd, wk.reminderTime), 'Hora do treino: ' + plan.name, (plan.items || []).length + ' exercícios • toque para começar', 'treino');
+      }
     }
     if (mods.meal !== false && !singleOnly) {
       var mealDays = [];
@@ -871,11 +939,12 @@
 
   return {
     SCHEMA_VERSION: SCHEMA_VERSION, RECURRING_OVERDUE_LOOKBACK: RECURRING_OVERDUE_LOOKBACK,
-    emptyState: emptyState, migrate: migrate, hasAnyData: hasAnyData, byId: byId,
+    emptyState: emptyState, migrate: migrate, hasAnyData: hasAnyData, byId: byId, removeById: removeById,
+    workoutPlanIdForDate: workoutPlanIdForDate,
     // tarefas
     validateTask: validateTask, occKey: occKey, taskOccursOn: taskOccursOn, taskOccurrences: taskOccurrences,
     undatedTasks: undatedTasks, overdueTasks: overdueTasks, isPast: isPast, createTask: createTask,
-    setTaskDone: setTaskDone, skipTaskOccurrence: skipTaskOccurrence, postponeTask: postponeTask,
+    setTaskDone: setTaskDone, startTask: startTask, stopTask: stopTask, skipTaskOccurrence: skipTaskOccurrence, postponeTask: postponeTask,
     updateTask: updateTask, deleteTask: deleteTask, deleteTaskSeries: deleteTaskSeries,
     // autocuidado
     validateHair: validateHair, hairPending: hairPending, hairName: hairName, createHairEvent: createHairEvent,

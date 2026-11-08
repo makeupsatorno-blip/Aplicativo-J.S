@@ -46,7 +46,7 @@
 
     // Hoje
     var total = d.todayTasks.length;
-    var pending = d.todayTasks.filter(function (o) { return !o.done; });
+    var pending = d.todayTasks.filter(function (o) { return !o.done && o.doing; }).concat(d.todayTasks.filter(function (o) { return !o.done && !o.doing; }));
     var pct = total ? Math.round(d.doneCount / total * 100) : 0;
     var fromPct = lastPct == null ? 0 : lastPct;
     lastPct = pct;
@@ -69,7 +69,17 @@
         { cls: 'warn', icon: 'alert', extra: '<span class="count danger">' + nOver + '</span>' });
     }
 
-    // Autocuidado e refeição
+    // Treino, calorias, cronograma capilar e refeição
+    var T = window.JSTreino, N = window.JSNutri;
+    var act = T.activeSession(s), wp = T.planForDate(s, today);
+    var doneW = s.workoutSessions.some(function (x) { return x.date === today && x.status === 'done'; });
+    var wTxt = act ? '<strong>Em andamento</strong><span>' + esc(act.planName) + ' • continuar</span>'
+      : wp.plan ? '<strong>' + esc(wp.plan.name) + '</strong><span>' + (doneW ? 'Feito hoje ✓' : wp.plan.items.length + ' exercícios • iniciar') + '</span>'
+        : wp.rest ? '<strong>Descanso</strong><span>Recupere as energias</span>'
+          : s.workoutPlans.length ? '<strong>Sem ficha hoje</strong><span>Escolha uma ficha</span>' : '<strong>Monte sua ficha</strong><span>Exercícios, séries e carga</span>';
+    var dl = N.dayLog(s, today), target = N.kcalTarget(s, today);
+    var kTxt = '<strong>' + JS.graf.fmtNum(dl.total.kcal || 0, 0) + (target ? ' / ' + JS.graf.fmtNum(target.value, 0) : '') + ' kcal</strong><span>' +
+      (dl.count ? dl.count + (dl.count === 1 ? ' alimento registrado' : ' alimentos registrados') : 'Registre o que comeu') + '</span>';
     var hair = d.hairToday[0] || d.nextHair;
     var hairTxt = hair
       ? '<strong>' + esc(R.hairName(hair)) + '</strong><span>' + esc(hair.date === today ? 'Hoje' + (hair.time ? ' às ' + hair.time : '') : C.formatDayLabel(hair.date, today) + (hair.time ? ' • ' + hair.time : '')) + '</span>'
@@ -78,8 +88,11 @@
     var mealTxt = meal
       ? '<strong>' + esc(meal.meal.name) + '</strong><span>' + esc((meal.date === today ? 'Hoje' : C.formatDayLabel(meal.date, today)) + ' às ' + meal.time) + '</span>'
       : '<strong>Sem horários</strong><span>Cadastre suas refeições</span>';
-    html += '<div class="grid2">' +
-      '<button type="button" class="mini-card m-hair" data-action="go" data-route="autocuidado"><span class="mini-label">' + ui.icon('flower', 16) + (d.hairToday.length ? 'Autocuidado hoje' : 'Próximo autocuidado') + '</span>' + hairTxt + '</button>' +
+    html += '<div class="grid2 mini-grid">' +
+      '<button type="button" class="mini-card m-work' + (act ? ' live' : '') + '" data-action="go" data-route="' + (act ? 'sessao' : 'treino') + '"><span class="mini-label">' + ui.icon('dumbbell', 16) + 'Treino de hoje</span>' + wTxt + '</button>' +
+      '<button type="button" class="mini-card m-kcal" data-action="go" data-route="alimentacao"><span class="mini-label">' + ui.icon('flame', 16) + 'Calorias hoje</span>' + kTxt +
+      (target ? '<span class="mini-bar"><i style="width:' + Math.min(100, Math.round((dl.total.kcal || 0) / target.value * 100)) + '%"></i></span>' : '') + '</button>' +
+      '<button type="button" class="mini-card m-hair" data-action="go" data-route="autocuidado"><span class="mini-label">' + ui.icon('flower', 16) + (d.hairToday.length ? 'Capilar hoje' : 'Próximo capilar') + '</span>' + hairTxt + '</button>' +
       '<button type="button" class="mini-card m-meal" data-action="go" data-route="alimentacao"><span class="mini-label">' + ui.icon('utensils', 16) + 'Próxima refeição</span>' + mealTxt + '</button>' +
       '</div>';
 
@@ -95,8 +108,9 @@
     }
 
     // Adicionar rápido
-    html += '<section class="quick"><h2>Adicionar</h2><div class="quick-grid">' +
-      quick('task', 'list', 'Tarefa') + quick('meal', 'utensils', 'Refeição') + quick('hair', 'flower', 'Tratamento') + quick('bill', 'wallet', 'Conta') +
+    html += '<section class="quick"><h2>Adicionar</h2><div class="quick-grid six">' +
+      quick('task', 'list', 'Tarefa') + quick('food', 'utensils', 'Alimento') + quick('workout', 'dumbbell', 'Treino') +
+      quick('hair', 'flower', 'Tratamento') + quick('bill', 'wallet', 'Conta') + quick('body', 'body', 'Medição') +
       '</div></section>';
     return html;
   }
@@ -106,7 +120,18 @@
   }
 
   JS.actions['go'] = function (d) { JS.app.go(d.route); };
-  JS.actions['quick-add'] = function (d) { if (JS.forms[d.kind]) JS.forms[d.kind](); };
+  JS.actions['quick-add'] = function (d) {
+    if (d.kind === 'workout') {
+      var s = JS.store.state, T = window.JSTreino, today = C.toDateKey(new Date());
+      if (T.activeSession(s)) { JS.app.go('sessao'); return; }
+      var p = T.planForDate(s, today);
+      if (p.plan) { JS.startWorkout(p.plan.id); return; }
+      if (!s.workoutPlans.length) { JS.forms.plan(); return; }
+      JS.app.go('treino');
+      return;
+    }
+    if (JS.forms[d.kind]) JS.forms[d.kind]();
+  };
   JS.actions['backup-dismiss'] = function (d, el) {
     JS.anim.removeThen(el, '.banner', function () { dismissedBackup = true; JS.app.render(); });
   };

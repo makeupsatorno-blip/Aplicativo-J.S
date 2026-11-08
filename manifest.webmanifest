@@ -2,22 +2,24 @@
   "id": "./",
   "name": "J.S. — Julia Satorno",
   "short_name": "J.S.",
-  "description": "Organização, autocuidado, alimentação e finanças.",
+  "description": "Rotina, treino, alimentação, cronograma capilar, corpo e finanças.",
   "lang": "pt-BR",
   "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "any",
   "background_color": "#FFF7FA",
   "theme_color": "#FFF7FA",
-  "categories": ["lifestyle", "productivity", "finance"],
+  "categories": ["lifestyle", "productivity", "health", "fitness"],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
+    { "name": "Treino", "url": "./#/treino", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Alimentação", "url": "./#/alimentacao", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Rotina", "url": "./#/rotina", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Financeiro", "url": "./#/financeiro", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
   ]

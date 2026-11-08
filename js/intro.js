@@ -39,8 +39,8 @@
     var name = typeof info.settings.name === 'string' ? info.settings.name.trim() : 'Julia';
     var end = name ? ', ' + name : '';
     return info.hasData
-      ? ['Organizando sua rotina…', 'Preparando seu autocuidado…', 'Conferindo suas refeições…', 'Revisando suas contas…', 'Arrumando tudo com carinho…', 'Tudo pronto' + end + ' 🌷']
-      : ['Preparando seu espaço…', 'Arrumando a rotina…', 'Separando o autocuidado…', 'Organizando as contas…', 'Deixando tudo com a sua cara…', 'Boas-vindas' + end + ' 🌷'];
+      ? ['Organizando sua rotina…', 'Aquecendo para o treino…', 'Conferindo suas refeições…', 'Revisando suas contas…', 'Arrumando tudo com carinho…', 'Tudo pronto' + end + ' 🌷']
+      : ['Preparando seu espaço…', 'Arrumando a rotina…', 'Montando seu cronograma capilar…', 'Organizando as contas…', 'Deixando tudo com a sua cara…', 'Boas-vindas' + end + ' 🌷'];
   }
 
   function begin() {
