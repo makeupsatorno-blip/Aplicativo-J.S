@@ -9,6 +9,7 @@
   var rest = { until: 0, total: 0, itemId: null };
   var ticker = null, listener = null, wakeLock = null, lastSetAt = 0, hintTimer = null;
   var sensor = 'off'; // off | on | perm | none | denied | unsupported
+  var autoTried = false;
 
   function session() { return T.activeSession(JS.store.state); }
   function clock(sec) {
@@ -69,9 +70,8 @@
         '<button type="button" class="btn-set" data-action="ses-set">' + ui.icon('check', 26) + '<span>Série feita</span></button>' +
         '<div class="ses-links">' +
         (it.sets.length ? '<button type="button" class="link" data-action="ses-undo">' + ui.icon('undo', 16) + 'Desfazer última</button>' : '<span></span>') +
-        '<details class="howto"><summary>' + ui.icon('play', 14) + 'Como fazer</summary><p>' + esc(ex.tips || 'Sem dica cadastrada para este exercício.') + '</p>' +
-        '<a href="' + esc(ex.videoUrl || ('https://www.youtube.com/results?search_query=' + encodeURIComponent(it.name + ' execução correta'))) + '" target="_blank" rel="noopener">Ver execução em vídeo</a></details>' +
-        '</div></section>';
+        '<details class="howto"' + (howtoOpen === it.id ? ' open' : '') + '><summary data-action="ses-howto" data-ex="' + esc(it.exerciseId) + '" data-item="' + esc(it.id) + '">' + ui.icon('play', 14) + 'Como fazer</summary></details>' +
+        '</div>' + howtoBody(ex, it) + '</section>';
     }
 
     if (x.items.length) {
@@ -86,6 +86,16 @@
       '<button type="button" class="btn primary" data-action="ses-finish">' + ui.icon('check', 18) + 'Encerrar treino</button>' +
       '<button type="button" class="btn ghost danger-text" data-action="ses-discard">Descartar treino</button></div>';
     return html;
+  }
+
+  // "Como fazer": dica + vídeo de execução (o vídeo só carrega quando a usuária abre).
+  var howtoOpen = null;
+  function howtoBody(ex, it) {
+    if (howtoOpen !== it.id) return '';
+    var v = JS.exVideo(ex && ex.id ? ex : { id: it.exerciseId });
+    return '<div class="howto-body">' + (v && v.yt ? JS.videoPlayer(v) : '') +
+      '<p>' + esc((ex && ex.tips) || 'Sem dica cadastrada para este exercício.') + '</p>' +
+      (v && v.yt ? '' : '<a href="' + esc(v && v.url ? v.url : JS.videoSearchUrl(it.name)) + '" target="_blank" rel="noopener">Ver execução em vídeo (YouTube)</a>') + '</div>';
   }
 
   function stepper(label, field, value, unit, step) {
@@ -128,16 +138,49 @@
     }
   }
 
+  // O toque atrás fica ouvindo enquanto o app está aberto (em qualquer tela):
+  //  - no treino em andamento, 2 batidas registram a série;
+  //  - em outra tela, 2 batidas levam ao treino (e, em Treino → Hoje, iniciam o treino do dia).
+  function onDouble() {
+    if (JS.intro && JS.intro.isRunning()) return;
+    if (document.getElementById('sheet').open || document.getElementById('confirm').open || document.querySelector('.countdown')) return;
+    var s = JS.store.state, r = JS.app.route();
+    if (r === 'sessao') { registerSet('toque-atras'); return; }
+    if (T.activeSession(s)) { JSToque.vibrate(40); ui.toast('Toque atrás: voltando ao treino.'); JS.app.go('sessao'); return; }
+    if (!s.workoutPlans.length) { JS.treinoView.mode = 'hoje'; JS.app.go('treino'); ui.toast('Monte uma ficha para usar o toque atrás no treino.'); return; }
+    var p = T.planForDate(s, C.toDateKey(new Date()));
+    if (r === 'treino' && JS.treinoView.mode === 'hoje') {
+      if (p.plan) { JSToque.vibrate(40); JS.startWorkout(p.plan.id); }
+      else ui.toast('Hoje não tem ficha. Toque em "Escolher ficha para hoje".');
+      return;
+    }
+    JSToque.vibrate(40);
+    JS.treinoView.mode = 'hoje';
+    JS.app.go('treino');
+    ui.toast(p.plan ? 'Toque atrás: bata 2 vezes de novo para iniciar ' + p.plan.name + '.' : 'Toque atrás: abrindo o treino.', { timeout: 4500 });
+  }
+
   function startSensor() {
     stopSensor();
     var bt = JS.store.state.settings.backTap || {};
     var Tq = window.JSToque;
     if (!bt.enabled) { sensor = 'off'; return; }
     if (!Tq || !Tq.supported()) { sensor = 'unsupported'; return; }
-    if (Tq.needsPermission() && JS.sessaoPerm !== 'granted') { sensor = JS.sessaoPerm === 'denied' ? 'denied' : 'perm'; return; }
+    if (Tq.needsPermission() && JS.sessaoPerm !== 'granted') {
+      sensor = JS.sessaoPerm === 'denied' ? 'denied' : 'perm';
+      // O Chrome (Android) libera o sensor sem perguntar; o iPhone exige um toque da usuária
+      // (iniciar treino, ligar a opção ou o botão "Ligar"). Tenta uma vez sem toque.
+      if (!autoTried) {
+        autoTried = true;
+        Tq.requestPermission().then(function (r) {
+          if (r === 'granted') { JS.sessaoPerm = 'granted'; startSensor(); refreshChip(); }
+        });
+      }
+      return;
+    }
     listener = Tq.listen({
       threshold: Tq.thresholdFor(bt),
-      onDouble: function () { registerSet('toque-atras'); },
+      onDouble: onDouble,
       onTap: tapHint,
       // O sensor demorou a mandar dados: quando chegarem, volta a mostrar "ligado".
       onSample: function () { if (sensor === 'none') { sensor = 'on'; refreshChip(); } },
@@ -169,17 +212,19 @@
     document.body.classList.add('focus-mode');
     clearInterval(ticker);
     ticker = setInterval(tick, 500);
-    startSensor();
+    if (!listener) startSensor();
+    refreshChip();
     keepAwake();
     document.addEventListener('visibilitychange', onVisible);
   }
   function leave() {
     document.body.classList.remove('focus-mode');
     clearInterval(ticker); ticker = null;
-    stopSensor();
     if (wakeLock) { try { wakeLock.release(); } catch (e) { /* já liberado */ } wakeLock = null; }
     document.removeEventListener('visibilitychange', onVisible);
   }
+  // Chamado quando o app abre (depois da intro) e quando a configuração muda.
+  JS.backTap = { start: startSensor, stop: function () { stopSensor(); sensor = 'off'; }, state: function () { return sensor; } };
 
   /* ---------------- Séries ---------------- */
 
@@ -201,6 +246,7 @@
     if (via === 'toque-atras' && Date.now() - lastSetAt < 1500) return; // evita registrar duas vezes
     lastSetAt = Date.now();
     var no = it.sets.length + 1, wasComplete = it.sets.length >= it.targetSets;
+    howtoOpen = null; // fecha o vídeo ao registrar a série
     rest = it.restSec > 0 ? { until: Date.now() + it.restSec * 1000, total: it.restSec, itemId: it.id } : { until: 0, total: 0, itemId: null };
     JS.anim.mark('.set-dots li:nth-child(' + no + ')', 'pop', { ms: 700 });
     JS.store.update(function (st, n) { T.logSet(st, x.id, it.id, n, via); });
@@ -275,6 +321,10 @@
     JS.store.update(function (st) { T.setCurrent(st, x.id, Number(d.i)); });
     window.scrollTo({ top: 0, behavior: JS.anim.reduced() ? 'auto' : 'smooth' });
     JS.anim.mark('.ses-card', 'swap', { ms: 500 });
+  };
+  JS.actions['ses-howto'] = function (d) {
+    howtoOpen = howtoOpen === d.item ? null : d.item;
+    JS.app.render();
   };
   JS.actions['ses-rest-add'] = function () { if (rest.until) { rest.until += 15000; rest.total += 15; tick(); } };
   JS.actions['ses-rest-skip'] = function () { rest = { until: 0, total: 0, itemId: null }; JS.app.render(); };

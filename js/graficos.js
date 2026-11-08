@@ -27,6 +27,9 @@
   function chart(spec) {
     var h = spec.height || 180;
     var legend = '';
+    if (spec.type === 'heat') {
+      legend = '<div class="chart-legend heat-legend"><span>menos</span>' + HEAT.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + '<span>mais</span></div>';
+    }
     if (spec.type === 'stack' && spec.series) {
       legend = '<div class="chart-legend">' + spec.series.map(function (s, i) {
         return '<span><i style="background:' + (s.color || SERIES[i]) + '"></i>' + esc(s.name) + '</span>';
@@ -92,6 +95,32 @@
     return 'M' + x + ',' + (y + h) + 'V' + (y + r) + 'Q' + x + ',' + y + ' ' + (x + r) + ',' + y + 'H' + (x + w - r) + 'Q' + (x + w) + ',' + y + ' ' + (x + w) + ',' + (y + r) + 'V' + (y + h) + 'Z';
   }
 
+  // Linha suave que não "inventa" picos entre os pontos (curva monótona de Fritsch-Carlson).
+  function smoothPath(xs, ys) {
+    var n = xs.length;
+    if (n < 3) return xs.map(function (x, i) { return (i ? 'L' : 'M') + x.toFixed(1) + ',' + ys[i].toFixed(1); }).join('');
+    var dx = [], m = [], t = [], i;
+    for (i = 0; i < n - 1; i++) { dx[i] = xs[i + 1] - xs[i]; m[i] = dx[i] ? (ys[i + 1] - ys[i]) / dx[i] : 0; }
+    t[0] = m[0]; t[n - 1] = m[n - 2];
+    for (i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+    for (i = 0; i < n - 1; i++) {
+      if (m[i] === 0) { t[i] = 0; t[i + 1] = 0; continue; }
+      var a = t[i] / m[i], b = t[i + 1] / m[i], s = a * a + b * b;
+      if (s > 9) { var k = 3 / Math.sqrt(s); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
+    }
+    var d = 'M' + xs[0].toFixed(1) + ',' + ys[0].toFixed(1);
+    for (i = 0; i < n - 1; i++) {
+      var h = dx[i] / 3;
+      d += 'C' + (xs[i] + h).toFixed(1) + ',' + (ys[i] + t[i] * h).toFixed(1) + ' ' + (xs[i + 1] - h).toFixed(1) + ',' + (ys[i + 1] - t[i + 1] * h).toFixed(1) +
+        ' ' + xs[i + 1].toFixed(1) + ',' + ys[i + 1].toFixed(1);
+    }
+    return d;
+  }
+
+  // Anima só na primeira montagem (não ao girar a tela) e nunca no modo "menos animação".
+  var firstMount = false;
+  function animating() { return firstMount && !document.documentElement.classList.contains('reduce-motion') && !!Element.prototype.animate; }
+
   /* ---------------- Montagem ---------------- */
 
   function mount(box) {
@@ -99,18 +128,77 @@
     try { spec = JSON.parse(box.dataset.spec); } catch (e) { return; }
     var W = Math.max(220, Math.round(box.clientWidth)), H = box.clientHeight || spec.height || 180;
     if (box._w === W) return;
+    firstMount = box._w == null;
     box._w = W;
     box.innerHTML = '';
-    if (!spec.points || !spec.points.length) { box.innerHTML = '<p class="chart-empty">Sem dados ainda.</p>'; return; }
+    if (spec.type !== 'heat' && (!spec.points || !spec.points.length)) { box.innerHTML = '<p class="chart-empty">Sem dados ainda.</p>'; return; }
     var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, focusable: 'false' }, box);
     svg.setAttribute('tabindex', '0');
     var tip = document.createElement('div');
     tip.className = 'chart-tip';
     tip.hidden = true;
     box.appendChild(tip);
-    var draw = spec.type === 'line' ? drawLine : spec.type === 'hbars' ? drawHBars : drawBars;
+    var draw = spec.type === 'line' ? drawLine : spec.type === 'hbars' ? drawHBars : spec.type === 'heat' ? drawHeat : drawBars;
     var api = draw(svg, spec, W, H);
     bindHover(box, svg, tip, spec, api);
+  }
+
+  // Calendário de constância: uma coluna por semana (dom-sáb), cada quadradinho é um dia.
+  var HEAT = ['#F3E9ED', '#D98EAA', '#B96788', '#78465A'];
+  function drawHeat(svg, spec, W, H) {
+    var weeks = spec.weeks || [], left = 26, top = 16;
+    var fit = Math.max(4, Math.floor((W - left - 4) / 11)); // no celular, 12 meses não cabem: mostra as semanas mais recentes
+    if (weeks.length > fit) weeks = weeks.slice(-fit);
+    var nW = weeks.length;
+    var cell = Math.max(8, Math.min(30, Math.floor((W - left - 4) / Math.max(1, nW)) - 4)), gap = 4;
+    // A altura acompanha o tamanho dos quadradinhos (poucas semanas = quadrados maiores).
+    var needH = top + 7 * (cell + gap);
+    svg.setAttribute('height', needH); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + needH);
+    if (svg.parentNode) svg.parentNode.style.height = needH + 'px';
+    var cells = [];
+    ['', 'S', '', 'Q', '', 'S', ''].forEach(function (l, r) { if (l) text(svg, 0, top + r * (cell + gap) + cell - 2, l, { 'font-size': 10 }); });
+    var lastLabel = -99;
+    weeks.forEach(function (w, c) {
+      var x = left + c * (cell + gap);
+      if (w.label && c - lastLabel >= 3) { text(svg, x, 11, w.label, { 'font-size': 10 }); lastLabel = c; }
+      w.days.forEach(function (d, r) {
+        if (!d) return;
+        var y = top + r * (cell + gap);
+        var lvl = d.future ? -1 : Math.min(3, d.v || 0);
+        var rect = el('rect', { x: x, y: y, width: cell, height: cell, rx: Math.min(6, cell / 4), fill: lvl < 0 ? '#FBF7F9' : HEAT[lvl] }, svg);
+        if (d.today) rect.setAttribute('stroke', INK), rect.setAttribute('stroke-width', 1.5);
+        if (animating() && lvl > 0) rect.animate([{ opacity: 0, transform: 'scale(.4)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: c * 18, easing: 'ease-out', fill: 'backwards' });
+        if (!d.future) cells.push({ x: x, y: y, s: cell, d: d, rect: rect });
+      });
+    });
+    return {
+      hit: function (px, py) {
+        for (var i = 0; i < cells.length; i++) { var c = cells[i]; if (px >= c.x - 1.5 && px <= c.x + c.s + 1.5 && py >= c.y - 1.5 && py <= c.y + c.s + 1.5) return i; }
+        return -1;
+      },
+      count: cells.length,
+      show: function (i) {
+        var c = cells[i];
+        cells.forEach(function (o) { o.rect.removeAttribute('opacity'); });
+        return { x: c.x + c.s / 2, y: c.y, rows: [{ value: c.d.text || (c.d.v ? c.d.v + (c.d.v === 1 ? ' treino' : ' treinos') : 'sem treino'), name: '', color: HEAT[Math.min(3, c.d.v || 0)] }], title: c.d.tip };
+      },
+      hide: function () {}
+    };
+  }
+
+  // Minilinha de tendência para os números do topo (sem eixos; o último ponto em destaque).
+  function spark(values, color) {
+    if (!values || !values.length) return '';
+    var v = values.filter(function (x) { return x != null && isFinite(x); });
+    if (v.length < 2) return '';
+    var W = 84, H = 26, min = Math.min.apply(null, v), max = Math.max.apply(null, v), rng = max - min || 1;
+    var xs = values.map(function (x, i) { return 2 + i * (W - 6) / (values.length - 1); });
+    var pts = [];
+    values.forEach(function (x, i) { if (x != null && isFinite(x)) pts.push([xs[i], H - 4 - (x - min) / rng * (H - 8)]); });
+    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join('');
+    var last = pts[pts.length - 1];
+    return '<svg class="spark" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><path d="' + d + '" fill="none" stroke="#CDBDC4" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3" fill="' + (color || SERIES[0]) + '" stroke="#fff" stroke-width="1.5"/></svg>';
   }
 
   function frame(spec, W, H, vals, zero) {
@@ -160,10 +248,20 @@
     var xs = pts.map(function (p, i) { return n === 1 ? f.left + f.pw / 2 : f.left + i * f.pw / (n - 1); });
     gridAndAxis(svg, f, pts.map(function (p) { return p.label; }), xs, W);
     goalLine(svg, spec, f, W);
-    var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + xs[i].toFixed(1) + ',' + f.y(p.v).toFixed(1); }).join('');
+    var d = smoothPath(xs, pts.map(function (p) { return f.y(p.v); }));
     if (n > 1) {
-      el('path', { d: d + 'L' + xs[n - 1].toFixed(1) + ',' + (f.top + f.ph) + 'L' + xs[0].toFixed(1) + ',' + (f.top + f.ph) + 'Z', fill: color, 'fill-opacity': 0.1 }, svg);
-      el('path', { d: d, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', class: 'chart-line' }, svg);
+      var area = el('path', { d: d + 'L' + xs[n - 1].toFixed(1) + ',' + (f.top + f.ph) + 'L' + xs[0].toFixed(1) + ',' + (f.top + f.ph) + 'Z', fill: color, 'fill-opacity': 0.1 }, svg);
+      var line = el('path', { d: d, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', class: 'chart-line' }, svg);
+      if (animating()) {
+        // A linha se desenha da esquerda para a direita e a área aparece em seguida.
+        var len = line.getTotalLength ? line.getTotalLength() : 0;
+        if (len) {
+          line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
+          line.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: 900, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'forwards' })
+            .onfinish = function () { line.style.strokeDasharray = ''; line.style.strokeDashoffset = ''; };
+        }
+        area.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 600, delay: 400, fill: 'backwards' });
+      }
     }
     // Pontos pequenos quando há poucos; o último sempre, com o valor ao lado.
     pts.forEach(function (p, i) {
@@ -211,6 +309,11 @@
         });
       } else if (p.v > 0) {
         el('path', { d: barPath(x, f.y(p.v), bw, f.y(0) - f.y(p.v), 4), fill: p.color || spec.color || SERIES[0] }, g);
+      }
+      if (animating()) {
+        // As barras crescem a partir da base, uma depois da outra.
+        g.style.transformBox = 'fill-box'; g.style.transformOrigin = '50% 100%';
+        g.animate([{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { duration: 520, delay: Math.min(i * 22, 500), easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' });
       }
       marks.push(g);
     });
@@ -265,9 +368,10 @@
   /* ---------------- Dica ao tocar / passar o mouse / teclado ---------------- */
 
   function bindHover(box, svg, tip, spec, api) {
-    var cur = -1, n = spec.points.length;
+    var cur = -1, n = api.count != null ? api.count : spec.points.length;
     function nearest(evt) {
       var r = svg.getBoundingClientRect();
+      if (api.hit) return api.hit(evt.clientX - r.left, evt.clientY - r.top);
       if (api.xs) {
         var x = evt.clientX - r.left, best = 0;
         api.xs.forEach(function (v, i) { if (Math.abs(v - x) < Math.abs(api.xs[best] - x)) best = i; });
@@ -298,11 +402,12 @@
     }
     function hide() { cur = -1; tip.hidden = true; api.hide(); }
     box._hide = hide;
-    svg.addEventListener('pointermove', function (e) { show(nearest(e)); });
-    svg.addEventListener('pointerdown', function (e) { show(nearest(e)); });
+    function at(e) { var i = nearest(e); if (i < 0) hide(); else show(i); }
+    svg.addEventListener('pointermove', at);
+    svg.addEventListener('pointerdown', at);
     svg.addEventListener('pointerleave', function (e) { if (e.pointerType === 'mouse') hide(); });
     svg.addEventListener('blur', hide);
-    svg.addEventListener('focus', function () { show(n - 1); });
+    svg.addEventListener('focus', function () { if (n) show(n - 1); });
     svg.addEventListener('keydown', function (e) {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); show(Math.max(0, (cur < 0 ? n : cur) - 1)); }
       else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); show(Math.min(n - 1, cur + 1)); }
@@ -324,5 +429,5 @@
     document.querySelectorAll('.chart').forEach(function (b) { if (b !== inside && b._hide) b._hide(); });
   }, true);
 
-  JS.graf = { chart: chart, mountAll: mountAll, SERIES: SERIES, fmtNum: fmtNum };
+  JS.graf = { chart: chart, mountAll: mountAll, spark: spark, SERIES: SERIES, HEAT: HEAT, fmtNum: fmtNum };
 })();

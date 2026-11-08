@@ -17,6 +17,47 @@
   JS.foodName = foodName;
   function curDate() { return view.date || C.toDateKey(new Date()); }
 
+  /* ---------------- Imagem de cada alimento (ícone) ---------------- */
+  // Palavra do nome (sem acento) -> ícone. A primeira que aparecer no nome vale; sem nenhuma, usa o grupo da TACO.
+  var FOOD_ICONS = [
+    ['batata doce', '🍠'], ['pao de queijo', '🧀'], ['couve flor', '🥦'], ['creme de leite', '🥛'], ['agua de coco', '🥥'],
+    ['batata', '🥔'], ['mandioca', '🍠'], ['inhame', '🍠'], ['ovo', '🥚'], ['ovos', '🥚'], ['arroz', '🍚'],
+    ['feijao', '🍲'], ['feijoada', '🍲'], ['lentilha', '🍲'], ['grao', '🍲'], ['tofu', '🍲'], ['soja', '🍲'],
+    ['pao', '🍞'], ['torrada', '🍞'], ['biscoito', '🍪'], ['bolo', '🍰'], ['macarrao', '🍝'], ['lasanha', '🍝'], ['pizza', '🍕'],
+    ['tapioca', '🫓'], ['cuscuz', '🌽'], ['milho', '🌽'], ['pipoca', '🍿'], ['aveia', '🥣'], ['granola', '🥣'], ['farinha', '🌾'],
+    ['queijo', '🧀'], ['requeijao', '🧀'], ['iogurte', '🥣'], ['leite', '🥛'], ['manteiga', '🧈'], ['margarina', '🧈'],
+    ['cafe', '☕'], ['cha', '🍵'], ['suco', '🧃'], ['refrigerante', '🥤'], ['cerveja', '🍺'], ['vinho', '🍷'],
+    ['frango', '🍗'], ['peru', '🍗'], ['carne', '🥩'], ['porco', '🥓'], ['bacon', '🥓'], ['presunto', '🥓'], ['mortadela', '🥓'],
+    ['linguica', '🌭'], ['salsicha', '🌭'], ['hamburguer', '🍔'],
+    ['merluza', '🐟'], ['pescada', '🐟'], ['salmao', '🐟'], ['tilapia', '🐟'], ['atum', '🐟'], ['sardinha', '🐟'], ['bacalhau', '🐟'],
+    ['corvina', '🐟'], ['pintado', '🐟'], ['cacao', '🐟'], ['peixe', '🐟'], ['camarao', '🦐'], ['caranguejo', '🦀'], ['lula', '🦑'], ['polvo', '🐙'],
+    ['banana', '🍌'], ['maca', '🍎'], ['mamao', '🥭'], ['manga', '🥭'], ['melao', '🍈'], ['melancia', '🍉'], ['abacaxi', '🍍'],
+    ['morango', '🍓'], ['kiwi', '🥝'], ['uva', '🍇'], ['laranja', '🍊'], ['tangerina', '🍊'], ['mexerica', '🍊'], ['limao', '🍋'],
+    ['pera', '🍐'], ['abacate', '🥑'], ['pessego', '🍑'], ['ameixa', '🍑'], ['cereja', '🍒'], ['acerola', '🍒'], ['coco', '🥥'],
+    ['goiaba', '🍏'], ['maracuja', '🥭'], ['caju', '🍎'],
+    ['tomate', '🍅'], ['cenoura', '🥕'], ['brocolis', '🥦'], ['alface', '🥬'], ['rucula', '🥬'], ['agriao', '🥬'], ['couve', '🥬'],
+    ['espinafre', '🥬'], ['repolho', '🥬'], ['acelga', '🥬'], ['pepino', '🥒'], ['abobrinha', '🥒'], ['chuchu', '🥒'], ['quiabo', '🥒'],
+    ['vagem', '🥒'], ['abobora', '🎃'], ['cebola', '🧅'], ['alho', '🧄'], ['pimentao', '🫑'], ['pimenta', '🌶️'], ['berinjela', '🍆'],
+    ['cogumelo', '🍄'], ['amendoim', '🥜'], ['castanha', '🌰'], ['nozes', '🌰'], ['amendoa', '🌰'], ['gergelim', '🌰'], ['linhaca', '🌰'],
+    ['chocolate', '🍫'], ['achocolatado', '🍫'], ['mel', '🍯'], ['geleia', '🍯'], ['acucar', '🍬'], ['doce', '🍬'], ['sorvete', '🍨'],
+    ['pudim', '🍮'], ['gelatina', '🍮'], ['azeite', '🫒'], ['oleo', '🫒'], ['azeitona', '🫒'], ['sal', '🧂'], ['sopa', '🍲'], ['salada', '🥗']
+  ];
+  var GROUP_ICONS = [
+    ['Frutas', '🍎', 'fruta'], ['Verduras', '🥗', 'veg'], ['Carnes', '🥩', 'prot'], ['Pescados', '🐟', 'prot'], ['Ovos', '🥚', 'prot'],
+    ['Leite', '🥛', 'leite'], ['Cereais', '🌾', 'graos'], ['Leguminosas', '🍲', 'graos'], ['Nozes', '🌰', 'graos'], ['Bebidas', '🥤', 'leite'],
+    ['Açúcares', '🍬', 'fruta'], ['Gorduras', '🫒', 'graos'], ['preparados', '🍲', 'prot'], ['Produtos', '🍽️', 'graos']
+  ];
+  function foodIcon(f) {
+    var words = ' ' + N.fold(f && f.name) + ' ', icon = null, tint = '';
+    for (var i = 0; i < FOOD_ICONS.length && !icon; i++) if (words.indexOf(' ' + FOOD_ICONS[i][0] + ' ') >= 0) icon = FOOD_ICONS[i][1];
+    var g = (f && f.group) || '';
+    for (var k = 0; k < GROUP_ICONS.length; k++) {
+      if (g.indexOf(GROUP_ICONS[k][0]) >= 0) { tint = GROUP_ICONS[k][2]; if (!icon) icon = GROUP_ICONS[k][1]; break; }
+    }
+    return '<span class="food-ic fi-' + (tint || 'outro') + '" aria-hidden="true">' + (icon || '🍽️') + '</span>';
+  }
+  JS.foodIcon = foodIcon;
+
   /* ---------------- Horários (lembretes de refeição) ---------------- */
 
   function weekdayLetters(days) {
@@ -119,7 +160,7 @@
     mealsOfDay(s, date, dl).forEach(function (m) {
       var g = groups[m.type];
       var rows = g ? g.items.map(function (x) {
-        return '<button type="button" class="food-row" data-action="food-log" data-id="' + esc(x.log.id) + '"><span class="fr-main"><span class="fr-name">' + foodName(x.log.name) + '</span>' +
+        return '<button type="button" class="food-row" data-action="food-log" data-id="' + esc(x.log.id) + '">' + foodIcon(x.food || { name: x.log.name }) + '<span class="fr-main"><span class="fr-name">' + foodName(x.log.name) + '</span>' +
           '<span class="fr-meta">' + f1(x.log.grams) + ' g • P ' + f1(x.nutr.prot) + ' • C ' + f1(x.nutr.carb) + ' • G ' + f1(x.nutr.lip) + '</span></span><strong>' + f0(x.nutr.kcal) + '<small> kcal</small></strong></button>';
       }).join('') : '';
       html += '<section class="card meal-card"><div class="card-head"><h2>' + esc(m.name) + (m.time ? ' <span class="muted small">' + esc(m.time) + '</span>' : '') + '</h2>' +
@@ -151,9 +192,10 @@
       all = all.concat(m.items.map(function (i) { return i.nutr; }));
       html += '<section class="card sug-card"><div class="card-head"><h2>' + esc(m.mealName) + (m.time ? ' <span class="muted small">' + esc(m.time) + '</span>' : '') + '</h2>' +
         '<span class="count">≈ ' + f0(m.total.kcal) + ' kcal</span></div>' +
+        '<div class="sug-plate" aria-hidden="true">' + m.items.map(function (i) { return foodIcon(N.foodById(s, i.foodId)); }).join('') + '</div>' +
         '<p class="sug-name">' + esc(m.option) + ' <span class="muted small">(opção ' + (m.optionIndex + 1) + ' de ' + m.options + ')</span></p>' +
         '<ul class="sug-list">' + m.items.map(function (i) {
-          return '<li><button type="button" data-action="food-info" data-id="' + esc(i.foodId) + '" data-grams="' + i.grams + '"><span>' + f0(i.grams) + ' g</span><span class="fr-name">' + foodName(i.name) + '</span><em>' + f0(i.nutr.kcal) + ' kcal</em></button></li>';
+          return '<li><button type="button" data-action="food-info" data-id="' + esc(i.foodId) + '" data-grams="' + i.grams + '">' + foodIcon(N.foodById(s, i.foodId)) + '<span>' + f0(i.grams) + ' g</span><span class="fr-name">' + foodName(i.name) + '</span><em>' + f0(i.nutr.kcal) + ' kcal</em></button></li>';
         }).join('') + '</ul>' +
         '<p class="fr-meta">Proteínas ' + f1(m.total.prot) + ' g • Carboidratos ' + f1(m.total.carb) + ' g • Gorduras ' + f1(m.total.lip) + ' g • Fibras ' + f1(m.total.fibra) + ' g</p>' +
         '<div class="btn-row tight"><button type="button" class="btn small primary" data-action="sug-use" data-meal="' + m.type + '">' + ui.icon('plus', 16) + 'Usar no diário</button>' +
@@ -180,7 +222,7 @@
     var list = N.search(JS.store.state, q, 40);
     if (!list.length) return '<p class="muted small">Nada encontrado para "' + esc(q) + '". Tente outra palavra ou cadastre o alimento.</p>';
     return list.map(function (f) {
-      return '<button type="button" class="food-row" data-action="food-info" data-id="' + esc(f.id) + '"><span class="fr-main"><span class="fr-name">' + foodName(f.name) + '</span>' +
+      return '<button type="button" class="food-row" data-action="food-info" data-id="' + esc(f.id) + '">' + foodIcon(f) + '<span class="fr-main"><span class="fr-name">' + foodName(f.name) + '</span>' +
         '<span class="fr-meta">' + esc(f.group) + ' • P ' + f1(f.per100.prot) + ' • C ' + f1(f.per100.carb) + ' • G ' + f1(f.per100.lip) + '</span></span><strong>' + f0(f.per100.kcal) + '<small> kcal</small></strong></button>';
     }).join('');
   }
@@ -233,7 +275,7 @@
     var portions = N.portions(s, foodId);
     var chips = GRAM_CHIPS.map(function (g) { return { label: g + ' g', attrs: 'data-g="' + g + '"' }; })
       .concat(portions.map(function (p) { return { label: p.label + ' (' + JS.graf.fmtNum(p.grams, 1) + ' g)', attrs: 'data-g="' + p.grams + '"' }; }));
-    var body = '<p class="food-title">' + foodName(f.name) + '</p><p class="muted small">' + esc(f.group) + '</p>' +
+    var body = '<div class="food-head">' + foodIcon(f) + '<div><p class="food-title">' + foodName(f.name) + '</p><p class="muted small">' + esc(f.group) + '</p></div></div>' +
       '<div class="row2">' + ui.input({ label: 'Quantidade (g)', name: 'grams', type: 'text', value: String(grams).replace('.', ','), attrs: 'inputmode="decimal" min="1" max="3000" step="1"' }) +
       ui.select({ label: 'Refeição', name: 'meal', options: ui.entries(C.MEAL_TYPES), value: opts.meal || guessMeal() }) + '</div>' +
       ui.chips(chips) +
@@ -313,7 +355,7 @@
     if (!out.length) return '<p class="muted small">Digite para buscar na tabela TACO (597 alimentos).</p>';
     return '<p class="stat-label">Usados recentemente</p>' + out.map(function (l) {
       var f = N.foodById(s, l.foodId);
-      return f ? '<button type="button" class="food-row" data-id="' + esc(f.id) + '" data-grams="' + l.grams + '"><span class="fr-main"><span class="fr-name">' + foodName(f.name) + '</span><span class="fr-meta">última vez ' + f1(l.grams) + ' g</span></span><strong>' + f0(N.scale(f.per100, l.grams).kcal) + '<small> kcal</small></strong></button>' : '';
+      return f ? '<button type="button" class="food-row" data-id="' + esc(f.id) + '" data-grams="' + l.grams + '">' + foodIcon(f) + '<span class="fr-main"><span class="fr-name">' + foodName(f.name) + '</span><span class="fr-meta">última vez ' + f1(l.grams) + ' g</span></span><strong>' + f0(N.scale(f.per100, l.grams).kcal) + '<small> kcal</small></strong></button>' : '';
     }).join('');
   }
 

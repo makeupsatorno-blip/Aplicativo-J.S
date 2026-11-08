@@ -23,6 +23,41 @@
 
   function isRecurring(t) { return t.recurrence && t.recurrence !== 'none'; }
 
+  // Dias da semana escritos (Seg, Ter...), de segunda a domingo. Marcar dias = repetir toda semana neles.
+  var WD_ORDER = [1, 2, 3, 4, 5, 6, 0];
+  function weekdayChips(selected) {
+    var sel = (selected || []).map(Number);
+    return '<div class="field" data-field="weekdays"><span class="label">Dias da semana</span><div class="wd-chips">' +
+      WD_ORDER.map(function (d) {
+        return '<label class="wd-chip"><input type="checkbox" name="weekdays" value="' + d + '"' + (sel.indexOf(d) >= 0 ? ' checked' : '') + '><span>' + C.WEEKDAY_SHORT[d] + '</span></label>';
+      }).join('') + '</div><p class="hint">Marque os dias e a tarefa repete toda semana neles (ex.: só segunda, ou segunda e quarta).</p><p class="err" role="alert"></p></div>';
+  }
+  function bindWeekdays(form) {
+    var rec = form.elements.recurrence, boxes = Array.prototype.slice.call(form.querySelectorAll('input[name="weekdays"]'));
+    if (!rec || !boxes.length) return;
+    boxes.forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        var any = boxes.some(function (b) { return b.checked; });
+        if (any) rec.value = 'weekly';
+        else if (rec.value === 'weekly') rec.value = 'none';
+        if (any && !form.elements.dueDate.value) form.elements.dueDate.value = C.toDateKey(new Date());
+      });
+    });
+    rec.addEventListener('change', function () {
+      if (rec.value !== 'weekly') { boxes.forEach(function (b) { b.checked = false; }); return; }
+      if (!boxes.some(function (b) { return b.checked; }) && C.isDateKey(form.elements.dueDate.value)) {
+        var w = C.weekday(form.elements.dueDate.value);
+        boxes.forEach(function (b) { b.checked = Number(b.value) === w; });
+      }
+    });
+  }
+  function recurrenceLabel(t) {
+    if (t.recurrence === 'weekly' && Array.isArray(t.weekdays) && t.weekdays.length) {
+      return 'Toda semana: ' + WD_ORDER.filter(function (d) { return t.weekdays.indexOf(d) >= 0; }).map(function (d) { return C.WEEKDAY_SHORT[d]; }).join(', ');
+    }
+    return C.TASK_RECURRENCES[t.recurrence];
+  }
+
   function minutesBetween(a, b) {
     var m = Math.max(0, Math.round((new Date(b) - new Date(a)) / 60000));
     return m < 1 ? 'menos de 1 min' : m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + C.pad(m % 60) + ' min';
@@ -130,6 +165,7 @@
       '<div class="row2">' + ui.input({ label: 'Data', name: 'dueDate', type: 'date', value: v.dueDate || '' }) +
       ui.input({ label: 'Hora', name: 'dueTime', type: 'time', value: v.dueTime || '' }) + '</div>' +
       ui.chips([{ label: 'Hoje', attrs: 'data-set-date="0"' }, { label: 'Amanhã', attrs: 'data-set-date="1"' }, { label: 'Sem data', attrs: 'data-set-date="none"' }]) +
+      weekdayChips(v.weekdays && v.weekdays.length ? v.weekdays : (v.recurrence === 'weekly' && v.dueDate ? [C.weekday(v.dueDate)] : [])) +
       ui.select({ label: 'Repetição', name: 'recurrence', options: ui.entries(C.TASK_RECURRENCES), value: v.recurrence }) +
       ui.select({ label: 'Lembrete', name: 'reminderMinutes', options: C.REMINDER_OPTIONS, value: v.reminderMinutes, hint: 'O lembrete precisa de data e hora.' }) +
       '<div class="row2">' + ui.select({ label: 'Categoria', name: 'category', options: ui.plain(C.TASK_CATEGORIES), value: v.category }) +
@@ -140,10 +176,11 @@
       title: t ? 'Editar tarefa' : 'Nova tarefa', body: body, submitLabel: t ? 'Salvar' : 'Adicionar',
       onOpen: function (form) {
         bindDefaultReminder(form, 'dueTime', DEFAULT_REMINDER);
+        bindWeekdays(form);
         form.querySelectorAll('[data-set-date]').forEach(function (b) {
           b.addEventListener('click', function () {
             var x = b.dataset.setDate, el = form.elements;
-            if (x === 'none') { el.dueDate.value = ''; el.dueTime.value = ''; el.recurrence.value = 'none'; el.reminderMinutes.value = ''; }
+            if (x === 'none') { el.dueDate.value = ''; el.dueTime.value = ''; el.recurrence.value = 'none'; el.reminderMinutes.value = ''; form.querySelectorAll('input[name="weekdays"]').forEach(function (cb) { cb.checked = false; }); }
             else el.dueDate.value = C.addDays(C.toDateKey(new Date()), Number(x));
           });
         });
@@ -232,7 +269,7 @@
     var done = !!(o && o.status === 'done');
     var doing = !!(o && o.status === 'doing');
     var sub = [date ? C.formatDayLabel(date, today) + ' (' + C.formatDayMonth(date) + ')' : 'Sem data',
-      date && t.dueTime ? t.dueTime : null, isRecurring(t) ? C.TASK_RECURRENCES[t.recurrence] : null, t.category].filter(Boolean).join(' • ');
+      date && t.dueTime ? t.dueTime : null, isRecurring(t) ? recurrenceLabel(t) : null, t.category].filter(Boolean).join(' • ');
     var detail = (t.description ? '<p>' + esc(t.description) + '</p>' : '') +
       (t.reminderMinutes != null && t.dueTime ? '<p class="muted">' + ui.icon('bell', 14) + ' Lembrete: ' + esc(C.minutesLabel(t.reminderMinutes)) + '</p>' : '') +
       (done && o.completedAt ? '<p class="muted">' + ui.icon('check', 14) + ' Concluída em ' + esc(C.formatTimestamp(o.completedAt)) + (o.startedAt ? ' (levou ' + esc(minutesBetween(o.startedAt, o.completedAt)) + ')' : '') + '</p>' : '') +

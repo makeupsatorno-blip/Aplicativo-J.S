@@ -35,7 +35,7 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.0.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.1.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
@@ -50,6 +50,9 @@ Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-
 - **Calendário do mês:** mostra a ficha de cada dia (letra e cor), os treinos feitos (✓) e os descansos.
 - **Execução:** "Iniciar treino" faz uma contagem 3-2-1 e abre o treino em tela cheia, com a tela sempre acesa. Ajuste a carga e as repetições com **+/−** e toque em **Série feita**. O descanso começa sozinho e avisa com bipe e vibração quando acaba. Ao terminar, aparece o resumo (duração, séries, volume e recordes) e a ficha passa a sugerir a última carga usada.
 - **Toque atrás:** com o J.S. aberto no treino, **bata 2 vezes na parte de trás do celular** para registrar a série, como no app Tap Fit. Funciona no Android e no iPhone, pelo sensor de movimento. No iPhone o app pede permissão para usar o sensor. Em Configurações → Treino dá para mudar a sensibilidade e **testar e calibrar** com as suas batidas. Com o app fechado, nenhum site instalado consegue ouvir o sensor. Por isso, o toque atrás do próprio celular (Samsung Good Lock/RegiStar, Pixel "Toque rápido") pode ser configurado para **abrir o J.S.**, que vai direto para o treino em andamento.
+- **Toque atrás em qualquer tela:** com o app aberto, as 2 batidas levam ao treino (e, em Treino → Hoje, iniciam o treino do dia); no treino em andamento, registram a série.
+- **Abrir direto no treino:** como o toque atrás do celular só abre o app, o J.S. abre (sem a intro) na execução quando há treino em andamento, e em Treino → Hoje nos dias de treino ainda não feitos. Ajuste em Configurações → "Ao abrir o app" (dias de treino / sempre Treino / sempre Início).
+- **Vídeo de execução:** na lista de exercícios cada um tem uma miniatura; tocar abre o vídeo ali mesmo (YouTube, em português; os 48 vídeos foram conferidos) com a dica e o botão de escolher. No treino, "Como fazer" mostra o vídeo e a dica. Exercício criado por você usa o link que você colocar. Precisa de internet.
 - **Evolução:** para cada aparelho, um gráfico da carga máxima por treino e o volume, mostrando se a carga está aumentando ou diminuindo em relação ao treino anterior e ao primeiro.
 - **Lembrete:** em Treino → Semana, escolha um horário para ser avisada nos dias que têm ficha.
 
@@ -59,8 +62,14 @@ Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-
 - **Meta de calorias:** definida por você ou estimada automaticamente pelo metabolismo basal (da bioimpedância ou, sem ela, pela fórmula de Mifflin-St Jeor com peso, altura e idade) × nível de atividade.
 - **Cardápio:** sugestões para as refeições do dia (as de Horários; sem horários, 4 refeições), montadas com alimentos da TACO e com as porções ajustadas à meta. Há "Outra opção" e "Usar no diário". São sugestões gerais e equilibradas, que não substituem a orientação de uma nutricionista.
 - **Corpo:** registre os dados da balança de bioimpedância (peso, % de gordura, massa muscular, massa magra, água, gordura visceral, metabolismo basal, massa óssea, proteína, idade metabólica) e medidas com fita. O app mostra a diferença para a medição anterior, a **indicação de massa muscular** (ganhando, estável ou perdendo, % do peso e kg/m²), o IMC (faixas da OMS), a faixa de gordura (referência geral da ACE) e gráficos.
-- **Gráficos:** painel com treinos, volume, carga, peso, gordura, massa muscular, calorias, macronutrientes, tarefas, contas pagas e cronograma capilar, em 30 dias, 90 dias ou 12 meses. Toque num gráfico para ver o valor; cada gráfico tem a tabela equivalente.
-- **Tarefas:** além de concluir, dá para **Começar agora** (botão ▶ nas tarefas de hoje). A tarefa ganha uma animação de largada e fica "Em andamento" com cronômetro. Ao concluir, o app mostra quanto tempo levou.
+- **Imagens dos alimentos:** cada alimento aparece com uma imagem (ícone) no cardápio, no diário e na busca; o cartão de cada refeição sugerida mostra o "prato" com as imagens.
+- **Gráficos:** painel em 30 dias, 90 dias ou 12 meses, com filtro por módulo (Treino, Corpo, Alimentação, Rotina, Finanças, Capilar):
+  - números do período comparados com o período anterior, com minilinha de tendência;
+  - **Destaques** em frases (ex.: "2 treinos a mais que no período anterior", "Massa muscular +0,5 kg");
+  - **Constância** dos treinos num calendário de quadradinhos, com a sequência de semanas;
+  - treinos e volume, **evolução das cargas** dos exercícios mais feitos, peso, massa muscular, gordura, calorias com a meta, macronutrientes, tarefas e taxa de conclusão, contas por mês e por categoria, tratamentos capilares.
+  - Toque num gráfico para ver o valor; cada gráfico tem a tabela equivalente. Linhas e barras aparecem com animação (menos no modo "menos animação").
+- **Tarefas:** além de concluir, dá para **Começar agora** (botão ▶ nas tarefas de hoje). A tarefa ganha uma animação de largada e fica "Em andamento" com cronômetro. Ao concluir, o app mostra quanto tempo levou. Para repetir em dias certos, marque os **dias da semana** escritos (Seg, Ter, Qua...) acima de Repetição: a tarefa repete toda semana nesses dias.
 
 ## 4. Notificações
 
@@ -99,7 +108,8 @@ supabase functions deploy js-push --no-verify-jwt --use-api            # funçã
 - **Intro:** baseada na intro do Meu Financeiro IA, com cerca de 5,5 s de carregamento.
   - Animação da logo: um disco rosa surge, o anel se desenha, o J e o S são "escritos" (o contorno é traçado e depois a cor preenche), um brilho atravessa a logo e estrelinhas piscam em volta. Anéis giram ao redor.
   - Frases de carregamento com barra de progresso.
-  - Interativa: tocar solta pétalas (e estende um pouco a intro), a logo se inclina seguindo o dedo, e "Pular" ou Esc entra direto.
+  - Flores desenhadas (três tipos, em tons de rosa e lilás) flutuam no fundo e pulam embaixo da frase.
+  - Interativa: tocar solta um monte de flores e uma flor grande desabrocha no ponto do toque (e estende um pouco a intro), a logo se inclina seguindo o dedo, e "Pular" ou Esc entra direto.
   - Volta a aparecer quando o app é reaberto depois de 5 minutos fora.
   - Pode ser desligada em **Configurações → Aplicativo**, onde também há o botão "Ver a intro agora".
 - **Animações do app** (`js/anim.js`):

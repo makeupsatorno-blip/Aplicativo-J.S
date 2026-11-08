@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui;
-  var VERSION = '2.0.0';
+  var VERSION = '2.1.0';
   var lastToday = null;
   var deferredInstall = null;
 
@@ -156,12 +156,6 @@
 
   function init() {
     JS.store.load();
-    // Abriu o app (ex.: pelo toque atrás do próprio celular) com um treino em andamento
-    // nas últimas 3 horas: vai direto para a execução do treino.
-    var act = window.JSTreino && JSTreino.activeSession(JS.store.state);
-    if (act && !(location.hash || '').replace(/^#\/?/, '') && Date.now() - new Date(act.startedAt).getTime() < 3 * 3600000) {
-      history.replaceState(null, '', '#/sessao');
-    }
     lastToday = C.toDateKey(new Date());
     JS.store.silentUpdate(function (s, n) { R.ensureRecurringBills(s, lastToday, n); });
     JS.store.subscribe(render);
@@ -172,8 +166,29 @@
     JS.intro.whenDone(function () {
       if (JS.store.loadError) ui.toast(JS.store.loadError, { error: true, timeout: 9000 });
       JS.notify.start();
+      if (JS.backTap) JS.backTap.start(); // 2 batidas atrás: série no treino; nas outras telas, leva ao treino
     });
     JS.push.start();
+    watchReopen();
+  }
+
+  // O app instalado "volta" em vez de reabrir. Ao voltar:
+  //  - com treino em andamento (fora por 3 s ou mais): vai para a execução do treino;
+  //  - num dia de treino ainda não feito, depois de 5 min fora: vai para Treino → Hoje.
+  function watchReopen() {
+    var hiddenAt = null;
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+      var away = hiddenAt ? Date.now() - hiddenAt : 0;
+      hiddenAt = null;
+      if (!away || !window.JS_OPEN) return;
+      var target = window.JS_OPEN(JS.store.state, new Date());
+      if (!target || route() === target) return;
+      if (away < (target === 'sessao' ? 3000 : 5 * 60000)) return;
+      if (document.getElementById('sheet').open || document.getElementById('confirm').open) return;
+      if (target === 'treino' && JS.treinoView) JS.treinoView.mode = 'hoje';
+      go(target);
+    });
   }
 
   JS.app = {

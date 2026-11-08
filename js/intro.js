@@ -101,24 +101,40 @@
 
   /* ---------------- Interações ---------------- */
 
-  var COLORS = ['#F5D5E1', '#D98EAA', '#B96788', '#C9B3DE', '#FCEBF1', '#E9AFC4'];
+  // Cada toque solta um monte de flores (3 desenhos, várias cores) e uma flor grande desabrocha no lugar.
+  var COLORS = ['#F3C6D6', '#D98EAA', '#B96788', '#C9B3DE', '#E9AFC4', '#FFFFFF', '#F7A8C4', '#A98BD0'];
+  var CENTERS = ['#FFF1A8', '#F9E07F', '#FFFFFF', '#FBD3E2'];
+  var live = 0;
+  function flower(x, y, size, cls) {
+    var f = document.createElement('i');
+    f.className = 'flw intro-burst ' + cls;
+    f.style.cssText = 'left:' + x + 'px;top:' + y + 'px;--s:' + size.toFixed(0) + 'px;--c:' + COLORS[Math.floor(Math.random() * COLORS.length)] +
+      ';--cc:' + CENTERS[Math.floor(Math.random() * CENTERS.length)];
+    el.appendChild(f);
+    live++;
+    return f;
+  }
+  function done(n) { return function () { n.remove(); live--; }; }
   function burst(x, y) {
     if (!Element.prototype.animate) return;
-    for (var i = 0; i < 11; i++) {
-      var p = document.createElement('i');
-      p.className = 'intro-burst';
-      p.style.left = x + 'px';
-      p.style.top = y + 'px';
-      p.style.background = COLORS[i % COLORS.length];
-      el.appendChild(p);
-      var a = Math.random() * Math.PI * 2, dist = 45 + Math.random() * 95, rot = Math.random() * 360 - 180;
-      var dx = Math.cos(a) * dist, dy = Math.sin(a) * dist - 25;
-      p.animate([
-        { transform: 'translate(-50%,-50%) scale(.3) rotate(0deg)', opacity: 1 },
-        { transform: 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(1) rotate(' + rot.toFixed(0) + 'deg)', opacity: 0.95, offset: 0.55 },
-        { transform: 'translate(calc(-50% + ' + (dx * 1.2).toFixed(1) + 'px), calc(-50% + ' + (dy + 55).toFixed(1) + 'px)) scale(.7) rotate(' + (rot * 1.6).toFixed(0) + 'deg)', opacity: 0 }
-      ], { duration: 1100 + Math.random() * 600, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = (function (n) { return function () { n.remove(); }; })(p);
+    var n = live > 120 ? 8 : 22; // muitos toques seguidos: segura um pouco para não pesar
+    for (var i = 0; i < n; i++) {
+      var f = flower(x, y, 14 + Math.random() * 20, 'f' + (1 + (i % 3)));
+      var a = Math.random() * Math.PI * 2, dist = 50 + Math.random() * 150, rot = Math.random() * 540 - 270;
+      var dx = Math.cos(a) * dist, dy = Math.sin(a) * dist - 40;
+      f.animate([
+        { transform: 'translate(-50%,-50%) scale(.1) rotate(0deg)', opacity: 1 },
+        { transform: 'translate(calc(-50% + ' + dx.toFixed(1) + 'px), calc(-50% + ' + dy.toFixed(1) + 'px)) scale(1.1) rotate(' + (rot * 0.6).toFixed(0) + 'deg)', opacity: 1, offset: 0.45 },
+        { transform: 'translate(calc(-50% + ' + (dx * 1.25).toFixed(1) + 'px), calc(-50% + ' + (dy + 120 + Math.random() * 80).toFixed(1) + 'px)) scale(.8) rotate(' + rot.toFixed(0) + 'deg)', opacity: 0 }
+      ], { duration: 1500 + Math.random() * 900, easing: 'cubic-bezier(.2,.7,.3,1)' }).onfinish = done(f);
     }
+    // Flor grande que desabrocha girando no ponto do toque.
+    var big = flower(x, y, 64, 'f' + (1 + Math.floor(Math.random() * 3)));
+    big.animate([
+      { transform: 'translate(-50%,-50%) scale(0) rotate(-90deg)', opacity: 0.95 },
+      { transform: 'translate(-50%,-50%) scale(1.15) rotate(20deg)', opacity: 0.95, offset: 0.45 },
+      { transform: 'translate(-50%,-50%) scale(1.35) rotate(60deg)', opacity: 0 }
+    ], { duration: 1100, easing: 'cubic-bezier(.2,.8,.2,1)' }).onfinish = done(big);
     var pop = q('.intro-pop');
     if (pop) pop.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 420, easing: 'ease-out' });
   }
@@ -161,9 +177,14 @@
     if (document.visibilityState === 'hidden') { st.hiddenAt = Date.now(); return; }
     var since = st.hiddenAt;
     st.hiddenAt = null;
-    if (since && Date.now() - since > RESUME_MS && !st.running) play();
+    // Voltando para o treino (em andamento ou do dia), não mostra a intro: é para ser rápido.
+    if (since && Date.now() - since > RESUME_MS && !st.running && !openingWorkout()) play();
   });
-  window.addEventListener('pageshow', function (e) { if (e.persisted && !st.running) play(); });
+  function openingWorkout() {
+    try { return !!(window.JS_OPEN && window.JS_OPEN(JSON.parse(localStorage.getItem('js-app-dados') || '{}'), new Date())); }
+    catch (e) { return false; }
+  }
+  window.addEventListener('pageshow', function (e) { if (e.persisted && !st.running && !openingWorkout()) play(); });
 
   JS.intro = { play: play, skip: leave, whenDone: whenDone, isRunning: function () { return st.running; } };
 

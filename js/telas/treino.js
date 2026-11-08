@@ -10,6 +10,25 @@
 
   function kg(v) { return (v == null ? '—' : JS.graf.fmtNum(v, 1)) + ' kg'; }
   JS.kg = kg;
+
+  /* ---------------- Vídeo de execução ---------------- */
+  // Biblioteca: vídeos do YouTube conferidos (js/dados/videos-exercicios.js). Exercício criado
+  // pela usuária: o link que ela colocou. Sem vídeo: abre uma busca no YouTube.
+  function ytId(url) { var m = String(url || '').match(/(?:youtu\.be\/|[?&]v=|shorts\/|embed\/)([\w-]{11})/); return m ? m[1] : null; }
+  function exVideo(ex) {
+    if (!ex) return null;
+    if (ex.videoUrl) { var y = ytId(ex.videoUrl); return y ? { yt: y } : { url: ex.videoUrl }; }
+    var V = window.JSVideos && window.JSVideos[String(ex.id).replace(/^ex:/, '')];
+    return V ? { yt: V.id, channel: V.channel } : null;
+  }
+  function searchUrl(name) { return 'https://www.youtube.com/results?search_query=' + encodeURIComponent(name + ' execução correta'); }
+  function videoPlayer(v) {
+    if (!v || !v.yt) return '';
+    return '<div class="yt"><iframe src="https://www.youtube-nocookie.com/embed/' + esc(v.yt) + '?rel=0&modestbranding=1&playsinline=1&autoplay=1&mute=1" title="Vídeo de execução" ' +
+      'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>' +
+      (v.channel ? '<p class="yt-credit">Vídeo: ' + esc(v.channel) + ' (YouTube). Precisa de internet.</p>' : '<p class="yt-credit">Precisa de internet.</p>');
+  }
+  JS.exVideo = exVideo; JS.videoPlayer = videoPlayer; JS.videoSearchUrl = searchUrl;
   function badge(s, plan) {
     return '<span class="plan-badge" style="--pc:' + esc(plan.color) + '" aria-hidden="true">' + esc(T.planLetter(s, plan)) + '</span>';
   }
@@ -350,8 +369,32 @@
             return (!group || e.group === group) && (!term || (window.JSNutri ? JSNutri.fold(e.name) : e.name.toLowerCase()).indexOf(term) >= 0);
           });
           listEl.innerHTML = items.length ? items.map(function (e) {
-            return '<button type="button" class="pick" data-id="' + esc(e.id) + '"><strong>' + esc(e.name) + '</strong><span>' + esc(T.GRUPOS[e.group] || '') + (e.equipment ? ' • ' + esc(e.equipment) : '') + '</span></button>';
+            var v = exVideo(e);
+            var thumb = v && v.yt
+              ? '<button type="button" class="pick-thumb" data-prev="' + esc(e.id) + '" aria-label="Ver o vídeo de execução: ' + esc(e.name) + '">' +
+                '<img src="https://i.ytimg.com/vi/' + esc(v.yt) + '/mqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><span class="pt-play">' + ui.icon('play', 16) + '</span></button>'
+              : '<a class="pick-thumb none" href="' + esc(v && v.url ? v.url : searchUrl(e.name)) + '" target="_blank" rel="noopener" aria-label="Ver vídeo de ' + esc(e.name) + ' (abre o YouTube)"><span class="pt-play">' + ui.icon('play', 16) + '</span></a>';
+            return '<div class="pick-row" data-row="' + esc(e.id) + '">' + thumb +
+              '<button type="button" class="pick" data-id="' + esc(e.id) + '"><strong>' + esc(e.name) + '</strong><span>' + esc(T.GRUPOS[e.group] || '') + (e.equipment ? ' • ' + esc(e.equipment) : '') + '</span></button></div>';
           }).join('') : '<p class="muted small">Nada encontrado. Crie o exercício abaixo.</p>';
+        }
+        // Tocar na miniatura abre o vídeo ali mesmo, com a dica e o botão de escolher.
+        function preview(id) {
+          var open = listEl.querySelector('.pick-video');
+          var same = open && open.dataset.for === id;
+          if (open) open.remove();
+          listEl.querySelectorAll('.pick-row.open').forEach(function (r) { r.classList.remove('open'); });
+          if (same) return;
+          var ex = T.exerciseById(s, id), v = exVideo(ex), row = listEl.querySelector('[data-row="' + id + '"]');
+          if (!ex || !v || !row) return;
+          var box = document.createElement('div');
+          box.className = 'pick-video';
+          box.dataset.for = id;
+          box.innerHTML = videoPlayer(v) + (ex.tips ? '<p class="small">' + esc(ex.tips) + '</p>' : '') +
+            '<button type="button" class="btn primary full" data-choose="' + esc(id) + '">' + ui.icon('check', 18) + 'Escolher ' + esc(ex.name) + '</button>';
+          row.classList.add('open');
+          row.after(box);
+          box.scrollIntoView({ block: 'nearest', behavior: JS.anim.reduced() ? 'auto' : 'smooth' });
         }
         draw();
         q.addEventListener('input', draw);
@@ -363,11 +406,14 @@
           });
         });
         listEl.addEventListener('click', function (e) {
-          var b = e.target.closest('.pick');
+          var pv = e.target.closest('[data-prev]');
+          if (pv) { e.preventDefault(); preview(pv.dataset.prev); return; }
+          var b = e.target.closest('.pick, [data-choose]');
           if (!b) return;
-          if (onPick) { onPick(b.dataset.id); return; }
-          var last = T.lastLoad(s, b.dataset.id);
-          draft.items.push({ exerciseId: b.dataset.id, sets: 3, reps: '10-12', load: last || '', restSec: 60 });
+          var id = b.dataset.id || b.dataset.choose;
+          if (onPick) { onPick(id); return; }
+          var last = T.lastLoad(s, id);
+          draft.items.push({ exerciseId: id, sets: 3, reps: '10-12', load: last || '', restSec: 60 });
           back();
         });
         form.querySelector('[data-new-ex]').addEventListener('click', function () {

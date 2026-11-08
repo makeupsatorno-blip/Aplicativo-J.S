@@ -103,8 +103,12 @@
     var bt = st.backTap || {};
     var Tq = window.JSToque;
     html += '<section class="card" id="cfg-backtap"><div class="card-head"><h2>' + ui.icon('dumbbell', 18) + 'Treino: toque atrás</h2>' + ui.tag(bt.enabled ? 'Ligado' : 'Desligado', bt.enabled ? 'success' : 'muted') + '</div>' +
-      '<p class="hint top">Durante o treino, com o J.S. aberto, bata 2 vezes na parte de trás do celular para registrar a série (o descanso começa sozinho). Funciona no Android e no iPhone.</p>' +
-      sw('backTap', 'Registrar série com 2 batidas atrás', !!bt.enabled, Tq && !Tq.supported() ? 'Este aparelho/navegador não tem sensor de movimento.' : 'Usa o sensor de movimento só durante o treino.', 'cfg-backtap') +
+      '<p class="hint top">Com o J.S. aberto, bata 2 vezes na parte de trás do celular: no treino em andamento registra a série (o descanso começa sozinho); em qualquer outra tela leva ao treino, e em Treino → Hoje inicia o treino do dia. Funciona no Android e no iPhone.</p>' +
+      sw('backTap', 'Toque atrás (2 batidas)', !!bt.enabled, Tq && !Tq.supported() ? 'Este aparelho/navegador não tem sensor de movimento.' : 'Usa o sensor de movimento enquanto o app está aberto.', 'cfg-backtap') +
+      '<div class="field"><label for="cfg-open">Ao abrir o app</label><select id="cfg-open" data-change="cfg-open">' +
+      [['auto', 'Ir para o treino nos dias de treino (recomendado)'], ['sempre', 'Sempre abrir no Treino'], ['nunca', 'Sempre abrir no Início']].map(function (o) {
+        return '<option value="' + o[0] + '"' + ((st.openWorkout || 'auto') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+      }).join('') + '</select><p class="hint">O toque atrás do próprio celular só consegue abrir o app; com isto ele já cai no treino (sem a intro). Com treino em andamento, sempre abre na execução para registrar a carga.</p></div>' +
       '<div class="field"><label for="cfg-bt-sens">Sensibilidade</label><select id="cfg-bt-sens" data-change="cfg-bt-sens">' +
       [[1, 'Baixa (precisa bater mais forte)'], [2, 'Média-baixa'], [3, 'Média'], [4, 'Média-alta'], [5, 'Alta (batidas leves)']].map(function (o) {
         return '<option value="' + o[0] + '"' + (Number(bt.sensitivity || 3) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
@@ -233,10 +237,15 @@
     var on = el.checked;
     // No iPhone, pede a permissão do sensor já neste toque.
     if (on && window.JSToque && JSToque.needsPermission()) JSToque.requestPermission().then(function (r) { JS.sessaoPerm = r; });
-    JS.store.update(function (s) { s.settings.backTap.enabled = on; });
+    JS.store.update(function (s) { s.settings.backTap.enabled = on; }); if (JS.backTap) { if (on) JS.backTap.start(); else JS.backTap.stop(); }
     ui.toast(on ? 'Toque atrás ligado para os treinos.' : 'Toque atrás desligado.');
   };
-  JS.changes['cfg-bt-sens'] = function (el) { JS.store.update(function (s) { s.settings.backTap.sensitivity = Number(el.value) || 3; }); ui.toast('Sensibilidade salva.'); };
+  JS.changes['cfg-open'] = function (el) {
+    var v = ['auto', 'sempre', 'nunca'].indexOf(el.value) >= 0 ? el.value : 'auto';
+    JS.store.update(function (s) { s.settings.openWorkout = v; });
+    ui.toast(v === 'nunca' ? 'O app vai abrir no Início.' : v === 'sempre' ? 'O app vai abrir no Treino.' : 'Nos dias de treino, o app abre no Treino.');
+  };
+  JS.changes['cfg-bt-sens'] = function (el) { JS.store.update(function (s) { s.settings.backTap.sensitivity = Number(el.value) || 3; }); if (JS.backTap) JS.backTap.start(); ui.toast('Sensibilidade salva.'); };
 
   /* ---------------- Toque atrás: teste e calibração ---------------- */
 
@@ -249,6 +258,7 @@
     Tq.requestPermission().then(function (perm) {
       JS.sessaoPerm = perm;
       if (perm !== 'granted') { ui.toast('Sem permissão para o sensor de movimento.', { error: true }); return; }
+      if (JS.backTap) JS.backTap.stop(); // pausa o toque atrás do app durante o teste
       var phase = 'rest', rest = [], samples = [], t0 = performance.now(), lis = null, timer = null, hits = 0;
       var body = '<p class="bt-step" data-step>Deixe o celular parado na mão por 2 segundos…</p>' +
         '<div class="bt-meter"><span data-meter></span><i data-line></i></div>' +
@@ -257,10 +267,13 @@
       var form = ui.openSheet({
         title: 'Toque atrás', subtitle: 'Teste e calibração', body: body, submitLabel: 'Pronto', cancelLabel: 'Cancelar',
         onSubmit: function () { stop(); },
-        onOpen: function (f) { f.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', stop); }); }
+        onOpen: function (f) {
+          f.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', stop); });
+          document.getElementById('sheet').addEventListener('close', stop, { once: true }); // fechou tocando fora
+        }
       });
       var meter = form.querySelector('[data-meter]'), line = form.querySelector('[data-line]'), step = form.querySelector('[data-step]'), info = form.querySelector('[data-info]'), res = form.querySelector('[data-result]');
-      function stop() { if (lis) lis.stop(); lis = null; clearTimeout(timer); }
+      function stop() { if (lis) lis.stop(); lis = null; clearTimeout(timer); if (JS.backTap) JS.backTap.start(); }
       function show(score, th) {
         var max = Math.max(6, th * 2.2);
         meter.style.width = Math.min(100, score / max * 100) + '%';
@@ -322,7 +335,7 @@
 
   JS.actions['bt-help'] = function () {
     var body = '<p>O J.S. reconhece as 2 batidas pelo sensor enquanto está <strong>aberto</strong> no treino (a tela fica acesa durante o treino).</p>' +
-      '<h3 class="form-sub">Android</h3><p>Alguns celulares têm toque atrás próprio, que pode <strong>abrir o J.S.</strong> direto no treino em andamento:</p>' +
+      '<h3 class="form-sub">Android</h3><p>Alguns celulares têm toque atrás próprio, que pode <strong>abrir o J.S.</strong>. Ele abre direto no treino: na execução, se houver treino em andamento (para colocar a carga e registrar a série), ou em Treino → Hoje nos dias de treino (aí bata 2 vezes de novo para iniciar). Isso se ajusta em "Ao abrir o app".</p>' +
       '<ul class="help-list"><li><strong>Samsung:</strong> app Good Lock → módulo RegiStar → Back-Tap → Abrir app → J.S.</li>' +
       '<li><strong>Google Pixel:</strong> Configurações → Sistema → Gestos → Toque rápido → Abrir app → J.S.</li>' +
       '<li><strong>Outros:</strong> procure "toque duplo atrás" ou "back tap" nas configurações.</li></ul>' +

@@ -134,8 +134,14 @@
       dueDate: optStr(input.dueDate, 10),
       dueTime: optStr(input.dueTime, 5),
       recurrence: C.TASK_RECURRENCES[input.recurrence] ? input.recurrence : 'none',
-      reminderMinutes: intOrNull(input.reminderMinutes)
+      reminderMinutes: intOrNull(input.reminderMinutes),
+      weekdays: null
     };
+    // Dias da semana marcados (Seg, Ter...): a tarefa repete toda semana nesses dias.
+    var wds = (Array.isArray(input.weekdays) ? input.weekdays : input.weekdays != null && input.weekdays !== '' && typeof input.weekdays !== 'boolean' ? [input.weekdays] : [])
+      .map(Number).filter(function (n, i, a) { return n >= 0 && n <= 6 && Number.isInteger(n) && a.indexOf(n) === i; }).sort();
+    if (wds.length && v.recurrence === 'none') v.recurrence = 'weekly';
+    if (v.recurrence === 'weekly') v.weekdays = wds.length ? wds : (v.dueDate && C.isDateKey(v.dueDate) ? [C.weekday(v.dueDate)] : null);
     if (!v.title) e.title = 'Informe o título.';
     if (v.dueDate && !C.isDateKey(v.dueDate)) e.dueDate = 'Data inválida.';
     if (v.dueTime && !C.isTimeKey(v.dueTime)) e.dueTime = 'Horário inválido.';
@@ -156,7 +162,9 @@
       case 'none': return d === t.dueDate;
       case 'daily': return true;
       case 'weekdays': { var w = C.weekday(d); return w >= 1 && w <= 5; }
-      case 'weekly': return C.weekday(d) === C.weekday(t.dueDate);
+      case 'weekly': return Array.isArray(t.weekdays) && t.weekdays.length
+        ? t.weekdays.indexOf(C.weekday(d)) >= 0
+        : C.weekday(d) === C.weekday(t.dueDate);
       case 'monthly': {
         var anchor = Number(t.dueDate.slice(8));
         var p = d.split('-').map(Number);
@@ -250,6 +258,7 @@
     return Object.assign({
       id: C.uuid(), title: v.title, description: v.description, category: v.category, priority: v.priority,
       dueDate: v.dueDate, dueTime: v.dueTime, recurrence: v.recurrence, reminderMinutes: v.reminderMinutes,
+      weekdays: v.recurrence === 'weekly' && Array.isArray(v.weekdays) ? v.weekdays.slice() : null,
       endDate: null, seriesId: v.recurrence !== 'none' ? C.uuid() : null, status: 'active',
       createdAt: nowISO, updatedAt: nowISO
     }, extra || {});
@@ -336,6 +345,7 @@
     }
     if (!recurring) moveOccState(state, occKey(t.id, t.dueDate), occKey(t.id, v.dueDate));
     ['title', 'description', 'category', 'priority', 'dueDate', 'dueTime', 'recurrence', 'reminderMinutes'].forEach(function (k) { t[k] = v[k]; });
+    t.weekdays = t.recurrence === 'weekly' && Array.isArray(v.weekdays) ? v.weekdays.slice() : null;
     if (t.recurrence === 'none') t.endDate = null;
     else if (!t.seriesId) t.seriesId = C.uuid();
     t.updatedAt = nowISO;

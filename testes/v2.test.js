@@ -281,3 +281,21 @@ test('toque atrás: calibração e sensibilidade', () => {
   assert.ok(Q.thresholdFor({ threshold: 3, sensitivity: 5 }) < 3, 'mais sensível = limite menor');
   assert.equal(Q.thresholdFor({}), Q.DEFAULT_THRESHOLD);
 });
+
+test('tarefa toda semana nos dias marcados (ex.: segunda e quarta)', () => {
+  const s = R.emptyState();
+  const r = R.validateTask({ title: 'Pilates', dueDate: '2026-11-08', dueTime: '07:00', weekdays: ['1', '3'], recurrence: 'none' });
+  assert.ok(r.ok);
+  assert.equal(r.value.recurrence, 'weekly', 'marcar dias liga a repetição semanal');
+  assert.deepEqual(r.value.weekdays, [1, 3]);
+  const t = R.createTask(s, r.value, NOW);
+  assert.deepEqual(R.taskOccurrences(s, '2026-11-08', '2026-11-21').map(o => o.date), ['2026-11-09', '2026-11-11', '2026-11-16', '2026-11-18']);
+  // "Toda semana" sem dia marcado: usa o dia da semana da data
+  assert.deepEqual(R.validateTask({ title: 'Feira', dueDate: '2026-11-10', recurrence: 'weekly' }).value.weekdays, [2]);
+  // editar para só segunda
+  R.updateTask(s, t.id, R.validateTask({ title: 'Pilates', dueDate: '2026-11-08', dueTime: '07:00', weekdays: '1', recurrence: 'weekly' }).value, 'all', null, NOW);
+  assert.deepEqual(R.taskOccurrences(s, '2026-11-08', '2026-11-21').map(o => o.date), ['2026-11-09', '2026-11-16']);
+  // trocar para "todo dia" limpa os dias marcados
+  R.updateTask(s, t.id, R.validateTask({ title: 'Pilates', dueDate: '2026-11-09', recurrence: 'daily' }).value, 'all', null, NOW);
+  assert.equal(s.tasks[0].weekdays, null);
+});

@@ -10,9 +10,33 @@
     // Decide antes da primeira pintura se a intro aparece (evita "piscar" quando está desligada).
     // Também decide se as animações ficam reduzidas (preferência do sistema, a menos que a usuária force).
     (function (h) {
-      var s = {};
-      try { s = (JSON.parse(localStorage.getItem('js-app-dados') || '{}').settings) || {}; } catch (e) { /* sem dados */ }
-      if (s.intro !== false) h.classList.add('intro-on');
+      var d = {};
+      try { d = JSON.parse(localStorage.getItem('js-app-dados') || '{}') || {}; } catch (e) { /* sem dados */ }
+      var s = d.settings || {};
+      // Para onde o app abre. O toque atrás do próprio celular só consegue "abrir o app";
+      // então, com treino em andamento ou num dia de treino ainda não feito, ele abre direto no treino.
+      // settings.openWorkout: 'auto' (padrão) | 'sempre' | 'nunca'.
+      window.JS_OPEN = function (d, now) {
+        if (!d || typeof d !== 'object') return null;
+        var st = d.settings || {}, mode = st.openWorkout || 'auto';
+        var ses = d.workoutSessions || [];
+        for (var i = 0; i < ses.length; i++) {
+          if (ses[i] && ses[i].status === 'active' && now - new Date(ses[i].startedAt) < 3 * 3600000) return 'sessao';
+        }
+        if (mode === 'nunca') return null;
+        var plans = d.workoutPlans || [];
+        if (!plans.length) return null;
+        if (mode === 'sempre') return 'treino';
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        var key = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate());
+        var w = d.workout || {}, id = (w.overrides && w.overrides[key]) || (w.week && w.week[now.getDay()]);
+        if (!id || id === 'rest' || !plans.some(function (x) { return x && x.id === id; })) return null;
+        return ses.some(function (x) { return x && x.date === key && x.status === 'done'; }) ? null : 'treino';
+      };
+      var target = (location.hash || '').replace(/^#\/?/, '') ? null : window.JS_OPEN(d, new Date());
+      if (target) history.replaceState(null, '', '#/' + target);
+      // Abrindo direto no treino, pula a intro (é para ser rápido).
+      if (s.intro !== false && !target) h.classList.add('intro-on');
       var sys = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
       if (sys && s.animations !== 'on') h.classList.add('reduce-motion');
     })(document.documentElement);
@@ -37,13 +61,14 @@
     <div class="intro-glow g1"></div>
     <div class="intro-glow g2"></div>
     <div class="intro-petals">
-      <i style="--t:14%;--l:20%;--s:9px;--c:#F5D5E1;--d:3.6s;--dl:0s"></i>
-      <i style="--t:24%;--l:80%;--s:7px;--c:#D98EAA;--d:4.1s;--dl:.5s"></i>
-      <i style="--t:70%;--l:14%;--s:8px;--c:#D98EAA;--d:3.3s;--dl:.9s"></i>
-      <i style="--t:80%;--l:84%;--s:10px;--c:#F5D5E1;--d:3.9s;--dl:.3s"></i>
-      <i style="--t:9%;--l:56%;--s:6px;--c:#C9B3DE;--d:4.4s;--dl:.7s"></i>
-      <i style="--t:46%;--l:7%;--s:6px;--c:#C9B3DE;--d:3.7s;--dl:1.1s"></i>
-      <i style="--t:52%;--l:92%;--s:7px;--c:#F5D5E1;--d:4.2s;--dl:.2s"></i>
+      <i class="flw f1" style="--t:13%;--l:16%;--s:26px;--c:#F3C6D6;--d:3.6s;--dl:0s"></i>
+      <i class="flw f2" style="--t:22%;--l:80%;--s:22px;--c:#D98EAA;--cc:#FFF6C9;--d:4.1s;--dl:.5s"></i>
+      <i class="flw f3" style="--t:70%;--l:11%;--s:24px;--c:#D98EAA;--d:3.3s;--dl:.9s"></i>
+      <i class="flw f1" style="--t:80%;--l:82%;--s:28px;--c:#F5D5E1;--cc:#F9E07F;--d:3.9s;--dl:.3s"></i>
+      <i class="flw f2" style="--t:8%;--l:54%;--s:18px;--c:#C9B3DE;--d:4.4s;--dl:.7s"></i>
+      <i class="flw f3" style="--t:45%;--l:5%;--s:18px;--c:#C9B3DE;--cc:#FFFFFF;--d:3.7s;--dl:1.1s"></i>
+      <i class="flw f1" style="--t:52%;--l:90%;--s:20px;--c:#E9AFC4;--d:4.2s;--dl:.2s"></i>
+      <i class="flw f2" style="--t:89%;--l:44%;--s:16px;--c:#F3C6D6;--d:3.5s;--dl:.6s"></i>
     </div>
     <button type="button" class="intro-skip" tabindex="-1">Pular</button>
     <div class="intro-stage">
@@ -77,15 +102,14 @@
     </div>
     <div class="intro-text">
       <span class="intro-kicker">Julia Satorno</span>
-      <svg class="intro-word" viewBox="-4.0 -64.6 115.0 84.9"><use href="#js-word" fill="#78465A"/></svg>
       <span class="intro-tag">Seu dia, organizado com carinho.</span>
     </div>
-    <div class="intro-mods"><i></i><i></i><i></i><i></i></div>
+    <div class="intro-mods" aria-hidden="true"><i class="flw f1"></i><i class="flw f2"></i><i class="flw f3"></i><i class="flw f1"></i><i class="flw f2"></i></div>
     <div class="intro-status">
       <span class="intro-msg">Organizando sua rotina…</span>
       <div class="intro-bar"><span></span></div>
     </div>
-    <p class="intro-hint">Toque na tela para florescer ✿</p>
+    <p class="intro-hint">Toque na tela para soltar flores ✿</p>
   </div>
 
   <header class="topbar">
@@ -168,6 +192,7 @@
   <script src="js/core.js" defer></script>
   <script src="js/regras.js" defer></script>
   <script src="js/dados/exercicios.js" defer></script>
+  <script src="js/dados/videos-exercicios.js" defer></script>
   <script src="js/dados/alimentos.js" defer></script>
   <script src="js/dados/cardapios.js" defer></script>
   <script src="js/regras-treino.js" defer></script>

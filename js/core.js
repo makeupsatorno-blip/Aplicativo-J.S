@@ -153,7 +153,7 @@
   /* ---------------- Rótulos e listas da especificação ---------------- */
   var TASK_CATEGORIES = ['Pessoal', 'Casa', 'Trabalho', 'Saúde/compromissos', 'Compras', 'Outros'];
   var PRIORITIES = { low: 'Baixa', normal: 'Normal', high: 'Alta' };
-  var TASK_RECURRENCES = { none: 'Não repete', daily: 'Todo dia', weekdays: 'Dias úteis (seg. a sex.)', weekly: 'Toda semana', monthly: 'Todo mês' };
+  var TASK_RECURRENCES = { none: 'Não repete', daily: 'Todo dia', weekdays: 'Dias úteis (seg. a sex.)', weekly: 'Toda semana (dias marcados)', monthly: 'Todo mês' };
   var REMINDER_OPTIONS = [[null, 'Sem lembrete'], [0, 'Na hora'], [5, '5 min antes'], [15, '15 min antes'], [30, '30 min antes'], [60, '1 hora antes'], [120, '2 horas antes'], [1440, '1 dia antes']];
   var HAIR_TYPES = { hydration: 'Hidratação', nutrition: 'Nutrição', reconstruction: 'Reconstrução', custom: 'Personalizado' };
   var HAIR_STATUS = { planned: 'Planejado', completed: 'Realizado', postponed: 'Adiado' };
