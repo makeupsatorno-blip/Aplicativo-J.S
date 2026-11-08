@@ -65,6 +65,15 @@
   }
   function scheduleContext() { clearTimeout(ctxTimer); ctxTimer = setTimeout(syncContext, 1500); }
 
+  // As séries do atalho entraram no treino: vai para o treino em andamento
+  // (fecha a intro, se estiver passando; não interrompe uma folha aberta).
+  function showSession() {
+    if (!T.activeSession(JS.store.state) || JS.app.route() === 'sessao') return;
+    if (document.getElementById('sheet').open || document.getElementById('confirm').open) return;
+    if (JS.intro && JS.intro.isRunning()) JS.intro.skip();
+    JS.app.go('sessao');
+  }
+
   // Busca as séries salvas pelo atalho e coloca no treino (começa um, se não houver).
   function pull() {
     var q = cfg();
@@ -82,6 +91,7 @@
             date: C.toDateKey(new Date(x.created_at)), planId: inPlan ? plan.id : null }, n);
         });
       });
+      showSession();
       return post('quick-ack', { deviceId: q.deviceId, token: q.token, ids: sets.map(function (x) { return x.id; }) }).then(function () {
         ui.toast(sets.length === 1 ? '1 série do atalho do iPhone foi registrada.' : sets.length + ' séries do atalho do iPhone foram registradas.', { timeout: 4500 });
         return sets.length;

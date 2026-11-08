@@ -20,22 +20,33 @@
         if (!d || typeof d !== 'object') return null;
         var st = d.settings || {}, mode = st.openWorkout || 'auto';
         var ses = d.workoutSessions || [];
+        var p = function (n) { return (n < 10 ? '0' : '') + n; };
+        var key = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate());
+        // Treino em andamento: abre nele se for de hoje ou se teve série nas últimas 6 horas
+        // (conta a partir da última série, não só do início do treino).
+        var lastAct = function (x) {
+          var t = new Date(x.startedAt).getTime() || 0;
+          (x.items || []).forEach(function (it) { (it && it.sets || []).forEach(function (st) { var a = new Date(st && st.at).getTime(); if (a > t) t = a; }); });
+          return t;
+        };
         for (var i = 0; i < ses.length; i++) {
-          if (ses[i] && ses[i].status === 'active' && now - new Date(ses[i].startedAt) < 3 * 3600000) return 'sessao';
+          if (ses[i] && ses[i].status === 'active' && (ses[i].date === key || now - lastAct(ses[i]) < 6 * 3600000)) return 'sessao';
         }
         if (mode === 'nunca') return null;
         var plans = d.workoutPlans || [];
         if (!plans.length) return null;
         if (mode === 'sempre') return 'treino';
-        var p = function (n) { return (n < 10 ? '0' : '') + n; };
-        var key = now.getFullYear() + '-' + p(now.getMonth() + 1) + '-' + p(now.getDate());
         var w = d.workout || {}, id = (w.overrides && w.overrides[key]) || (w.week && w.week[now.getDay()]);
         if (!id || id === 'rest' || !plans.some(function (x) { return x && x.id === id; })) return null;
         return ses.some(function (x) { return x && x.date === key && x.status === 'done'; }) ? null : 'treino';
       };
       var asked = (location.hash || '').replace(/^#\/?/, '');
+      var auto = window.JS_OPEN(d, new Date()), nav = '';
+      try { nav = ((performance.getEntriesByType('navigation') || [])[0] || {}).type || ''; } catch (e) { /* navegador antigo */ }
       // #/registro (atalho "Registro rápido" do ícone): abre a telinha, também sem a intro.
-      var target = asked ? (asked === 'registro' ? 'registro' : null) : window.JS_OPEN(d, new Date());
+      // Com treino em andamento, abrir o app sempre leva para ele, mesmo que o endereço guardado
+      // no ícone tenha outra aba (ex.: #/inicio). Só recarregar a página mantém a aba que estava aberta.
+      var target = asked === 'registro' ? 'registro' : (auto === 'sessao' && nav !== 'reload') ? 'sessao' : asked ? null : auto;
       if (target && target !== 'registro') history.replaceState(null, '', '#/' + target);
       window.JS_OPENED_TARGET = target;
       // Abrindo direto no treino, pula a intro (é para ser rápido).
