@@ -9,6 +9,14 @@
 //   POST test         -> manda uma notificação de teste para o aparelho
 //   POST cron         -> chamado a cada minuto pelo pg_cron: envia o que venceu
 //
+// Registro rápido de treino (atalho do iPhone: Tocar Atrás -> Atalhos -> página rapido.html):
+//   POST quick-context -> o app liga o atalho e manda o exercício atual (série, carga, repetições)
+//   GET  quick?d=&k=   -> a página do atalho lê o contexto para abrir preenchida
+//   POST quick-add     -> a página do atalho salva uma série (peso, repetições, série, exercício)
+//   POST quick-pull    -> o app busca as séries que chegaram pelo atalho
+//   POST quick-ack     -> o app confirma que importou (as séries são apagadas)
+//   POST quick-off     -> o app desliga o atalho (apaga tudo deste aparelho)
+//
 // Sem login: cada aparelho tem um id e um segredo gerados no próprio celular.
 // O servidor guarda só o hash do segredo.
 import webpush from "npm:web-push@3.6.7";
@@ -24,7 +32,8 @@ const WINDOW_DAYS = 732;            // aceita lembretes até ~2 anos à frente
 const CHUNK = 500;                  // linhas por gravação
 const CHECK_MARGIN_MS = 15 * 60000; // conferência de contagem ignora os próximos 15 min (relógios diferentes)
 const CATCHUP_MS = 2 * 3600 * 1000; // lembrete atrasado mais de 2 h não é mais enviado
-const ROUTES = ["inicio", "rotina", "autocuidado", "alimentacao", "financeiro", "agenda", "config"];
+const ROUTES = ["inicio", "rotina", "treino", "sessao", "autocuidado", "alimentacao", "financeiro", "corpo", "graficos", "mais", "agenda", "config"];
+const QUICK_MAX_PER_DAY = 300;      // séries por aparelho por dia (evita abuso do link)
 // Só manda para serviços de push conhecidos (evita usar o servidor para chamar outros endereços).
 const PUSH_HOSTS = [".googleapis.com", ".mozilla.com", ".mozaws.net", ".push.apple.com", ".notify.windows.com"];
 
@@ -233,13 +242,123 @@ async function handleCron(req: Request) {
   return json({ ok: true, due: due?.length ?? 0, sent, failed, removedDevices: gone.size });
 }
 
+/* ---------------- Registro rápido (atalho do iPhone) ---------------- */
+
+type QuickBody = { deviceId?: unknown; token?: unknown; key?: unknown; context?: unknown; ids?: unknown;
+  d?: unknown; k?: unknown; peso?: unknown; reps?: unknown; serie?: unknown; ex?: unknown; exName?: unknown };
+
+const num = (v: unknown) => { const x = Number(String(v ?? "").replace(",", ".")); return Number.isFinite(x) ? x : NaN; };
+
+function cleanContext(c: any) {
+  const o = c && typeof c === "object" ? c : {};
+  const opcoes = Array.isArray(o.opcoes) ? o.opcoes.slice(0, 40).map((x: any) => ({ id: str(x?.id, 60), nome: str(x?.nome, 80) })).filter((x: any) => x.id && x.nome) : [];
+  const n = (v: unknown, max: number) => { const x = num(v); return Number.isFinite(x) && x >= 0 && x <= max ? x : null; };
+  return {
+    ativo: o.ativo === true, treino: str(o.treino, 60), exercicio: str(o.exercicio, 80), exercicioId: str(o.exercicioId, 60),
+    serie: n(o.serie, 50), series: n(o.series, 50), peso: n(o.peso, 999), reps: n(o.reps, 999), passo: n(o.passo, 20), opcoes,
+    atualizado: new Date().toISOString(),
+  };
+}
+
+// App: autenticado pelo segredo do aparelho (como no push).
+async function quickDevice(body: QuickBody) {
+  if (!isUuid(body.deviceId) || typeof body.token !== "string" || body.token.length < 32 || body.token.length > 200) return { error: json({ error: "invalid-device" }, 400) };
+  const hash = await sha256(body.token);
+  const { data } = await db.from("js_quick_devices").select("id, token_hash, key_hash, context").eq("id", body.deviceId).maybeSingle();
+  if (data && data.token_hash !== hash) return { error: json({ error: "forbidden" }, 403) };
+  return { row: data, hash };
+}
+
+// Página do atalho: autenticada pela chave do link.
+async function quickByKey(d: unknown, k: unknown) {
+  if (!isUuid(d) || typeof k !== "string" || k.length < 24 || k.length > 200) return { error: json({ error: "link-invalido" }, 400) };
+  const { data } = await db.from("js_quick_devices").select("id, key_hash, context").eq("id", d).maybeSingle();
+  if (!data || data.key_hash !== await sha256(k)) return { error: json({ error: "link-invalido" }, 403) };
+  return { row: data };
+}
+
+async function handleQuickContext(body: QuickBody) {
+  const q = await quickDevice(body);
+  if (q.error) return q.error;
+  const ctx = cleanContext(body.context);
+  if (!q.row) {
+    if (typeof body.key !== "string" || body.key.length < 24 || body.key.length > 200) return json({ error: "invalid-key" }, 400);
+    const { error } = await db.from("js_quick_devices").insert({ id: body.deviceId, token_hash: q.hash, key_hash: await sha256(body.key), context: ctx });
+    if (error) { console.error("quick/insert", error); return json({ error: "save-failed" }, 500); }
+  } else {
+    const upd: Record<string, unknown> = { context: ctx, updated_at: new Date().toISOString() };
+    if (typeof body.key === "string" && body.key.length >= 24 && body.key.length <= 200) upd.key_hash = await sha256(body.key);
+    const { error } = await db.from("js_quick_devices").update(upd).eq("id", body.deviceId);
+    if (error) { console.error("quick/update", error); return json({ error: "save-failed" }, 500); }
+  }
+  const { count } = await db.from("js_quick_sets").select("id", { count: "exact", head: true }).eq("device_id", body.deviceId);
+  return json({ ok: true, pending: count ?? 0 });
+}
+
+async function handleQuickGet(url: URL) {
+  const q = await quickByKey(url.searchParams.get("d"), url.searchParams.get("k"));
+  if (q.error) return q.error;
+  const { data: last } = await db.from("js_quick_sets").select("created_at, exercise_name, load, reps, serie").eq("device_id", q.row!.id).order("id", { ascending: false }).limit(5);
+  return json({ ok: true, contexto: q.row!.context ?? {}, recentes: last ?? [] });
+}
+
+async function handleQuickAdd(body: QuickBody) {
+  const q = await quickByKey(body.d, body.k);
+  if (q.error) return q.error;
+  const peso = num(body.peso), reps = num(body.reps), serie = body.serie == null || body.serie === "" ? null : num(body.serie);
+  if (!(peso >= 0 && peso <= 999)) return json({ error: "peso-invalido" }, 400);
+  if (!(reps >= 0 && reps <= 999)) return json({ error: "reps-invalidas" }, 400);
+  if (serie !== null && !(serie >= 1 && serie <= 50)) return json({ error: "serie-invalida" }, 400);
+  const since = new Date(Date.now() - 86400000).toISOString();
+  const { count } = await db.from("js_quick_sets").select("id", { count: "exact", head: true }).eq("device_id", q.row!.id).gte("created_at", since);
+  if ((count ?? 0) >= QUICK_MAX_PER_DAY) return json({ error: "limite-diario" }, 429);
+  const ctx: any = q.row!.context ?? {};
+  const exId = str(body.ex, 60) || ctx.exercicioId || null;
+  const exName = str(body.exName, 80) || (exId && exId === ctx.exercicioId ? ctx.exercicio : null) ||
+    (Array.isArray(ctx.opcoes) ? (ctx.opcoes.find((o: any) => o.id === exId) || {}).nome : null) || ctx.exercicio || null;
+  const row = { device_id: q.row!.id, exercise_id: exId, exercise_name: exName, load: Math.round(peso * 10) / 10, reps: Math.round(reps), serie: serie === null ? null : Math.round(serie) };
+  const { error } = await db.from("js_quick_sets").insert(row);
+  if (error) { console.error("quick/add", error); return json({ error: "save-failed" }, 500); }
+  // Próxima abertura da página já vem com a série seguinte e a carga usada.
+  const same = !exId || exId === ctx.exercicioId;
+  const next = { ...ctx, peso: row.load, reps: row.reps, exercicioId: exId, exercicio: exName, serie: (row.serie ?? (same ? Number(ctx.serie) || 1 : 1)) + 1, atualizado: new Date().toISOString() };
+  await db.from("js_quick_devices").update({ context: next }).eq("id", q.row!.id);
+  return json({ ok: true, salvo: row, mensagem: "Série " + (row.serie ?? ((same ? Number(ctx.serie) || 1 : 1))) + " salva: " + String(row.load).replace(".", ",") + " kg × " + row.reps });
+}
+
+async function handleQuickPull(body: QuickBody) {
+  const q = await quickDevice(body);
+  if (q.error) return q.error;
+  if (!q.row) return json({ ok: true, sets: [] });
+  const { data, error } = await db.from("js_quick_sets").select("id, created_at, exercise_id, exercise_name, load, reps, serie").eq("device_id", body.deviceId).order("id").limit(200);
+  if (error) { console.error("quick/pull", error); return json({ error: "select-failed" }, 500); }
+  return json({ ok: true, sets: data ?? [] });
+}
+
+async function handleQuickAck(body: QuickBody) {
+  const q = await quickDevice(body);
+  if (q.error) return q.error;
+  const ids = Array.isArray(body.ids) ? body.ids.map(Number).filter((x) => Number.isInteger(x) && x > 0).slice(0, 500) : [];
+  if (q.row && ids.length) await db.from("js_quick_sets").delete().eq("device_id", body.deviceId).in("id", ids);
+  return json({ ok: true });
+}
+
+async function handleQuickOff(body: QuickBody) {
+  const q = await quickDevice(body);
+  if (q.error) return q.error;
+  if (q.row) await db.from("js_quick_devices").delete().eq("id", body.deviceId);
+  return json({ ok: true });
+}
+
 /* ---------------- Roteamento ---------------- */
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
-  const route = new URL(req.url).pathname.split("/").filter(Boolean).pop();
+  const url = new URL(req.url);
+  const route = url.pathname.split("/").filter(Boolean).pop();
   try {
     if (route === "public-key" && req.method === "GET") return json({ publicKey: (await vapid()).publicKey });
+    if (route === "quick" && req.method === "GET") return await handleQuickGet(url);
     if (req.method !== "POST") return json({ error: "not-found" }, 404);
     if (route === "cron") return await handleCron(req);
     const body = (await req.json().catch(() => null)) as Body | null;
@@ -247,6 +366,12 @@ Deno.serve(async (req) => {
     if (route === "sync") return await handleSync(body, req);
     if (route === "unsubscribe") return await handleUnsubscribe(body);
     if (route === "test") return await handleTest(body);
+    const qb = body as unknown as QuickBody;
+    if (route === "quick-context") return await handleQuickContext(qb);
+    if (route === "quick-add") return await handleQuickAdd(qb);
+    if (route === "quick-pull") return await handleQuickPull(qb);
+    if (route === "quick-ack") return await handleQuickAck(qb);
+    if (route === "quick-off") return await handleQuickOff(qb);
     return json({ error: "not-found" }, 404);
   } catch (e) {
     console.error("js-push", e);

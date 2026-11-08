@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui;
-  var VERSION = '2.2.0';
+  var VERSION = '2.4.0';
   var lastToday = null;
   var deferredInstall = null;
 
@@ -169,6 +169,7 @@
       if (JS.backTap) JS.backTap.start(); // 2 batidas atrás: série no treino; nas outras telas, leva ao treino
     });
     JS.push.start();
+    if (JS.registro) JS.registro.start();
     watchReopen();
   }
 
@@ -188,6 +189,8 @@
       if (document.getElementById('sheet').open || document.getElementById('confirm').open) return;
       if (target === 'treino' && JS.treinoView) JS.treinoView.mode = 'hoje';
       go(target);
+      // Voltou para o app durante o treino (ex.: Toque rápido do Android): abre o registro rápido.
+      if (target === 'sessao' && JS.store.state.settings.quickOnOpen !== false && JS.openQuickRegister) setTimeout(function () { JS.openQuickRegister({ source: 'abrir' }); }, 350);
     });
   }
 

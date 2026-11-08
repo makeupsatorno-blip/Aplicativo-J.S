@@ -67,12 +67,14 @@
   function validatePlan(input) {
     var e = {};
     var items = (Array.isArray(input.items) ? input.items : []).slice(0, MAX_ITEMS).map(function (it) {
-      var sets = Math.round(num(it.sets) || 0), load = num(it.load), rest = Math.round(num(it.restSec) || 0);
+      var sets = Math.min(Math.max(Math.round(num(it.sets) || 0), 1), MAX_SETS), load = num(it.load), rest = Math.round(num(it.restSec) || 0);
+      var loads = planLoads(it.loads, sets, load);
       return {
         id: it.id || C.uuid(), exerciseId: String(it.exerciseId || ''),
-        sets: Math.min(Math.max(sets, 1), MAX_SETS),
+        sets: sets,
         reps: str(it.reps, 12) || '10',
-        load: load == null ? 0 : Math.min(Math.max(round1(load), 0), 999),
+        load: loads[0],
+        loads: loads,
         restSec: Math.min(Math.max(rest, 0), 900),
         notes: str(it.notes, 200) || null
       };
@@ -86,6 +88,22 @@
     if (!v.items.length) e.items = 'Adicione pelo menos um exercício.';
     return { ok: !Object.keys(e).length, errors: e, value: v };
   }
+
+  // Carga de cada série (ex.: pirâmide 20 / 22,5 / 25 kg). Série sem valor repete a anterior.
+  function clampLoad(v) { return Math.min(Math.max(round1(v), 0), 999); }
+  function planLoads(list, sets, base) {
+    var vals = Array.isArray(list) ? list.map(num) : [];
+    var first = null;
+    for (var k = 0; k < vals.length; k++) if (vals[k] != null) { first = vals[k]; break; }
+    var prev = clampLoad(first != null ? first : base != null ? base : 0), out = [];
+    for (var i = 0; i < sets; i++) {
+      if (vals[i] != null) prev = clampLoad(vals[i]);
+      out.push(prev);
+    }
+    return out;
+  }
+  function itemLoads(it) { return Array.isArray(it.loads) && it.loads.length ? planLoads(it.loads, it.sets, it.load) : planLoads(null, it.sets, it.load); }
+  function samePerSet(loads) { return !loads || loads.every(function (x) { return x === loads[0]; }); }
 
   function createPlan(state, v, nowISO) {
     var p = Object.assign({ id: C.uuid(), createdAt: nowISO, updatedAt: nowISO }, v);
@@ -170,10 +188,11 @@
       id: C.uuid(), date: date, planId: plan ? plan.id : null, planName: plan ? plan.name : 'Treino livre',
       status: 'active', startedAt: nowISO, finishedAt: null, current: 0,
       items: plan ? plan.items.map(function (it) {
+        var loads = itemLoads(it);
         return {
           id: C.uuid(), exerciseId: it.exerciseId, name: exerciseName(state, it.exerciseId),
-          targetSets: it.sets, targetReps: it.reps, plannedLoad: it.load, restSec: it.restSec,
-          load: it.load, reps: firstReps(it.reps), sets: []
+          targetSets: it.sets, targetReps: it.reps, plannedLoad: loads[0], plannedLoads: loads, restSec: it.restSec,
+          load: loads[0], reps: firstReps(it.reps), sets: []
         };
       }) : []
     };
@@ -211,6 +230,8 @@
     if (!it || s.status !== 'active') return null;
     var set = { load: it.load, reps: it.reps, at: nowISO, via: via || 'toque' };
     it.sets.push(set);
+    // Carga por série planejada (pirâmide): a próxima série já começa com o peso dela.
+    if (it.plannedLoads && !samePerSet(it.plannedLoads) && it.sets.length < it.plannedLoads.length) it.load = it.plannedLoads[it.sets.length];
     // Terminou as séries planejadas: o próximo exercício pendente vira o atual.
     if (it.sets.length >= it.targetSets) {
       var idx = s.items.indexOf(it);
@@ -246,7 +267,14 @@
     if (plan) {
       s.items.forEach(function (it) {
         if (!it.sets.length) return;
-        plan.items.forEach(function (p) { if (p.exerciseId === it.exerciseId) p.load = it.sets[it.sets.length - 1].load; });
+        plan.items.forEach(function (p) {
+          if (p.exerciseId !== it.exerciseId) return;
+          // Cada série da ficha passa a sugerir a carga usada naquela série.
+          var loads = itemLoads(p);
+          for (var i = 0; i < loads.length; i++) if (it.sets[i]) loads[i] = it.sets[i].load;
+          if (it.sets.length < loads.length && samePerSet(itemLoads(p))) for (var j = it.sets.length; j < loads.length; j++) loads[j] = it.sets[it.sets.length - 1].load;
+          p.loads = loads; p.load = loads[0];
+        });
       });
       plan.updatedAt = nowISO;
     }
@@ -273,6 +301,78 @@
       if (max > 0 && prev != null && max > prev) prs.push({ name: it.name, load: max, prev: prev });
     });
     return { minutes: minutes, sets: sets, volume: Math.round(volume), exercises: done, total: s.items.length, prs: prs };
+  }
+
+  /* ---------------- Registro rápido ---------------- */
+
+  // Última série feita no exercício (no treino em andamento ou nos concluídos).
+  function lastSet(state, exerciseId) {
+    var list = state.workoutSessions.slice().sort(function (a, b) { return cmp(a.startedAt || '', b.startedAt || ''); });
+    for (var i = list.length - 1; i >= 0; i--) {
+      var its = list[i].items.filter(function (x) { return x.exerciseId === exerciseId && x.sets.length; });
+      if (its.length) { var it = its[its.length - 1], st = it.sets[it.sets.length - 1]; return { load: st.load, reps: st.reps, date: list[i].date, at: st.at }; }
+    }
+    return null;
+  }
+
+  // Salva uma série vinda do registro rápido (no app, pelo toque atrás, ou pelo atalho do iPhone).
+  //  q: { exerciseId, load, reps, serie?, at?, via?, planId?, date? }
+  //  - sem treino em andamento: começa um (a ficha indicada ou "treino livre");
+  //  - exercício que não está no treino: entra no treino;
+  //  - série com número que já existe: corrige aquela série; senão, registra a próxima.
+  function quickSet(state, q, nowISO) {
+    var at = q.at || nowISO;
+    var s = activeSession(state), started = false;
+    if (!s) {
+      s = startSession(state, q.date || C.toDateKey(new Date(at)), q.planId || null, at);
+      started = true;
+    }
+    var it = q.exerciseId ? s.items.filter(function (x) { return x.exerciseId === q.exerciseId; })[0] : currentItem(s);
+    if (!it && q.exerciseId) it = addSessionExercise(state, s.id, q.exerciseId);
+    if (!it) return null;
+    s.current = s.items.indexOf(it);
+    var load = Math.min(Math.max(round1(Number(q.load) || 0), 0), 999), reps = Math.min(Math.max(Math.round(Number(q.reps) || 0), 0), 999);
+    var n = q.serie != null && q.serie !== '' && Number(q.serie) >= 1 ? Math.round(Number(q.serie)) : it.sets.length + 1;
+    if (n <= it.sets.length) {
+      var old = it.sets[n - 1];
+      it.sets[n - 1] = Object.assign({}, old, { load: load, reps: reps, editedAt: at, via: q.via || old.via });
+      return { session: s, item: it, serie: n, corrected: true, started: started };
+    }
+    it.load = load; it.reps = reps;
+    logSet(state, s.id, it.id, at, q.via || 'registro');
+    return { session: s, item: it, serie: it.sets.length, corrected: false, started: started };
+  }
+
+  // O que o atalho do iPhone mostra ao abrir: exercício atual, próxima série, carga e repetições,
+  // e a lista de exercícios para trocar. Sem treino em andamento: a ficha do dia (ou o último exercício feito).
+  function quickContext(state, today, loadStep) {
+    var s = activeSession(state), it = currentItem(s);
+    var opcoes = [], seen = {};
+    function opt(id) { if (id && !seen[id]) { seen[id] = 1; opcoes.push({ id: id, nome: exerciseName(state, id) }); } }
+    if (s) s.items.forEach(function (x) { opt(x.exerciseId); });
+    var p = planForDate(state, today);
+    if (p.plan) p.plan.items.forEach(function (x) { opt(x.exerciseId); });
+    doneSessions(state).slice(-6).reverse().forEach(function (x) { x.items.forEach(function (y) { if (y.sets.length) opt(y.exerciseId); }); });
+    var ex = it ? it.exerciseId : (opcoes[0] && opcoes[0].id) || null;
+    var ls = ex ? lastSet(state, ex) : null;
+    return {
+      ativo: !!s, treino: s ? s.planName : (p.plan ? p.plan.name : 'Treino livre'),
+      exercicio: ex ? exerciseName(state, ex) : '', exercicioId: ex || '',
+      serie: it ? it.sets.length + 1 : 1, series: it ? it.targetSets : null,
+      peso: it ? it.load : (ls ? ls.load : null), reps: it ? it.reps : (ls ? ls.reps : null),
+      passo: loadStep || 1, opcoes: opcoes.slice(0, 40)
+    };
+  }
+
+  // Histórico de séries de um exercício, do treino mais recente para o mais antigo.
+  function exerciseSets(state, exerciseId, limit) {
+    var out = [];
+    state.workoutSessions.slice().sort(function (a, b) { return cmp(b.startedAt || '', a.startedAt || ''); }).forEach(function (s) {
+      var sets = [];
+      s.items.forEach(function (it) { if (it.exerciseId === exerciseId) sets = sets.concat(it.sets); });
+      if (sets.length) out.push({ sessionId: s.id, date: s.date, planName: s.planName, active: s.status === 'active', sets: sets });
+    });
+    return out.slice(0, limit || 30);
   }
 
   /* ---------------- Evolução ---------------- */
@@ -343,13 +443,14 @@
     PLAN_COLORS: PLAN_COLORS, GRUPOS: X.GRUPOS,
     exercises: exercises, exerciseById: exerciseById, exerciseName: exerciseName,
     validateExercise: validateExercise, createExercise: createExercise, updateExercise: updateExercise,
-    validatePlan: validatePlan, createPlan: createPlan, updatePlan: updatePlan, deletePlan: deletePlan,
+    validatePlan: validatePlan, createPlan: createPlan, itemLoads: itemLoads, samePerSet: samePerSet, updatePlan: updatePlan, deletePlan: deletePlan,
     duplicatePlan: duplicatePlan, planLetter: planLetter,
     setWeekPlan: setWeekPlan, setDayPlan: setDayPlan, planForDate: planForDate,
     activeSession: activeSession, doneSessions: doneSessions, sessionOn: sessionOn, lastLoad: lastLoad,
     startSession: startSession, addSessionExercise: addSessionExercise, setItemValues: setItemValues,
     logSet: logSet, undoLastSet: undoLastSet, setCurrent: setCurrent, currentItem: currentItem,
     finishSession: finishSession, discardSession: discardSession, deleteSession: deleteSession, sessionSummary: sessionSummary,
+    lastSet: lastSet, quickSet: quickSet, quickContext: quickContext, exerciseSets: exerciseSets,
     exerciseHistory: exerciseHistory, exerciseTrend: exerciseTrend, trainedExercises: trainedExercises,
     weeklyStats: weeklyStats, monthCalendar: monthCalendar
   };

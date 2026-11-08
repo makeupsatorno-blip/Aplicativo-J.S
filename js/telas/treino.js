@@ -40,10 +40,16 @@
     return d.length ? d.join(', ') : 'sem dia fixo';
   }
 
+  // "20 kg" ou, com carga por série, "20/22,5/25 kg".
+  function loadsText(it) {
+    var loads = T.itemLoads(it);
+    if (!loads.length || loads.every(function (x) { return !x; })) return '';
+    return ' • ' + (T.samePerSet(loads) ? kg(loads[0]) : loads.map(function (x) { return JS.graf.fmtNum(x, 1); }).join('/') + ' kg');
+  }
   function exerciseLine(s, it) {
     var ex = T.exerciseById(s, it.exerciseId);
     return '<div class="ex-row"><span class="ex-name">' + esc(ex ? ex.name : 'Exercício removido') + '</span>' +
-      '<span class="ex-meta">' + it.sets + ' × ' + esc(it.reps) + (it.load ? ' • ' + kg(it.load) : '') + '</span></div>';
+      '<span class="ex-meta">' + it.sets + ' × ' + esc(it.reps) + loadsText(it) + '</span></div>';
   }
 
   /* ---------------- Hoje ---------------- */
@@ -85,7 +91,8 @@
         '<button type="button" class="btn soft" data-action="treino-semana">Montar a semana</button></div>';
     }
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('dumbbell', 18) + 'Treino de hoje</h2>' +
-      '<button type="button" class="link small-link" data-action="workout-day" data-date="' + today + '">Trocar</button></div>' + inner + '</section>';
+      '<button type="button" class="link small-link" data-action="workout-day" data-date="' + today + '">Trocar</button></div>' + inner +
+      '<button type="button" class="btn soft full quick-btn-open" data-action="quick-open">' + ui.icon('sparkle', 18) + 'Registro rápido de uma série</button></section>';
 
     done.forEach(function (x) {
       html += '<section class="card ok-card"><div class="card-head"><h2>' + ui.icon('check', 18) + 'Feito hoje: ' + esc(x.planName) + '</h2></div>' +
@@ -195,6 +202,12 @@
       '<section class="card"><div class="card-head"><h2>Volume por treino</h2></div>' +
       JS.graf.chart({ type: 'bars', title: 'Volume por treino em ' + cur.name, unit: 'kg', dec: 0, yLabel: 'Volume', xLabel: 'Data', height: 150,
         points: hist.map(function (h) { return { label: C.formatDayMonth(h.date), v: h.volume, tip: C.formatDateBR(h.date) }; }) }) + '</section>';
+    var hs = T.exerciseSets(s, cur.id, 20), ls = T.lastSet(s, cur.id);
+    if (ls) html += '<p class="muted small evo-last">Última série: <strong>' + kg(ls.load) + ' × ' + ls.reps + '</strong> (' + esc(C.formatDateBR(ls.date)) + ')</p>';
+    html += ui.section('Histórico de séries', hs.map(function (h) {
+      return '<div class="item"><div class="item-main static"><span class="item-row"><span class="item-title">' + esc(C.formatDateBR(h.date)) + (h.active ? ' ' + ui.tag('em andamento', 'soft') : '') + '</span><span class="muted small">' + esc(h.planName) + '</span></span>' +
+        '<span class="item-meta hist-sets">' + h.sets.map(function (st2, k) { return '<span class="hs">S' + (k + 1) + ' ' + JS.graf.fmtNum(st2.load, 1) + '×' + st2.reps + (st2.via === 'atalho' ? ' ⌁' : st2.via === 'toque-atras' ? ' ·' : '') + '</span>'; }).join('') + '</span></div></div>';
+    }).join('') + '<p class="hint">⌁ = registrada pelo atalho do iPhone • · = pelo toque atrás</p>', '<span class="count">' + hs.length + '</span>');
     html += ui.section('Todos os aparelhos', list.map(function (x) {
       return '<div class="item"><button type="button" class="item-main" data-action="evo-pick" data-id="' + esc(x.id) + '"><span class="item-row"><span class="item-title">' + esc(x.name) + '</span>' + trendTag(x.trend) + '</span>' +
         '<span class="item-meta">' + esc(T.GRUPOS[x.group] || '') + ' • última ' + kg(x.trend.last.maxLoad) + '</span></button></div>';
@@ -298,12 +311,11 @@
         '<span class="pe-tools"><button type="button" class="icon-btn sm" data-move="-1" aria-label="Subir">' + ui.icon('upchev', 16) + '</button>' +
         '<button type="button" class="icon-btn sm" data-move="1" aria-label="Descer">' + ui.icon('downchev', 16) + '</button>' +
         '<button type="button" class="icon-btn sm danger" data-remove aria-label="Remover">' + ui.icon('x', 16) + '</button></span></div>' +
-        '<div class="pe-grid">' +
-        '<label>Séries<input type="number" inputmode="numeric" min="1" max="10" name="sets_' + i + '" value="' + esc(it.sets) + '"></label>' +
+        '<div class="pe-grid three">' +
+        '<label>Séries<input type="number" inputmode="numeric" min="1" max="10" name="sets_' + i + '" value="' + esc(it.sets) + '" data-sets></label>' +
         '<label>Repetições<input type="text" inputmode="numeric" maxlength="12" name="reps_' + i + '" value="' + esc(it.reps) + '" placeholder="10 ou 8-12"></label>' +
-        '<label>Carga (kg)<input type="text" inputmode="decimal" autocomplete="off" name="load_' + i + '" value="' + esc(String(it.load || '').replace('.', ',')) + '" placeholder="0"></label>' +
         '<label>Descanso<select name="rest_' + i + '">' + REST_OPTIONS.map(function (o) { return '<option value="' + o[0] + '"' + (Number(it.restSec) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
-        '</div></div>';
+        '</div>' + loadInputs(it, i) + '</div>';
     }).join('');
     var body = ui.input({ label: 'Nome da ficha', name: 'name', value: draft.name, placeholder: 'Ex.: Treino A — Pernas', attrs: 'maxlength="40"' }) + colors +
       '<div class="field" data-field="items"><span class="label">Exercícios</span>' + (items || '<p class="muted small">Nenhum exercício ainda.</p>') +
@@ -324,6 +336,16 @@
             });
           });
           row.querySelector('[data-remove]').addEventListener('click', function () { sync(form, draft); draft.items.splice(i, 1); openPlanEditor(plan, draft); });
+          row.querySelector('[data-sets]').addEventListener('change', function () {
+            var keep = row.querySelector('[data-sets]').value;
+            sync(form, draft); draft.items[i].sets = keep;
+            openPlanEditor(plan, draft);
+          });
+          var same = row.querySelector('[data-same-load]');
+          if (same) same.addEventListener('click', function () {
+            var first = row.querySelector('input[name="load_' + i + '_0"]').value;
+            row.querySelectorAll('.pe-load input').forEach(function (inp) { inp.value = first; });
+          });
         });
       },
       onSubmit: function (v, form) {
@@ -339,6 +361,20 @@
     });
   }
 
+  // Um campo de carga para cada série (S1, S2, S3...). Série em branco repete a anterior.
+  function draftLoads(it) {
+    var n = Math.min(Math.max(Math.round(Number(it.sets) || 1), 1), 10);
+    var src = Array.isArray(it.loads) ? it.loads : [], out = [], prev = it.load != null && it.load !== '' ? it.load : '';
+    for (var k = 0; k < n; k++) { if (src[k] != null && src[k] !== '') prev = src[k]; out.push(prev); }
+    return out;
+  }
+  function loadInputs(it, i) {
+    var loads = draftLoads(it);
+    return '<div class="pe-loads"><span class="pe-loads-label">Carga por série (kg)</span><div class="pe-load-row">' + loads.map(function (v, k) {
+      return '<label class="pe-load"><small>S' + (k + 1) + '</small><input type="text" inputmode="decimal" autocomplete="off" name="load_' + i + '_' + k + '" value="' + esc(String(v === '' || v == null ? '' : v).replace('.', ',')) + '" placeholder="' + (k ? '=' : '0') + '" title="' + (k ? 'Vazio = mesma carga da série anterior' : '') + '" aria-label="Carga da série ' + (k + 1) + ' em kg"></label>';
+    }).join('') + '</div>' + (loads.length > 1 ? '<button type="button" class="link small-link" data-same-load="' + i + '">Repetir a carga da S1 em todas</button>' : '') + '</div>';
+  }
+
   function sync(form, draft) {
     var el = form.elements;
     draft.name = el.name.value;
@@ -346,7 +382,11 @@
     if (c) draft.color = c.value;
     draft.items.forEach(function (it, i) {
       if (!el['sets_' + i]) return;
-      it.sets = el['sets_' + i].value; it.reps = el['reps_' + i].value; it.load = el['load_' + i].value; it.restSec = el['rest_' + i].value;
+      it.sets = el['sets_' + i].value; it.reps = el['reps_' + i].value; it.restSec = el['rest_' + i].value;
+      var loads = [];
+      for (var k = 0; el['load_' + i + '_' + k]; k++) loads.push(String(el['load_' + i + '_' + k].value).replace(',', '.'));
+      it.loads = loads;
+      it.load = loads[0];
     });
   }
 
@@ -415,7 +455,7 @@
           var id = b.dataset.id || b.dataset.choose;
           if (onPick) { onPick(id); return; }
           var last = T.lastLoad(s, id);
-          draft.items.push({ exerciseId: id, sets: 3, reps: '10-12', load: last || '', restSec: 60 });
+          draft.items.push({ exerciseId: id, sets: 3, reps: '10-12', load: last || '', loads: [], restSec: 60 });
           back();
         });
         form.querySelector('[data-new-ex]').addEventListener('click', function () {
@@ -484,6 +524,7 @@
   };
   JS.actions['treino-semana'] = function () { view.mode = 'semana'; JS.app.render({ enter: 'view:r' }); };
   JS.actions['plan-new'] = function () { openPlanEditor(null); };
+  JS.actions['quick-open'] = function () { JS.openQuickRegister({ source: 'botao' }); };
   JS.actions['plan-menu'] = function (d) { planMenu(d.id); };
   JS.actions['workout-day'] = function (d) { dayMenu(d.date); };
   JS.actions['workout-start'] = function (d) { startWorkout(d.plan); };

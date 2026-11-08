@@ -18,6 +18,7 @@
     { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
+    { "name": "Registro rápido", "short_name": "Registrar série", "description": "Salvar o peso e as repetições da série", "url": "./#/registro", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Treino", "url": "./#/treino", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Alimentação", "url": "./#/alimentacao", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Rotina", "url": "./#/rotina", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },

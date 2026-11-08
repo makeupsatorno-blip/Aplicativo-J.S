@@ -35,7 +35,7 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.2.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.4.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
@@ -55,6 +55,26 @@ Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-
 - **Desenho da execução (sem internet):** cada um dos 48 exercícios tem um desenho animado próprio do app (`js/exanim.js` + `js/dados/animacoes.js`) mostrando o movimento, com o aparelho, barra ou halteres. Na lista de exercícios a miniatura mostra a posição inicial e a final; tocar abre o desenho animado ali mesmo, com a dica e o botão de escolher. No treino, "Como fazer" mostra o desenho animado. Exercício criado por você pode ter um link de vídeo seu.
 - **Evolução:** para cada aparelho, um gráfico da carga máxima por treino e o volume, mostrando se a carga está aumentando ou diminuindo em relação ao treino anterior e ao primeiro.
 - **Lembrete:** em Treino → Semana, escolha um horário para ser avisada nos dias que têm ficha.
+
+## 3.1.1 Registro rápido do treino
+
+Telinha compacta para salvar uma série sem navegar: **exercício** (já vem o do treino em andamento), **peso utilizado**, **repetições**, **série**, **Salvar série** e **Fechar**. Peso e repetições vêm preenchidos com o que foi usado da última vez (ou com a carga planejada daquela série na ficha), com botões grandes de + e − e atalhos de ±2,5 e ±5 kg. Mostra a última série e a maior carga do exercício.
+
+- **Sem treino em andamento:** a telinha sugere os exercícios da ficha do dia (ou os feitos recentemente) e o treino começa ao salvar. "Outro exercício…" abre a lista completa.
+- **Série com número que já existe:** corrige aquela série (ex.: série 1 era 60 kg, não 62,5).
+- **Exercício que não estava no treino:** entra no treino.
+- **Histórico** (Treino → Evolução): última série, maior carga, gráfico da carga e o histórico de séries de cada treino (S1 60×10, S2 65×8…), marcando as que vieram do atalho do iPhone (⌁) e do toque atrás (·).
+
+Como abrir:
+- **No app:** botão "Registro rápido de uma série" em Treino → Hoje; 2 batidas atrás do celular (sensor) em qualquer tela — com treino em andamento, 2 batidas de novo salvam; ao voltar para o app durante o treino (opção em Configurações).
+- **Android:** segure o ícone do J.S. → **Registro rápido** (dá para arrastar para a tela inicial). O toque atrás do próprio celular (Pixel "Toque rápido", Samsung Good Lock/RegiStar) configurado para **abrir o J.S.** cai direto no registro durante o treino.
+- **iPhone (Tocar Atrás):** em Configurações → Registro rápido do treino → **Criar meu link do atalho**. Depois:
+  1. Copie o link.
+  2. App **Atalhos** → **+** → **Adicionar Ação** → **Abrir URLs** → cole o link. Nome: **Registrar treino no J.S.**
+  3. **Ajustes → Acessibilidade → Toque → Tocar Atrás → Toque Duplo** → escolha **Registrar treino no J.S.**
+  4. Dois toques atrás do iPhone abrem a página do registro rápido (`rapido.html`), já com o exercício atual. Ao salvar, a série vai para o servidor; quando o J.S. abre, ela entra no treino (e sai do servidor).
+
+Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não consegue detectar o Tocar Atrás diretamente nem ter App Intents, widgets ou blocos de Configurações rápidas, que só existem em apps nativos. No iPhone, a página aberta pelo Atalho fica no Safari, que não enxerga os dados do app instalado; por isso ela usa o servidor. A página precisa de internet.
 
 ## 3.2 Alimentação e Corpo
 
@@ -80,7 +100,7 @@ Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-
 - Funcionam melhor no Android com Chrome. No iPhone, só com o app instalado na tela de início (iOS 16.4 ou mais novo).
 - Por privacidade, o valor das contas não aparece na notificação. Isso pode ser ligado em Configurações.
 
-### Servidor de avisos (Web Push)
+### Servidor de avisos (Web Push) e do registro rápido
 
 Segue a mesma base do push do Meu Financeiro IA (Supabase + biblioteca `web-push` + chaves VAPID guardadas no banco), sem o Render:
 
@@ -97,6 +117,7 @@ Para publicar de novo, com a CLI do Supabase logada na conta dona do projeto, na
 ```
 supabase link --project-ref jmjenkgmicqbftzndvrl
 supabase db query --linked -f supabase/sql/01_tabelas.sql              # tabelas (só na primeira vez)
+supabase db query --linked -f supabase/sql/03_registro_rapido.sql      # registro rápido do iPhone (só na primeira vez)
 supabase secrets set JS_CRON_SECRET=<valor-aleatório>                   # segredo do agendamento
 supabase functions deploy js-push --no-verify-jwt --use-api            # função
 # agendamento: troque SEU-PROJETO e SEU-SEGREDO em supabase/sql/02_agendamento.sql e rode com db query
@@ -137,6 +158,7 @@ aplicativo/
 ├── manifest.webmanifest    nome, cores e ícones para a instalação
 ├── sw.js                   funcionamento offline e toque nas notificações
 ├── servidor.js             servidor local para testes (opcional)
+├── rapido.html             página do registro rápido aberta pelo atalho do iPhone
 ├── css/style.css           visual (paleta do design system em ../JS_Starter/docs)
 ├── css/v2.css              telas da versão 2 e layout para tablet/computador
 ├── icons/                  ícones do app gerados a partir da logo
@@ -151,6 +173,7 @@ aplicativo/
 │   ├── toque.js            reconhecimento das 2 batidas atrás do celular
 │   ├── graficos.js         gráficos em SVG (sem bibliotecas)
 │   ├── exanim.js           desenhos animados da execução dos exercícios
+│   ├── registro.js         registro rápido do treino (telinha, atalho do iPhone, importação)
 │   ├── dados/              biblioteca de exercícios, Tabela TACO e opções de cardápio
 │   ├── store.js            armazenamento local, migração e backup
 │   ├── notify.js           lembretes e permissão de notificação

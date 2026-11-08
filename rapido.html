@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Registro rápido • J.S.</title>
+  <meta name="theme-color" content="#FFF7FA">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+  <!--
+    J.S. — página do Registro rápido aberta pelo atalho do iPhone (Ajustes → Acessibilidade → Toque →
+    Tocar Atrás → Toque Duplo → atalho "Registrar treino no J.S." → Abrir URLs).
+    O Safari não enxerga os dados do app instalado, então esta página lê o exercício atual e salva as
+    séries no servidor do J.S.; o app importa as séries quando abre. O link pessoal fica depois do "#"
+    (d = aparelho, k = chave) e não é enviado ao GitHub.
+  -->
+  <style>
+    :root { --rose50: #FFF7FA; --rose100: #FCEBF1; --rose200: #F5D5E1; --rose400: #D98EAA; --rose600: #B96788; --rose700: #A0526D; --rose800: #78465A;
+      --text: #30262B; --muted: #75676F; --border: #F0E3E8; --ok: #39865A; --bad: #B54747; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text);
+      background: radial-gradient(circle at 50% 0%, #fff 0%, var(--rose50) 55%, var(--rose100) 100%); min-height: 100vh; min-height: 100dvh; }
+    main { max-width: 440px; margin: 0 auto; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); }
+    header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .logo { width: 40px; height: 40px; border-radius: 12px; background: var(--rose100); display: grid; place-items: center; font: italic 700 18px Georgia, serif; color: var(--rose700); box-shadow: 0 0 0 1px var(--rose200); }
+    h1 { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--rose700); margin: 0; }
+    .sub { color: var(--muted); font-size: 13.5px; margin: 0; }
+    .card { background: #fff; border: 1px solid var(--border); border-radius: 22px; padding: 16px; box-shadow: 0 2px 6px rgba(120,70,90,.06), 0 10px 30px rgba(120,70,90,.08); }
+    label.ex { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+    select { width: 100%; margin: 6px 0 12px; font: 700 20px system-ui, sans-serif; color: var(--text); padding: 10px 36px 10px 12px; border-radius: 14px; border: 1px solid var(--rose200);
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2378465A' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center; appearance: none; -webkit-appearance: none; }
+    .row { background: var(--rose50); border-radius: 18px; padding: 10px; margin-bottom: 10px; text-align: center; }
+    .row span { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+    .step { display: flex; align-items: center; gap: 8px; }
+    .step button { width: 62px; height: 62px; flex: none; border: 0; border-radius: 18px; background: #fff; color: var(--rose700); font-size: 32px; font-weight: 700; box-shadow: 0 1px 4px rgba(160,82,109,.2); touch-action: manipulation; }
+    .step button:active { transform: scale(.92); }
+    .val { flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 4px; }
+    .val input { width: 100%; max-width: 150px; border: 0; background: transparent; text-align: center; font: 800 44px system-ui, sans-serif; color: var(--text); padding: 0; outline: none; }
+    .val small { font-size: 15px; color: var(--muted); font-weight: 700; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .two .step button { width: 44px; height: 52px; font-size: 26px; }
+    .two .val input { font-size: 34px; }
+    .chips { display: flex; justify-content: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+    .chips button { border: 1px solid var(--rose200); background: #fff; color: var(--rose800); border-radius: 99px; padding: 6px 11px; font-weight: 600; font-size: 13.5px; }
+    .save { width: 100%; min-height: 64px; border: 0; border-radius: 18px; background: var(--rose700); color: #fff; font: 800 20px system-ui, sans-serif; margin-top: 4px; box-shadow: 0 8px 20px rgba(160,82,109,.3); }
+    .save:disabled { opacity: .6; }
+    .close { width: 100%; min-height: 46px; border: 0; background: none; color: var(--rose800); font-weight: 700; font-size: 16px; margin-top: 6px; }
+    .msg { text-align: center; font-weight: 700; min-height: 24px; margin: 10px 0 0; }
+    .msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); }
+    .msg.ok::before { content: "✓ "; }
+    .info { font-size: 13px; color: var(--muted); text-align: center; margin: 10px 6px 0; }
+    .recent { margin: 14px 2px 0; font-size: 13.5px; color: var(--muted); }
+    .recent li { margin: 3px 0; }
+    .pop { animation: pop .45s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes pop { from { transform: scale(.85); opacity: .4; } to { transform: none; opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .pop { animation: none; } }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <header><div class="logo" aria-hidden="true">JS</div><div><h1>Registro rápido</h1><p class="sub" id="treino">Carregando…</p></div></header>
+  <form class="card" id="f" hidden autocomplete="off">
+    <label class="ex" for="ex">Exercício</label>
+    <select id="ex" name="ex"></select>
+    <div class="row"><span>Peso utilizado</span>
+      <div class="step"><button type="button" data-q="peso" data-d="-1" aria-label="Diminuir o peso">−</button>
+        <div class="val"><input id="peso" name="peso" inputmode="decimal" aria-label="Peso em kg"><small>kg</small></div>
+        <button type="button" data-q="peso" data-d="1" aria-label="Aumentar o peso">+</button></div>
+      <div class="chips"><button type="button" data-q="peso" data-v="-5">−5</button><button type="button" data-q="peso" data-v="-2.5">−2,5</button><button type="button" data-q="peso" data-v="2.5">+2,5</button><button type="button" data-q="peso" data-v="5">+5 kg</button></div>
+    </div>
+    <div class="two">
+      <div class="row"><span>Repetições</span><div class="step"><button type="button" data-q="reps" data-d="-1" aria-label="Menos repetições">−</button>
+        <div class="val"><input id="reps" name="reps" inputmode="numeric" aria-label="Repetições"></div>
+        <button type="button" data-q="reps" data-d="1" aria-label="Mais repetições">+</button></div></div>
+      <div class="row"><span>Série</span><div class="step"><button type="button" data-q="serie" data-d="-1" aria-label="Série anterior">−</button>
+        <div class="val"><input id="serie" name="serie" inputmode="numeric" aria-label="Número da série"></div>
+        <button type="button" data-q="serie" data-d="1" aria-label="Próxima série">+</button></div></div>
+    </div>
+    <button class="save" id="save" type="submit">Salvar série</button>
+    <button class="close" id="close" type="button">Fechar</button>
+    <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    <p class="info" id="info"></p>
+    <ul class="recent" id="recent"></ul>
+  </form>
+  <p class="msg bad" id="err" hidden></p>
+</main>
+<script>
+(function () {
+  'use strict';
+  var API = 'https://jmjenkgmicqbftzndvrl.supabase.co/functions/v1/js-push/';
+  var p = new URLSearchParams((location.hash || '').slice(1)), d = p.get('d'), k = p.get('k');
+  var $ = function (id) { return document.getElementById(id); };
+  var passo = 1, ctx = {};
+  function fmt(v) { return String(Math.round(v * 10) / 10).replace('.', ','); }
+  function num(v) { var n = Number(String(v).replace(',', '.')); return isFinite(n) ? n : NaN; }
+  function fail(t) { $('err').textContent = t; $('err').hidden = false; $('treino').textContent = 'J.S.'; }
+  if (!d || !k) { fail('Link incompleto. Copie de novo o link em J.S. → Configurações → Registro rápido.'); return; }
+
+  function load() {
+    return fetch(API + 'quick?d=' + encodeURIComponent(d) + '&k=' + encodeURIComponent(k), { cache: 'no-store' })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'erro'); return j; }); });
+  }
+  function fill(j) {
+    ctx = j.contexto || {};
+    passo = ctx.passo || 1;
+    $('treino').textContent = (ctx.treino || 'Treino') + (ctx.ativo ? ' • em andamento' : ' • começa ao abrir o J.S.');
+    var ex = $('ex'); ex.innerHTML = '';
+    var ops = (ctx.opcoes && ctx.opcoes.length ? ctx.opcoes : [{ id: ctx.exercicioId || '', nome: ctx.exercicio || 'Exercício atual' }]);
+    ops.forEach(function (o) { var op = document.createElement('option'); op.value = o.id; op.textContent = o.nome; if (o.id === ctx.exercicioId) op.selected = true; ex.appendChild(op); });
+    $('peso').value = ctx.peso != null ? fmt(ctx.peso) : '';
+    $('reps').value = ctx.reps != null ? ctx.reps : 10;
+    $('serie').value = ctx.serie || 1;
+    document.querySelectorAll('[data-q="peso"][data-d]').forEach(function (b) { b.dataset.d = (Number(b.dataset.d) < 0 ? -1 : 1) * passo; });
+    $('info').textContent = ctx.series ? 'Meta: ' + ctx.series + ' séries neste exercício.' : '';
+    var rec = $('recent'); rec.innerHTML = '';
+    (j.recentes || []).forEach(function (r) {
+      var li = document.createElement('li');
+      li.textContent = (r.exercise_name || 'Exercício') + ': ' + fmt(Number(r.load)) + ' kg × ' + r.reps + (r.serie ? ' (série ' + r.serie + ')' : '') + ' — aguardando o J.S. abrir';
+      rec.appendChild(li);
+    });
+    $('f').hidden = false;
+  }
+  load().then(fill).catch(function (e) {
+    fail(navigator.onLine === false ? 'Sem internet. Conecte e abra o atalho de novo.' : 'Não foi possível abrir o registro (' + e.message + '). Confira o link em J.S. → Configurações.');
+  });
+
+  document.querySelectorAll('[data-q]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var inp = $(b.dataset.q), cur = num(inp.value) || 0, delta = b.dataset.v != null ? Number(b.dataset.v) : Number(b.dataset.d);
+      var v = Math.max(b.dataset.q === 'serie' ? 1 : 0, Math.round((cur + delta) * 10) / 10);
+      inp.value = b.dataset.q === 'peso' ? fmt(v) : String(Math.round(v));
+    });
+  });
+  $('ex').addEventListener('change', function () {
+    var same = $('ex').value === ctx.exercicioId;
+    $('serie').value = same ? (ctx.serie || 1) : 1;
+  });
+  $('close').addEventListener('click', function () {
+    // O Safari só fecha abas abertas por script; senão, volta para a tela anterior.
+    window.close();
+    setTimeout(function () { if (history.length > 1) history.back(); else $('msg').textContent = 'Pode fechar esta aba.'; }, 150);
+  });
+  $('f').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var peso = num($('peso').value), reps = num($('reps').value), serie = num($('serie').value);
+    var m = $('msg');
+    if (!(peso >= 0 && peso <= 999)) { m.className = 'msg bad'; m.textContent = 'Informe o peso.'; return; }
+    if (!(reps >= 0 && reps <= 999)) { m.className = 'msg bad'; m.textContent = 'Informe as repetições.'; return; }
+    var exSel = $('ex'), exName = exSel.options[exSel.selectedIndex] ? exSel.options[exSel.selectedIndex].textContent : '';
+    $('save').disabled = true;
+    fetch(API + 'quick-add', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ d: d, k: k, peso: peso, reps: reps, serie: serie >= 1 ? serie : null, ex: exSel.value, exName: exName }) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'erro'); return j; }); })
+      .then(function (j) {
+        m.className = 'msg ok'; m.textContent = j.mensagem + '. O J.S. registra quando abrir.';
+        m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop');
+        if (navigator.vibrate) navigator.vibrate(40);
+        ctx.exercicioId = exSel.value; ctx.serie = (serie >= 1 ? serie : (ctx.serie || 1)) + 1;
+        $('serie').value = ctx.serie; // pronto para a próxima série
+        $('save').disabled = false; // libera já: a lista de recentes atualiza em segundo plano
+        load().then(function (jj) { var rec = jj.recentes || []; var ul = $('recent'); ul.innerHTML = '';
+          rec.forEach(function (r) { var li = document.createElement('li'); li.textContent = (r.exercise_name || 'Exercício') + ': ' + fmt(Number(r.load)) + ' kg × ' + r.reps + (r.serie ? ' (série ' + r.serie + ')' : '') + ' — aguardando o J.S. abrir'; ul.appendChild(li); }); });
+      })
+      .catch(function (e2) { m.className = 'msg bad'; m.textContent = navigator.onLine === false ? 'Sem internet: a série não foi salva. Tente de novo.' : 'Não salvou (' + e2.message + '). Tente de novo.'; })
+      .then(function () { $('save').disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

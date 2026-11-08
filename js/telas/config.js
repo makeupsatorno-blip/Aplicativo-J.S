@@ -114,7 +114,9 @@
         return '<option value="' + o[0] + '"' + (Number(bt.sensitivity || 3) === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
       }).join('') + '</select><p class="hint">' + (bt.threshold ? 'Calibrado para as suas batidas.' : 'Ainda não calibrado: use o teste abaixo para ajustar ao seu celular.') + '</p></div>' +
       '<button type="button" class="btn soft full" data-action="bt-calibrate">' + ui.icon('phone', 18) + 'Testar e calibrar o toque atrás</button>' +
-      '<button type="button" class="btn ghost full" data-action="bt-help">Com o app fechado (atalhos do celular)</button></section>';
+      '<button type="button" class="btn ghost full" data-action="bt-help">Com o app fechado: veja Registro rápido abaixo</button></section>';
+
+    html += quickBlock(st);
 
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('utensils', 18) + 'Alimentação</h2></div>' +
       '<button type="button" class="week-row plain" data-action="nutri-settings"><span class="wd-name">Meta de calorias</span><span class="week-plan">' +
@@ -136,6 +138,38 @@
       '<button type="button" class="btn danger full" data-action="data-reset">' + ui.icon('trash', 18) + 'Apagar todos os dados</button></section>';
 
     html += '<p class="about">J.S. • Julia Satorno • versão ' + esc(JS.app.VERSION) + '<br>Sem login: seus dados ficam no seu aparelho.</p>';
+    return html;
+  }
+
+  // Registro rápido: atalho do iPhone (Tocar Atrás), Android e abrir ao voltar para o app.
+  function quickBlock(st) {
+    var q = st.quick, on = !!(q && q.enabled), lk = on && JS.registro ? JS.registro.link() : '';
+    var html = '<section class="card" id="cfg-quick"><div class="card-head"><h2>' + ui.icon('dumbbell', 18) + 'Registro rápido do treino</h2></div>' +
+      '<p class="hint top">Uma telinha com o exercício atual, o peso, as repetições e a série: é só ajustar e tocar em "Salvar série". Ela já vem preenchida com o que você usou da última vez.</p>' +
+      '<button type="button" class="btn soft full" data-action="quick-try">' + ui.icon('play', 18) + 'Abrir o registro rápido agora</button>' +
+      sw('quickOnOpen', 'Abrir ao voltar para o app durante o treino', st.quickOnOpen !== false, 'Assim o toque atrás do próprio celular (que só abre o app) já cai direto no registro.', 'cfg-quick-open') +
+      '<div class="sub-block"><h3>' + ui.icon('phone', 16) + ' iPhone: Tocar Atrás</h3>';
+    if (!on) {
+      html += '<p class="hint">O iPhone não deixa um app instalado pela internet ouvir o Tocar Atrás. O jeito oficial é o Tocar Atrás rodar um <strong>Atalho</strong> que abre a página do registro rápido; a série vai para o servidor do J.S. e entra no seu treino quando o app abrir. Funciona com o app fechado.</p>' +
+        '<button type="button" class="btn primary full" data-action="quick-on">Criar meu link do atalho</button>';
+    } else {
+      html += '<p class="hint">Seu link pessoal (não compartilhe):</p>' +
+        '<div class="field"><input type="text" readonly value="' + esc(lk) + '" id="quick-link" aria-label="Link do atalho"></div>' +
+        '<div class="btn-row tight"><button type="button" class="btn small primary" data-action="quick-copy">' + ui.icon('share', 16) + 'Copiar link</button>' +
+        '<a class="btn small soft" href="' + esc(lk) + '" target="_blank" rel="noopener">Abrir a página</a></div>' +
+        '<ol class="help-list">' +
+        '<li>Copie o link acima.</li>' +
+        '<li>Abra o app <strong>Atalhos</strong> → <strong>+</strong> (novo atalho) → <strong>Adicionar Ação</strong> → busque <strong>Abrir URLs</strong> e cole o link.</li>' +
+        '<li>Dê o nome <strong>Registrar treino no J.S.</strong> e toque em OK.</li>' +
+        '<li>Vá em <strong>Ajustes → Acessibilidade → Toque → Tocar Atrás → Toque Duplo</strong> e escolha <strong>Registrar treino no J.S.</strong></li>' +
+        '<li>Pronto: dois toques atrás do iPhone abrem o registro rápido. Ao abrir o J.S., as séries entram no treino.</li></ol>' +
+        '<button type="button" class="btn ghost small" data-action="quick-off">Desativar o atalho do iPhone</button>';
+    }
+    html += '</div><div class="sub-block"><h3>' + ui.icon('phone', 16) + ' Android</h3><ol class="help-list">' +
+      '<li><strong>Atalho no ícone:</strong> segure o ícone do J.S. → <strong>Registro rápido</strong>. Arraste para a tela inicial para ter um botão direto.</li>' +
+      '<li><strong>Toque atrás do celular:</strong> Pixel (Configurações → Sistema → Gestos → Toque rápido → Abrir app → J.S.) ou Samsung (Good Lock → RegiStar → Back-Tap → Abrir app → J.S.). Durante o treino, o J.S. abre direto no registro rápido.</li>' +
+      '<li><strong>Com o app aberto:</strong> 2 batidas atrás (sensor de movimento) abrem o registro rápido em qualquer tela.</li></ol>' +
+      '<p class="hint">Widgets e botões nas Configurações rápidas do Android só existem em apps nativos; o J.S. é um app web instalado.</p></div></section>';
     return html;
   }
 
@@ -240,6 +274,23 @@
     JS.store.update(function (s) { s.settings.backTap.enabled = on; }); if (JS.backTap) { if (on) JS.backTap.start(); else JS.backTap.stop(); }
     ui.toast(on ? 'Toque atrás ligado para os treinos.' : 'Toque atrás desligado.');
   };
+  JS.changes['cfg-quick-open'] = function (el) { JS.store.update(function (s) { s.settings.quickOnOpen = el.checked; }); };
+  JS.actions['quick-try'] = function () { JS.openQuickRegister({ source: 'botao' }); };
+  JS.actions['quick-on'] = function (d, el) {
+    el.disabled = true; el.textContent = 'Criando…';
+    JS.registro.enable().then(function () { ui.toast('Link do atalho criado. Agora siga os passos.'); JS.app.render(); document.getElementById('cfg-quick') && document.getElementById('cfg-quick').scrollIntoView({ block: 'start' }); })
+      .catch(function (e) { el.disabled = false; el.textContent = 'Criar meu link do atalho'; ui.toast('Não foi possível criar (' + e.message + '). Precisa de internet.', { error: true }); });
+  };
+  JS.actions['quick-copy'] = function () {
+    var lk = JS.registro.link();
+    var done = function () { ui.toast('Link copiado. Cole no app Atalhos.'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(lk).then(done, function () { var i = document.getElementById('quick-link'); i.select(); document.execCommand('copy'); done(); });
+    else { var i = document.getElementById('quick-link'); i.select(); document.execCommand('copy'); done(); }
+  };
+  JS.actions['quick-off'] = function () {
+    ui.confirm({ title: 'Desativar o atalho do iPhone?', message: 'O link para de funcionar e as séries que ainda não entraram no app são apagadas do servidor.', confirmLabel: 'Desativar', danger: true })
+      .then(function (ok) { if (ok) JS.registro.disable().then(function () { ui.toast('Atalho do iPhone desativado.'); }); });
+  };
   JS.changes['cfg-open'] = function (el) {
     var v = ['auto', 'sempre', 'nunca'].indexOf(el.value) >= 0 ? el.value : 'auto';
     JS.store.update(function (s) { s.settings.openWorkout = v; });
@@ -333,16 +384,7 @@
     });
   };
 
-  JS.actions['bt-help'] = function () {
-    var body = '<p>O J.S. reconhece as 2 batidas pelo sensor enquanto está <strong>aberto</strong> no treino (a tela fica acesa durante o treino).</p>' +
-      '<h3 class="form-sub">Android</h3><p>Alguns celulares têm toque atrás próprio, que pode <strong>abrir o J.S.</strong>. Ele abre direto no treino: na execução, se houver treino em andamento (para colocar a carga e registrar a série), ou em Treino → Hoje nos dias de treino (aí bata 2 vezes de novo para iniciar). Isso se ajusta em "Ao abrir o app".</p>' +
-      '<ul class="help-list"><li><strong>Samsung:</strong> app Good Lock → módulo RegiStar → Back-Tap → Abrir app → J.S.</li>' +
-      '<li><strong>Google Pixel:</strong> Configurações → Sistema → Gestos → Toque rápido → Abrir app → J.S.</li>' +
-      '<li><strong>Outros:</strong> procure "toque duplo atrás" ou "back tap" nas configurações.</li></ul>' +
-      '<h3 class="form-sub">iPhone</h3><p>Ajustes → Acessibilidade → Toque → <strong>Tocar Atrás</strong>. Com o J.S. aberto no treino, use as 2 batidas normalmente.</p>' +
-      '<p class="hint">Com o app totalmente fechado, nenhum site instalado consegue ouvir o sensor; por isso o atalho do celular serve para abrir o J.S. no treino.</p>';
-    ui.openSheet({ title: 'Toque atrás com o app fechado', body: body });
-  };
+  JS.actions['bt-help'] = function () { var el = document.getElementById('cfg-quick'); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); };
   JS.changes['cfg-intro'] = function (el) {
     JS.store.update(function (s) { s.settings.intro = el.checked; });
     ui.toast(el.checked ? 'A intro vai aparecer ao abrir o app.' : 'Intro desligada.');

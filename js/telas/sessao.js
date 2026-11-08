@@ -53,7 +53,10 @@
       var totalDots = Math.max(it.targetSets, it.sets.length);
       for (var i = 0; i < totalDots; i++) {
         var st = it.sets[i];
-        dots += st ? '<li class="on" title="' + esc(JS.kg(st.load) + ' × ' + st.reps) + '"><span>' + JS.graf.fmtNum(st.load, 1) + '×' + st.reps + '</span></li>' : '<li><span>' + (i + 1) + '</span></li>';
+        var planned = it.plannedLoads && !T.samePerSet(it.plannedLoads) ? it.plannedLoads[i] : null;
+        dots += st ? '<li class="on" title="' + esc(JS.kg(st.load) + ' × ' + st.reps) + '"><span>' + JS.graf.fmtNum(st.load, 1) + '×' + st.reps + '</span></li>'
+          : planned != null ? '<li class="plan" title="Série ' + (i + 1) + ': ' + esc(JS.kg(planned)) + ' planejado"><span>' + JS.graf.fmtNum(planned, 1) + ' kg</span></li>'
+            : '<li><span>' + (i + 1) + '</span></li>';
       }
       var resting = rest.until > Date.now() && rest.itemId;
       var step = s.workout.loadStep || 1;
@@ -142,23 +145,17 @@
   //  - em outra tela, 2 batidas levam ao treino (e, em Treino → Hoje, iniciam o treino do dia).
   function onDouble() {
     if (JS.intro && JS.intro.isRunning()) return;
-    // Telinha do peso aberta: as 2 batidas de novo confirmam e registram a série.
-    if (quick && document.getElementById('sheet').open) { quick.confirm(); return; }
+    // Registro rápido aberto: as 2 batidas de novo salvam a série.
+    if (JS.registro && JS.registro.isOpen()) { JS.registro.confirm(); return; }
     if (document.getElementById('sheet').open || document.getElementById('confirm').open || document.querySelector('.countdown')) return;
     var s = JS.store.state, r = JS.app.route();
     if (r === 'sessao') { openQuickSet(); return; }
     if (T.activeSession(s)) { JS.app.go('sessao'); setTimeout(openQuickSet, 250); return; }
-    if (!s.workoutPlans.length) { JS.treinoView.mode = 'hoje'; JS.app.go('treino'); ui.toast('Monte uma ficha para usar o toque atrás no treino.'); return; }
+    // Em Treino → Hoje com ficha: inicia o treino do dia (como antes). Nas outras telas, sem treino
+    // em andamento: abre o registro rápido para escolher o exercício (o treino começa ao salvar).
     var p = T.planForDate(s, C.toDateKey(new Date()));
-    if (r === 'treino' && JS.treinoView.mode === 'hoje') {
-      if (p.plan) { JSToque.vibrate(40); JS.startWorkout(p.plan.id); }
-      else ui.toast('Hoje não tem ficha. Toque em "Escolher ficha para hoje".');
-      return;
-    }
-    JSToque.vibrate(40);
-    JS.treinoView.mode = 'hoje';
-    JS.app.go('treino');
-    ui.toast(p.plan ? 'Toque atrás: bata 2 vezes de novo para iniciar ' + p.plan.name + '.' : 'Toque atrás: abrindo o treino.', { timeout: 4500 });
+    if (r === 'treino' && JS.treinoView.mode === 'hoje' && p.plan) { JSToque.vibrate(40); JS.startWorkout(p.plan.id); return; }
+    openQuickSet();
   }
 
   function startSensor() {
@@ -241,18 +238,18 @@
   }
 
   // via: 'toque' (botão) | 'toque-atras' (sensor) | 'atalho' (iPhone com o app fechado)
-  function registerSet(via) {
+  function registerSet(via, force) {
     var x = session(), it = T.currentItem(x);
     if (!x || !it) return;
-    if (via === 'toque-atras' && Date.now() - lastSetAt < 1500) return; // evita registrar duas vezes
+    if (via === 'toque-atras' && !force && Date.now() - lastSetAt < 1500) return; // evita registrar duas vezes
     lastSetAt = Date.now();
-    var no = it.sets.length + 1, wasComplete = it.sets.length >= it.targetSets;
+    var no = it.sets.length + 1, wasComplete = it.sets.length >= it.targetSets, doneLoad = it.load, doneReps = it.reps;
     howtoOpen = null; // fecha o vídeo ao registrar a série
     rest = it.restSec > 0 ? { until: Date.now() + it.restSec * 1000, total: it.restSec, itemId: it.id } : { until: 0, total: 0, itemId: null };
     JS.anim.mark('.set-dots li:nth-child(' + no + ')', 'pop', { ms: 700 });
     JS.store.update(function (st, n) { T.logSet(st, x.id, it.id, n, via); });
     if (window.JSToque) JSToque.confirmSet();
-    flash('Série ' + no + ' registrada', JS.kg(it.load) + ' × ' + it.reps + (via === 'toque-atras' ? ' • pelo toque atrás' : ''));
+    flash('Série ' + no + ' registrada', JS.kg(doneLoad) + ' × ' + doneReps + (via === 'toque-atras' ? ' • pelo toque atrás' : ''));
     var nx = session();
     var allDone = nx && nx.items.length && nx.items.every(function (i) { return i.sets.length >= i.targetSets; });
     if (allDone && !wasComplete) {
@@ -264,64 +261,8 @@
   }
   JS.registerSet = registerSet;
 
-  // Telinha do toque atrás: mostra o exercício atual com a carga e as repetições para ajustar
-  // (botões grandes de + e −, ou digitar). "Registrar série" (ou bater 2 vezes de novo) salva.
-  var quick = null;
-  function openQuickSet() {
-    var x = session(), it = T.currentItem(x);
-    if (!x || !it) return;
-    if (window.JSToque) { JSToque.vibrate([30, 40, 30]); JSToque.beep(740, 90); }
-    var step = JS.store.state.settings && JS.store.state.workout.loadStep || 1;
-    var vals = { load: Number(it.load) || 0, reps: Number(it.reps) || 0 };
-    var no = it.sets.length + 1;
-    function fmt(v) { return JS.graf.fmtNum(v, 1); }
-    var body = '<div class="quick-set">' +
-      '<p class="qs-ex">' + esc(it.name) + '</p><p class="qs-sub">Série ' + no + ' de ' + it.targetSets + ' • meta ' + esc(it.targetReps) + ' rep. • última: ' +
-      (it.sets.length ? JS.kg(it.sets[it.sets.length - 1].load) + ' × ' + it.sets[it.sets.length - 1].reps : '—') + '</p>' +
-      '<div class="qs-row"><span class="qs-label">Peso</span><div class="qs-step">' +
-      '<button type="button" class="qs-btn" data-q="load" data-d="-' + step + '" aria-label="Diminuir o peso">−</button>' +
-      '<label class="qs-val"><input name="load" type="text" inputmode="decimal" autocomplete="off" value="' + fmt(vals.load) + '" aria-label="Peso em kg"><small>kg</small></label>' +
-      '<button type="button" class="qs-btn" data-q="load" data-d="' + step + '" aria-label="Aumentar o peso">+</button></div>' +
-      '<div class="quick-chips qs-chips">' + [-5, -2.5, 2.5, 5].map(function (d) { return '<button type="button" class="chip" data-q="load" data-d="' + d + '">' + (d > 0 ? '+' : '−') + fmt(Math.abs(d)) + ' kg</button>'; }).join('') + '</div></div>' +
-      '<div class="qs-row"><span class="qs-label">Repetições</span><div class="qs-step">' +
-      '<button type="button" class="qs-btn" data-q="reps" data-d="-1" aria-label="Menos repetições">−</button>' +
-      '<label class="qs-val"><input name="reps" type="text" inputmode="numeric" autocomplete="off" value="' + vals.reps + '" aria-label="Repetições"><small>rep.</small></label>' +
-      '<button type="button" class="qs-btn" data-q="reps" data-d="1" aria-label="Mais repetições">+</button></div></div>' +
-      '<p class="qs-hint">' + ui.icon('phone', 14) + ' Bata 2 vezes atrás de novo para registrar.</p></div>';
-    var form = ui.openSheet({
-      title: 'Peso desta série', body: body, submitLabel: 'Registrar série', cancelLabel: 'Só salvar o peso',
-      onOpen: function (fm) {
-        fm.querySelectorAll('[data-q]').forEach(function (b) {
-          b.addEventListener('click', function () {
-            var inp = fm.elements[b.dataset.q], cur = Number(String(inp.value).replace(',', '.')) || 0;
-            var v = Math.max(0, Math.round((cur + Number(b.dataset.d)) * 10) / 10);
-            inp.value = b.dataset.q === 'load' ? fmt(v) : String(Math.round(v));
-            JS.anim.restartClass(inp.closest('.qs-val'), 'bump');
-          });
-        });
-        // "Só salvar o peso": guarda carga/repetições sem registrar a série.
-        var ghost = fm.querySelector('.sheet-foot .btn.ghost');
-        if (ghost) ghost.addEventListener('click', function () { save(fm, false); }, true);
-      },
-      onSubmit: function (v, fm) { return save(fm, true); }
-    });
-    function read(fm) {
-      var load = Number(String(fm.elements.load.value).replace(',', '.')), reps = Number(String(fm.elements.reps.value).replace(',', '.'));
-      return { load: load >= 0 && load <= 999 ? load : null, reps: reps >= 0 && reps <= 999 ? Math.round(reps) : null };
-    }
-    function save(fm, register) {
-      var r = read(fm);
-      if (r.load == null) return { errors: { load: 'Peso inválido.' } };
-      var cur = session(), item = cur && T.currentItem(cur);
-      if (!item) return;
-      JS.store.silentUpdate(function (st) { T.setItemValues(st, cur.id, item.id, { load: r.load, reps: r.reps == null ? item.reps : r.reps }); });
-      quick = null;
-      if (register) { lastSetAt = 0; setTimeout(function () { registerSet('toque-atras'); }, 60); }
-      else { ui.toast('Peso salvo: ' + JS.kg(r.load) + '.'); setTimeout(function () { JS.app.render(); }, 230); }
-    }
-    quick = { confirm: function () { if (form && form.isConnected) form.requestSubmit(); } };
-    document.getElementById('sheet').addEventListener('close', function () { quick = null; }, { once: true });
-  }
+  // Toque atrás: abre o Registro rápido (js/registro.js) no exercício atual.
+  function openQuickSet() { JS.openQuickRegister({ source: 'toque-atras' }); }
   JS.openQuickSet = openQuickSet;
 
   function finish() {

@@ -40,12 +40,12 @@
     var l = Object.assign({}, L, spec.l || {}, pose.l || {});
     var P = pose.p, t = pose.t != null ? pose.t : 90;
     var neck = add(P, t, l.torso), head = add(neck, t + (pose.hd || 0), l.neck);
-    var s = { pelvis: P, neck: neck, head: head, l: l, front: spec.view === 'front' };
+    var s = { pelvis: P, neck: neck, head: head, l: l, front: spec.view === 'front', pose: pose };
     if (s.front) {
       var cx = P[0];
       var shR = [neck[0] + l.sw, neck[1] + 2], shL = mirror(cx, shR), hiR = [P[0] + l.hw, P[1]], hiL = mirror(cx, hiR);
-      s.armN = limb(shR, pose.an, l.ua, l.fa, -1); s.armF = limb(shL, mirrorSpec(cx, pose.an), l.ua, l.fa, 1);
-      s.legN = limb(hiR, pose.ln, l.th, l.sh, 1); s.legF = limb(hiL, mirrorSpec(cx, pose.ln), l.th, l.sh, -1);
+      s.armN = limb(shR, pose.an, l.ua, l.fa, -1); s.armF = limb(shL, pose.af || mirrorSpec(cx, pose.an), l.ua, l.fa, 1);
+      s.legN = limb(hiR, pose.ln, l.th, l.sh, 1); s.legF = limb(hiL, pose.lf || mirrorSpec(cx, pose.ln), l.th, l.sh, -1);
       s.shoulders = [shL, shR]; s.hips = [hiL, hiR];
       s.footN = add(s.legN[2], pose.fn != null ? pose.fn : -80, l.ft * 0.6);
       s.footF = add(s.legF[2], 180 - (pose.fn != null ? pose.fn : -80), l.ft * 0.6);
@@ -128,8 +128,15 @@
       case 'rope': { var r = point(s, pr.at), sp = pr.spread || 4; return ln(r, [r[0] - sp, r[1] + 8], 3, COL.plate) + ln(r, [r[0] + sp, r[1] + 8], 3, COL.plate); }
       case 'roll': { var o = point(s, pr.at, pr.d); return circ(o, pr.r || 5, COL.pad, COL.padEdge); }
       case 'sled': { // plataforma do leg press, perpendicular à perna
-        var an = s.pts.an, axis = ang(s.pelvis, an), cen = add(an, axis, 4);
+        var an = s.pts.an, axis = ang(s.pelvis, an), cen = add(pr.at === 'tn' ? s.pts.tn : an, axis, 4);
         return ln(add(cen, axis + 90, 12), add(cen, axis - 90, 12), 5, COL.metal);
+      }
+      case 'bar': { // alavanca presa num ponto fixo (ex.: remada cavalinho)
+        var bt = point(s, pr.to, pr.d); return ln(pr.from, bt, pr.w || 5, COL.metal) + circ(pr.from, 3.5, COL.metal);
+      }
+      case 'jrope': { // corda de pular: curva de uma mão à outra, passando por cima da cabeça ou por baixo dos pés
+        var h1 = s.pts.hn, h2 = s.pts.hf, cy = s.pose.rope != null ? s.pose.rope : 130;
+        return '<path d="M' + f(h1[0]) + ',' + f(h1[1]) + ' Q' + f((h1[0] + h2[0]) / 2) + ',' + f(cy) + ' ' + f(h2[0]) + ',' + f(h2[1]) + '" fill="none" stroke="' + COL.plate + '" stroke-width="2"/>';
       }
       case 'crank': { var e = point(s, pr.at); return ln(pr.c, e, 3, COL.metal) + circ(pr.c, 3, COL.metal); }
       case 'wheel': return circ([pr.x, pr.y], pr.r, 'none', COL.metal).replace('fill="none"', 'fill="#F4EEF1"') + circ([pr.x, pr.y], 3, COL.metal);

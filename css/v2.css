@@ -597,3 +597,37 @@ html.reduce-motion .content[class*="enter-"] .insights li { animation: none; }
 .qs-chips { justify-content: center; margin: 8px 0 0; }
 .qs-hint { display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--m-work); font-size: 13px; font-weight: 600; margin-top: 6px; }
 html.reduce-motion .qs-val.bump input { animation: none; }
+
+/* ---------- Carga por série (ficha) ---------- */
+.pe-grid.three { grid-template-columns: repeat(3, 1fr); }
+.pe-loads { margin: 8px 0 4px; }
+.pe-loads-label { display: block; font-size: 11.5px; font-weight: 650; color: var(--rose800); margin-bottom: 4px; }
+.pe-load-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 6px; }
+.pe-load { display: flex; flex-direction: column; align-items: stretch; gap: 2px; margin: 0 !important; }
+.pe-load small { font-size: 10.5px; font-weight: 700; color: var(--muted); text-align: center; }
+.pe-load input { width: 100%; min-height: 40px; padding: 4px 6px; border: 1px solid var(--rose200); border-radius: 10px; background: #fff; font-size: 16px; text-align: center; }
+.set-dots li.plan { border-style: dashed; border-color: #9CB4E3; color: #3E5C9A; background: #F4F7FD; }
+
+/* ---------- Registro rápido ---------- */
+.qs-kicker { font-size: 12px; font-weight: 700; color: var(--rose700); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+.qs-exlabel { display: block; text-align: left; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 10px !important; }
+.qs-select {
+  width: 100%; margin-top: 6px; font-size: 19px; font-weight: 800; color: var(--text); padding: 10px 36px 10px 12px; border-radius: 14px; border: 1px solid var(--rose200); background: #fff;
+  appearance: none; -webkit-appearance: none; text-transform: none; letter-spacing: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2378465A' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}
+.qs-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.qs-row.sm .qs-btn { width: 44px; height: 52px; font-size: 26px; border-radius: 14px; }
+.qs-row.sm .qs-val input { font-size: 32px; }
+.qs-row.sm .qs-val small { font-size: 12px; }
+.qs-last { color: var(--muted); font-size: 13px; margin: 2px 0 4px; }
+.quick-btn-open { margin-top: 8px; }
+.evo-last { margin: -6px 2px 12px; }
+.hist-sets { gap: 6px; }
+.hist-sets .hs { background: var(--rose50); border: 1px solid var(--rose200); border-radius: 8px; padding: 1px 6px; font-variant-numeric: tabular-nums; color: var(--text); }
+#quick-link { font-size: 13px; color: var(--muted); }
+.qs-row.sm .qs-step { gap: 4px; }
+.qs-row.sm .qs-val { flex-direction: column; align-items: center; gap: 0; }
+.qs-row.sm .qs-val input { font-size: 30px; max-width: 64px; }
+.qs-row.sm .qs-val small { font-size: 11.5px; line-height: 1; white-space: nowrap; }

@@ -282,6 +282,80 @@ test('toque atrás: calibração e sensibilidade', () => {
   assert.equal(Q.thresholdFor({}), Q.DEFAULT_THRESHOLD);
 });
 
+test('carga por série (pirâmide): cada série começa com o peso dela e a ficha aprende o que foi usado', () => {
+  const s = R.emptyState();
+  const r = T.validatePlan({ name: 'Pirâmide', items: [{ exerciseId: 'ex:supino-reto', sets: 3, reps: '12-8', loads: ['20', '22,5', ''], restSec: 60 }] });
+  assert.ok(r.ok);
+  assert.deepEqual(r.value.items[0].loads, [20, 22.5, 22.5], 'série vazia repete a anterior');
+  const p = T.createPlan(s, r.value, NOW);
+  p.items[0].loads = [20, 22.5, 25];
+  const x = T.startSession(s, '2026-11-08', p.id, NOW);
+  const it = x.items[0];
+  assert.equal(it.load, 20, '1ª série começa com 20 kg');
+  T.logSet(s, x.id, it.id, iso(1));
+  assert.equal(it.load, 22.5, '2ª série já vem com 22,5 kg');
+  T.setItemValues(s, x.id, it.id, { load: 24 }); // ajustou na hora
+  T.logSet(s, x.id, it.id, iso(3));
+  assert.equal(it.load, 25, '3ª série vem com 25 kg');
+  T.logSet(s, x.id, it.id, iso(5));
+  assert.deepEqual(it.sets.map(z => z.load), [20, 24, 25]);
+  T.finishSession(s, x.id, iso(30));
+  assert.deepEqual(p.items[0].loads, [20, 24, 25], 'a ficha guarda a carga usada em cada série');
+  // ficha antiga (sem carga por série) continua funcionando com a mesma carga em todas
+  const old = T.createPlan(s, { name: 'Antiga', color: T.PLAN_COLORS[0], items: [{ id: 'i1', exerciseId: 'ex:leg-press', sets: 2, reps: '10', load: 80, restSec: 0 }] }, NOW);
+  assert.deepEqual(T.itemLoads(old.items[0]), [80, 80]);
+});
+
+test('registro rápido: usa o exercício atual, registra séries seguidas e corrige uma série', () => {
+  const s = R.emptyState();
+  const p = plan(s, 'Peito', [{ exerciseId: 'ex:supino-reto', sets: 4, reps: '10', load: 60, restSec: 60 }, { exerciseId: 'ex:crucifixo', sets: 3, reps: '12', load: 12, restSec: 45 }]);
+  T.startSession(s, '2026-11-08', p.id, NOW);
+  // contexto que o atalho do iPhone recebe
+  let ctx = T.quickContext(s, '2026-11-08', 2.5);
+  assert.equal(ctx.ativo, true);
+  assert.equal(ctx.exercicio, 'Supino reto');
+  assert.equal(ctx.serie, 1);
+  assert.equal(ctx.peso, 60);
+  assert.equal(ctx.passo, 2.5);
+  assert.deepEqual(ctx.opcoes.map(o => o.id), ['ex:supino-reto', 'ex:crucifixo']);
+  // séries consecutivas no exercício atual (sem dizer qual)
+  let r = T.quickSet(s, { load: 60, reps: 10 }, iso(1));
+  assert.equal(r.serie, 1);
+  r = T.quickSet(s, { load: 62.5, reps: 9 }, iso(3));
+  assert.equal(r.serie, 2);
+  assert.equal(T.quickContext(s, '2026-11-08').serie, 3);
+  // corrigir a série 1
+  r = T.quickSet(s, { exerciseId: 'ex:supino-reto', load: 57.5, reps: 10, serie: 1 }, iso(4));
+  assert.equal(r.corrected, true);
+  const sets = T.activeSession(s).items[0].sets;
+  assert.deepEqual(sets.map(x => [x.load, x.reps]), [[57.5, 10], [62.5, 9]]);
+  // outro exercício que não estava no treino entra no treino
+  r = T.quickSet(s, { exerciseId: 'ex:rosca-direta', load: 10, reps: 12, via: 'atalho' }, iso(6));
+  assert.equal(T.activeSession(s).items.length, 3);
+  assert.equal(r.item.sets[0].via, 'atalho');
+  assert.equal(T.currentItem(T.activeSession(s)).exerciseId, 'ex:rosca-direta', 'vira o exercício atual');
+  // histórico e último uso
+  assert.deepEqual(T.lastSet(s, 'ex:supino-reto'), { load: 62.5, reps: 9, date: '2026-11-08', at: iso(3) });
+  assert.equal(T.exerciseSets(s, 'ex:supino-reto')[0].sets.length, 2);
+});
+
+test('registro rápido sem treino em andamento: começa um treino e usa o último peso como sugestão', () => {
+  const s = R.emptyState();
+  const p = plan(s, 'Pernas', [{ exerciseId: 'ex:leg-press', sets: 3, reps: '10', load: 80, restSec: 60 }]);
+  T.setWeekPlan(s, C.weekday('2026-11-08'), p.id);
+  let ctx = T.quickContext(s, '2026-11-08');
+  assert.equal(ctx.ativo, false);
+  assert.equal(ctx.treino, 'Pernas', 'mostra a ficha do dia');
+  assert.equal(ctx.exercicio, 'Leg press 45°');
+  const r = T.quickSet(s, { exerciseId: 'ex:leg-press', load: 90, reps: 10, planId: p.id, date: '2026-11-08' }, NOW);
+  assert.equal(r.started, true, 'começou um treino');
+  assert.equal(T.activeSession(s).planName, 'Pernas');
+  assert.equal(T.activeSession(s).items[0].sets[0].load, 90);
+  ctx = T.quickContext(s, '2026-11-08');
+  assert.equal(ctx.serie, 2);
+  assert.equal(ctx.peso, 90, 'sugere o peso que acabou de usar');
+});
+
 test('tarefa toda semana nos dias marcados (ex.: segunda e quarta)', () => {
   const s = R.emptyState();
   const r = R.validateTask({ title: 'Pilates', dueDate: '2026-11-08', dueTime: '07:00', weekdays: ['1', '3'], recurrence: 'none' });

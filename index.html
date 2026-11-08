@@ -33,8 +33,11 @@
         if (!id || id === 'rest' || !plans.some(function (x) { return x && x.id === id; })) return null;
         return ses.some(function (x) { return x && x.date === key && x.status === 'done'; }) ? null : 'treino';
       };
-      var target = (location.hash || '').replace(/^#\/?/, '') ? null : window.JS_OPEN(d, new Date());
-      if (target) history.replaceState(null, '', '#/' + target);
+      var asked = (location.hash || '').replace(/^#\/?/, '');
+      // #/registro (atalho "Registro rápido" do ícone): abre a telinha, também sem a intro.
+      var target = asked ? (asked === 'registro' ? 'registro' : null) : window.JS_OPEN(d, new Date());
+      if (target && target !== 'registro') history.replaceState(null, '', '#/' + target);
+      window.JS_OPENED_TARGET = target;
       // Abrindo direto no treino, pula a intro (é para ser rápido).
       if (s.intro !== false && !target) h.classList.add('intro-on');
       var sys = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -216,6 +219,7 @@
   <script src="js/telas/corpo.js" defer></script>
   <script src="js/telas/graficos.js" defer></script>
   <script src="js/telas/mais.js" defer></script>
+  <script src="js/registro.js" defer></script>
   <script src="js/telas/inicio.js" defer></script>
   <script src="js/telas/agenda.js" defer></script>
   <script src="js/telas/config.js" defer></script>

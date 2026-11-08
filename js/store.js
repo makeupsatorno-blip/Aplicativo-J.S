@@ -63,23 +63,26 @@
   function exportData() {
     var copy = JSON.parse(JSON.stringify(state));
     delete copy.settings.push;
+    delete copy.settings.quick; // atalho do iPhone: é deste aparelho
     delete copy.firedReminders;
     return { app: 'J.S.', tipo: 'backup', versao: R.SCHEMA_VERSION, exportadoEm: nowISO(), dados: copy };
   }
 
   function importData(obj) {
     if (!obj || obj.app !== 'J.S.' || !obj.dados) throw new Error('Este arquivo não é um backup do J.S.');
-    var push = state && state.settings.push;
+    var push = state && state.settings.push, quick = state && state.settings.quick;
     state = R.migrate(obj.dados);
     if (push) state.settings.push = push; else delete state.settings.push;
+    if (quick) state.settings.quick = quick; else delete state.settings.quick;
     save();
     emit();
   }
 
   function reset() {
-    var push = state && state.settings.push;
+    var push = state && state.settings.push, quick = state && state.settings.quick;
     state = R.emptyState();
     if (push && push.enabled) state.settings.push = push; // continua inscrito; os lembretes somem na próxima sincronização
+    if (quick && quick.enabled) state.settings.quick = quick;
     save();
     emit();
   }
