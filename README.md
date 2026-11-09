@@ -5,6 +5,8 @@ Sem login: os dados ficam no próprio aparelho. O único servidor é opcional e 
 
 No celular, a barra de baixo tem **Início, Rotina, Treino, Alimentação e Mais** (Cronograma capilar, Financeiro, Corpo, Gráficos, Agenda e Configurações). Em tablet deitado ou computador, a barra vira uma coluna lateral com todos os módulos e as telas usam duas colunas.
 
+**Tamanho da tela:** o app se adapta sozinho a qualquer aparelho. No celular fica em 100%; em tablet, aumenta conforme o tamanho da tela (até 160%, igual em pé e deitado sempre que o layout permite); em computador com tela larga, aumenta um pouco (até 135%). Se o navegador do tablet estiver no modo "site para computador", que desenha a página com 980 px e encolhe tudo, o app compensa. Em Configurações → Aplicativo → **Tamanho da tela** dá para escolher na mão (90% a 150%) ou voltar ao automático. Por dentro: todo o CSS usa `rem`, e o `<head>` do `index.html` (`window.JS_FIT`) define quanto vale 1rem e recalcula quando a tela gira.
+
 Ele é um app web (PWA): abre no navegador e pode ser **instalado no celular pelo Chrome**, com ícone na tela inicial, abrindo em tela cheia e funcionando sem internet.
 
 ---
@@ -35,7 +37,7 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.5.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.5.1'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 

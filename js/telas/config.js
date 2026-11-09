@@ -82,6 +82,7 @@
       (systemReducesMotion()
         ? sw('animations', 'Animações sempre ligadas', st.animations === 'on', 'Este aparelho está configurado para mostrar menos animações: a intro aparece sem os anéis girando e as pétalas flutuando. Ligue para ver a versão completa.', 'cfg-animations')
         : '') +
+      scaleBlock(st) +
       '<button type="button" class="btn soft full" data-action="intro-play">' + ui.icon('sparkle', 18) + 'Ver a intro agora</button>' +
       '<div class="version-row"><span class="muted small">Versão instalada: <strong>' + esc(JS.app.VERSION) + '</strong></span>' +
       '<button type="button" class="btn ghost small" data-action="app-update">' + ui.icon('download', 16) + 'Procurar atualização</button></div></section>';
@@ -440,6 +441,28 @@
   };
 
   function systemReducesMotion() { return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
+
+  /* ---------------- Tamanho da tela (escala calculada no <head> do index.html: window.JS_FIT) ---------------- */
+  var SCALES = [['auto', 'Automático (recomendado)'], ['0.9', 'Menor — 90%'], ['1', 'Normal — 100%'], ['1.15', 'Grande — 115%'], ['1.3', 'Maior — 130%'], ['1.5', 'Muito grande — 150%']];
+  function scaleHint() {
+    var info = window.JS_SCALE || { applied: 1, scale: 1, auto: true, comp: 1 };
+    return 'Agora: ' + Math.round((info.scale || 1) * 100) + '%' + (info.auto ? ', ajustado para esta tela' : '') + '.' +
+      (info.comp > 1.01 ? ' O navegador está mostrando o "site para computador" e encolhendo a página; o app compensa para não ficar pequeno.' : '') +
+      ' No automático, o app se adapta a celular, tablet e computador e acompanha quando a tela gira.';
+  }
+  function scaleBlock(st) {
+    var cur = st.uiScale && st.uiScale !== 'auto' ? String(st.uiScale) : 'auto';
+    return '<div class="field"><label for="cfg-scale">Tamanho da tela</label><select id="cfg-scale" data-change="cfg-scale">' + SCALES.map(function (o) {
+      return '<option value="' + o[0] + '"' + (cur === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+    }).join('') + '</select><p class="hint" data-scale-hint>' + esc(scaleHint()) + '</p></div>';
+  }
+  JS.changes['cfg-scale'] = function (el) {
+    var v = el.value === 'auto' ? 'auto' : Number(el.value) || 'auto';
+    if (window.JS_FIT) window.JS_FIT(v);
+    JS.store.update(function (s) { s.settings.uiScale = v; });
+    if (JS.graf) JS.graf.mountAll(document);
+    ui.toast('Tamanho da tela: ' + Math.round(((window.JS_SCALE || {}).scale || 1) * 100) + '%' + (v === 'auto' ? ' (automático).' : '.'));
+  };
 
   JS.telas.config = { title: 'Configurações', render: render, after: after };
 })();

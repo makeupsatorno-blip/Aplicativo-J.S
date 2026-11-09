@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
   <title>J.S.</title>
   <meta name="description" content="J.S. — rotina, treino, alimentação, cronograma capilar, corpo e finanças da Julia Satorno.">
   <meta name="theme-color" content="#FFF7FA">
@@ -54,6 +54,48 @@
       if (s.intro !== false && !target) h.classList.add('intro-on');
       var sys = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
       if (sys && s.animations !== 'on') h.classList.add('reduce-motion');
+
+      // Tamanho da tela. Todo o CSS é em rem; aqui se escolhe quanto vale 1rem (100% = 16px).
+      //  - celular: 100%;
+      //  - tablet (tela de toque grande): aumenta conforme o tamanho da tela, até 160%;
+      //  - computador com tela larga: aumenta um pouco, até 135%;
+      //  - navegador encolhendo a página (ex.: "site para computador" no tablet desenha a página com
+      //    980 px numa tela menor): compensa, para tudo ficar do tamanho certo;
+      //  - settings.uiScale: 'auto' (padrão) ou um número escolhido em Configurações (0.9, 1, 1.15...).
+      window.JS_FIT = function (choice) {
+        var de = document.documentElement;
+        var mm = function (q) { return !!(window.matchMedia && matchMedia(q).matches); };
+        var lw = de.clientWidth || window.innerWidth || 0, lh = window.innerHeight || de.clientHeight || 0;
+        if (!lw || !lh) return 1;
+        var touch = mm('(pointer: coarse)') || (navigator.maxTouchPoints > 0 && !mm('(pointer: fine)'));
+        var sw = screen.width || 0, sh = screen.height || 0, screenW = lw > lh ? Math.max(sw, sh) : Math.min(sw, sh);
+        var comp = touch && screenW > 200 && lw > screenW * 1.04 ? lw / screenW : 1;
+        var W = lw / comp, short = Math.min(W, lh / comp), k = 1, manual = Number(choice);
+        var isManual = !!(choice && choice !== 'auto' && manual > 0);
+        if (isManual) {
+          k = Math.min(manual, Math.max(1, W / 320)); // escolha da usuária: só não deixa a tela "menor que um celular"
+        } else {
+          if (short >= 560) k = touch ? Math.min(Math.max(short / 700, 1), 1.6) : W >= 1000 ? Math.min(Math.max(W / 1440, 1), 1.35) : 1;
+          // Mantém o desenho da tela (celular / tablet / tela grande) coerente com a largura que sobra.
+          var tier = lw >= 1000 ? 1000 : lw >= 700 ? 700 : lw >= 640 ? 640 : 320;
+          k = Math.min(k, Math.max(1, W / tier));
+        }
+        var f = Math.round(k * comp * 1000) / 1000;
+        de.style.fontSize = f === 1 ? '' : (f * 100).toFixed(1) + '%';
+        window.JS_SCALE = { applied: f, scale: k, comp: comp, auto: !isManual };
+        return f;
+      };
+      window.JS_FIT(s.uiScale);
+      // Girou a tela ou mudou o tamanho da janela: recalcula.
+      var fitTimer = null;
+      window.addEventListener('resize', function () {
+        clearTimeout(fitTimer);
+        fitTimer = setTimeout(function () {
+          var cur = {};
+          try { cur = (JSON.parse(localStorage.getItem('js-app-dados') || '{}') || {}).settings || {}; } catch (e) { /* sem dados */ }
+          window.JS_FIT(cur.uiScale);
+        }, 100);
+      });
     })(document.documentElement);
   </script>
   <meta name="color-scheme" content="light">

@@ -36,7 +36,7 @@
       }).join('') + '</div>';
     }
     return '<figure class="chart-fig">' + legend +
-      '<div class="chart" style="height:' + h + 'px" data-spec="' + esc(JSON.stringify(spec)) + '" role="img" aria-label="' + esc(spec.title || 'Gráfico') + '"></div>' +
+      '<div class="chart" style="height:' + (h / 16) + 'rem" data-spec="' + esc(JSON.stringify(spec)) + '" role="img" aria-label="' + esc(spec.title || 'Gráfico') + '"></div>' +
       table(spec) + '</figure>';
   }
 
@@ -123,16 +123,24 @@
 
   /* ---------------- Montagem ---------------- */
 
+  // Escala da tela (1rem em relação a 16px): o gráfico é desenhado em "px de projeto" e ampliado junto
+  // com o resto do app (tablet, computador, Configurações → Tamanho da tela).
+  var K = 1;
+  function uiScale() { return (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16; }
+
   function mount(box) {
     var spec;
     try { spec = JSON.parse(box.dataset.spec); } catch (e) { return; }
-    var W = Math.max(220, Math.round(box.clientWidth)), H = box.clientHeight || spec.height || 180;
-    if (box._w === W) return;
+    var k = uiScale();
+    var W = Math.max(220, Math.round(box.clientWidth / k)), H = (box.clientHeight / k) || spec.height || 180;
+    var key = W + '|' + k;
+    if (box._w === key) return;
     firstMount = box._w == null;
-    box._w = W;
+    box._w = key;
+    K = k;
     box.innerHTML = '';
     if (spec.type !== 'heat' && (!spec.points || !spec.points.length)) { box.innerHTML = '<p class="chart-empty">Sem dados ainda.</p>'; return; }
-    var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, focusable: 'false' }, box);
+    var svg = el('svg', { width: Math.round(W * k), height: Math.round(H * k), viewBox: '0 0 ' + W + ' ' + H, focusable: 'false' }, box);
     svg.setAttribute('tabindex', '0');
     var tip = document.createElement('div');
     tip.className = 'chart-tip';
@@ -140,7 +148,7 @@
     box.appendChild(tip);
     var draw = spec.type === 'line' ? drawLine : spec.type === 'hbars' ? drawHBars : spec.type === 'heat' ? drawHeat : drawBars;
     var api = draw(svg, spec, W, H);
-    bindHover(box, svg, tip, spec, api);
+    bindHover(box, svg, tip, spec, api, k);
   }
 
   // Calendário de constância: uma coluna por semana (dom-sáb), cada quadradinho é um dia.
@@ -153,8 +161,8 @@
     var cell = Math.max(8, Math.min(30, Math.floor((W - left - 4) / Math.max(1, nW)) - 4)), gap = 4;
     // A altura acompanha o tamanho dos quadradinhos (poucas semanas = quadrados maiores).
     var needH = top + 7 * (cell + gap);
-    svg.setAttribute('height', needH); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + needH);
-    if (svg.parentNode) svg.parentNode.style.height = needH + 'px';
+    svg.setAttribute('height', Math.round(needH * K)); svg.setAttribute('viewBox', '0 0 ' + W + ' ' + needH);
+    if (svg.parentNode) svg.parentNode.style.height = (needH / 16) + 'rem';
     var cells = [];
     ['', 'S', '', 'Q', '', 'S', ''].forEach(function (l, r) { if (l) text(svg, 0, top + r * (cell + gap) + cell - 2, l, { 'font-size': 10 }); });
     var lastLabel = -99;
@@ -367,17 +375,19 @@
 
   /* ---------------- Dica ao tocar / passar o mouse / teclado ---------------- */
 
-  function bindHover(box, svg, tip, spec, api) {
+  // k: escala da tela. O toque chega em px da tela; o desenho está em px de projeto (divide por k).
+  function bindHover(box, svg, tip, spec, api, k) {
+    k = k || 1;
     var cur = -1, n = api.count != null ? api.count : spec.points.length;
     function nearest(evt) {
       var r = svg.getBoundingClientRect();
-      if (api.hit) return api.hit(evt.clientX - r.left, evt.clientY - r.top);
+      if (api.hit) return api.hit((evt.clientX - r.left) / k, (evt.clientY - r.top) / k);
       if (api.xs) {
-        var x = evt.clientX - r.left, best = 0;
+        var x = (evt.clientX - r.left) / k, best = 0;
         api.xs.forEach(function (v, i) { if (Math.abs(v - x) < Math.abs(api.xs[best] - x)) best = i; });
         return best;
       }
-      var y = evt.clientY - r.top, b = 0;
+      var y = (evt.clientY - r.top) / k, b = 0;
       api.ys.forEach(function (v, i) { if (Math.abs(v - y) < Math.abs(api.ys[b] - y)) b = i; });
       return b;
     }
@@ -395,9 +405,10 @@
       });
       tip.hidden = false;
       var bw = box.clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
-      var left = Math.min(Math.max(4, info.x - tw / 2), bw - tw - 4);
-      var top = info.y - th - 12;
-      if (top < -6) top = info.y + 14;
+      var ix = info.x * k, iy = info.y * k;
+      var left = Math.min(Math.max(4, ix - tw / 2), bw - tw - 4);
+      var top = iy - th - 12 * k;
+      if (top < -6 * k) top = iy + 14 * k;
       tip.style.left = left + 'px'; tip.style.top = top + 'px';
     }
     function hide() { cur = -1; tip.hidden = true; api.hide(); }
