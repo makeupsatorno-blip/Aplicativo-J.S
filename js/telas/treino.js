@@ -6,7 +6,7 @@
   var MODES = [['hoje', 'Hoje'], ['semana', 'Semana'], ['mes', 'Mês'], ['fichas', 'Fichas'], ['evolucao', 'Evolução']];
   var WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
   var WEEKDAY_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-  var REST_OPTIONS = [[0, 'Sem descanso'], [30, '30 s'], [45, '45 s'], [60, '1 min'], [90, '1 min 30'], [120, '2 min'], [150, '2 min 30'], [180, '3 min'], [240, '4 min']];
+  var REST_OPTIONS = [[0, 'Sem descanso'], [15, '15 s'], [20, '20 s'], [30, '30 s'], [45, '45 s'], [60, '1 min'], [90, '1 min 30'], [120, '2 min'], [150, '2 min 30'], [180, '3 min'], [240, '4 min']];
 
   function kg(v) { return (v == null ? '—' : JS.graf.fmtNum(v, 1)) + ' kg'; }
   JS.kg = kg;
@@ -73,7 +73,7 @@
         '<button type="button" class="btn primary small" data-action="go" data-route="sessao">Continuar</button></div>';
     }
     if (!s.workoutPlans.length) {
-      return html + ui.empty('dumbbell', 'Monte sua ficha de treino: escolha os exercícios, séries, repetições e carga. Depois é só iniciar e ir marcando por toque.', { label: 'Montar minha primeira ficha', attrs: 'data-action="plan-new"' });
+      return html + readyCard() + ui.empty('dumbbell', 'Comece por um treino pronto ou monte sua ficha: escolha os exercícios, séries, repetições e carga. Depois é só iniciar e ir marcando por toque.', { label: 'Montar minha primeira ficha', attrs: 'data-action="plan-new"' });
     }
     var p = T.planForDate(s, today);
     var done = s.workoutSessions.filter(function (x) { return x.date === today && x.status === 'done'; });
@@ -164,8 +164,8 @@
   /* ---------------- Fichas ---------------- */
 
   function renderFichas(s) {
-    if (!s.workoutPlans.length) return ui.empty('dumbbell', 'Nenhuma ficha ainda. Crie fichas como "Treino A — Pernas" e "Treino B — Braços".', { label: 'Nova ficha', attrs: 'data-action="plan-new"' });
-    return s.workoutPlans.map(function (p) {
+    if (!s.workoutPlans.length) return readyCard() + ui.empty('dumbbell', 'Nenhuma ficha ainda. Use um treino pronto acima ou crie a sua, como "Treino A — Pernas" e "Treino B — Braços".', { label: 'Nova ficha', attrs: 'data-action="plan-new"' });
+    return readyCard() + s.workoutPlans.map(function (p) {
       var groups = {};
       p.items.forEach(function (it) { var e = T.exerciseById(s, it.exerciseId); if (e) groups[T.GRUPOS[e.group]] = 1; });
       return '<div class="item plan-item"><button type="button" class="item-main" data-action="plan-menu" data-id="' + esc(p.id) + '">' +
@@ -509,8 +509,187 @@
     });
   }
 
+  /* ---------------- Treinos prontos (js/dados/treinos.js) ---------------- */
+
+  var TP = window.JSTreinos || { FICHAS: {}, PROGRAMAS: [], LOCAIS: {} };
+  var lib = { filter: '' };
+
+  function readyCard() {
+    var n = Object.keys(TP.FICHAS).length;
+    if (!n) return '';
+    return '<button type="button" class="ready-card" data-action="ready-open">' + ui.icon('sparkle', 22) +
+      '<span><strong>Treinos prontos</strong><small>' + n + ' fichas e ' + TP.PROGRAMAS.length + ' semanas completas para adicionar com um toque</small></span>' + ui.icon('right', 18) + '</button>';
+  }
+  function restText(sec) { var o = REST_OPTIONS.filter(function (x) { return x[0] === sec; })[0]; return o ? o[1] : sec + ' s'; }
+  function tplThumbs(tpl, n) {
+    var s = JS.store.state;
+    return '<span class="tpl-thumbs" aria-hidden="true">' + tpl.items.slice(0, n).map(function (r) {
+      var ex = T.exerciseById(s, 'ex:' + r[0]);
+      return ex && exAnim(ex) ? '<span class="tpl-th">' + exThumb(ex) + '</span>' : '';
+    }).join('') + '</span>';
+  }
+  function fichaRow(key) {
+    var t = TP.FICHAS[key], mine = T.planByName(JS.store.state, t.name);
+    return '<button type="button" class="tpl-row" data-tpl="' + esc(key) + '">' + tplThumbs(t, 3) +
+      '<span class="tpl-txt"><strong>' + esc(t.name) + '</strong><small>' + esc(t.nivel) + ' • ' + t.items.length + ' exercícios • ~' + t.min + ' min</small>' +
+      (mine ? ui.tag('Nas suas fichas', 'success') : '') + '</span>' + ui.icon('right', 16) + '</button>';
+  }
+  function progRow(p) {
+    return '<button type="button" class="tpl-row prog" data-prog="' + esc(p.id) + '"><span class="tpl-days" aria-hidden="true">' + WEEK_ORDER.map(function (w) {
+      return '<i' + (p.dias.some(function (d) { return d[0] === w; }) ? ' class="on"' : '') + '>' + WEEKDAY_FULL[w].charAt(0) + '</i>';
+    }).join('') + '</span><span class="tpl-txt"><strong>' + esc(p.name) + '</strong><small>' + esc(p.nivel) + ' • ' +
+      esc(p.dias.map(function (d) { return C.WEEKDAY_SHORT[d[0]]; }).join(', ')) + '</small></span>' + ui.icon('right', 16) + '</button>';
+  }
+  // O botão da esquerda da folha vira "Voltar" (em vez de fechar).
+  function backButton(form, fn) {
+    var b = form.querySelector('.sheet-foot .btn.ghost');
+    if (!b) return;
+    var nb = b.cloneNode(true);
+    nb.removeAttribute('data-close');
+    b.replaceWith(nb);
+    nb.addEventListener('click', fn);
+  }
+  // Tocar no desenho abre a animação da execução ali mesmo.
+  function bindPreviews(form) {
+    form.addEventListener('click', function (e) {
+      var pv = e.target.closest('[data-prev]');
+      if (!pv) return;
+      e.preventDefault();
+      var row = pv.closest('.pick-row'), open = form.querySelector('.pick-video'), same = open && open.dataset.for === row.dataset.row;
+      if (open) open.remove();
+      form.querySelectorAll('.pick-row.open').forEach(function (r) { r.classList.remove('open'); });
+      if (same) return;
+      var ex = T.exerciseById(JS.store.state, pv.dataset.prev);
+      if (!ex) return;
+      var box = document.createElement('div');
+      box.className = 'pick-video';
+      box.dataset.for = row.dataset.row;
+      box.innerHTML = exPlayer(ex) + (ex.tips ? '<p class="small">' + esc(ex.tips) + '</p>' : '');
+      row.classList.add('open');
+      row.after(box);
+      startDrawings(box);
+      box.scrollIntoView({ block: 'nearest', behavior: JS.anim.reduced() ? 'auto' : 'smooth' });
+    });
+  }
+
+  function openLibrary() {
+    var chips = [['', 'Tudo'], ['semanas', 'Semanas completas']].concat(Object.keys(TP.LOCAIS).map(function (k) { return [k, TP.LOCAIS[k]]; }));
+    var body = '<p class="hint top">Uma semana completa já vem com as fichas e os dias montados. Também dá para pegar só uma ficha. Depois de adicionar, você muda o que quiser.</p>' +
+      '<div class="quick-chips scroll-chips">' + chips.map(function (c) {
+        return '<button type="button" class="chip' + (lib.filter === c[0] ? ' on' : '') + '" data-f="' + c[0] + '">' + esc(c[1]) + '</button>';
+      }).join('') + '</div><div class="tpl-list"></div>';
+    ui.openSheet({
+      title: 'Treinos prontos', body: body,
+      onOpen: function (form) {
+        var listEl = form.querySelector('.tpl-list');
+        function draw() {
+          var html = '';
+          if (!lib.filter || lib.filter === 'semanas') html += '<h3 class="tpl-h">Semanas completas</h3>' + TP.PROGRAMAS.map(progRow).join('');
+          if (lib.filter !== 'semanas') Object.keys(TP.LOCAIS).forEach(function (loc) {
+            if (lib.filter && lib.filter !== loc) return;
+            var ks = Object.keys(TP.FICHAS).filter(function (k) { return TP.FICHAS[k].local === loc; });
+            if (ks.length) html += '<h3 class="tpl-h">' + esc(loc === 'academia' ? 'Fichas para a academia' : TP.LOCAIS[loc]) + '</h3>' + ks.map(fichaRow).join('');
+          });
+          listEl.innerHTML = html;
+        }
+        draw();
+        form.querySelectorAll('[data-f]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            lib.filter = b.dataset.f;
+            form.querySelectorAll('[data-f]').forEach(function (x) { x.classList.toggle('on', x === b); });
+            draw();
+          });
+        });
+        listEl.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-tpl], [data-prog]');
+          if (!b) return;
+          if (b.dataset.tpl) openTemplate(b.dataset.tpl); else openProgram(b.dataset.prog);
+        });
+      }
+    });
+  }
+
+  function openTemplate(key, fromProg) {
+    var s = JS.store.state, t = TP.FICHAS[key];
+    if (!t) return;
+    var mine = T.planByName(s, t.name);
+    var rows = t.items.map(function (r, i) {
+      var ex = T.exerciseById(s, 'ex:' + r[0]);
+      var thumb = ex && exAnim(ex)
+        ? '<button type="button" class="pick-thumb" data-prev="' + esc(ex.id) + '" aria-label="Ver a execução de ' + esc(ex.name) + '">' + exThumb(ex) + '<span class="pt-play">' + ui.icon('play', 12) + '</span></button>'
+        : '<span class="pick-thumb none" aria-hidden="true">' + ui.icon('dumbbell', 22) + '</span>';
+      return '<div class="pick-row" data-row="' + i + '">' + thumb + '<div class="pick static"><strong>' + (i + 1) + '. ' + esc(ex ? ex.name : r[0]) + '</strong>' +
+        '<span>' + r[1] + (r[1] === 1 ? ' série' : ' séries') + ' × ' + esc(r[2]) + (r[3] ? ' • descanso ' + esc(restText(r[3])) : '') + '</span></div></div>';
+    }).join('');
+    var body = '<p class="tpl-meta">' + ui.tag(TP.LOCAIS[t.local] || '', 'soft') + ui.tag(t.nivel, 'muted') + '<span class="muted small">~' + t.min + ' min</span></p>' +
+      '<div class="pick-list">' + rows + '</div>' +
+      '<p class="hint">Toque no desenho para ver a execução. A carga de cada exercício começa com a última que você usou (ou zerada) e dá para ajustar em Editar.</p>';
+    ui.openSheet({
+      title: t.name, subtitle: t.items.length + ' exercícios', body: body, cancelLabel: 'Voltar',
+      submitLabel: mine ? 'Abrir minha ficha' : 'Adicionar ficha',
+      onOpen: function (form) { backButton(form, fromProg ? function () { openProgram(fromProg); } : openLibrary); bindPreviews(form); },
+      onSubmit: function () {
+        if (mine) return { open: mine.id };
+        var r = null;
+        view.mode = 'fichas';
+        JS.store.update(function (st, n) { r = T.addTemplate(st, t, n); });
+        return { added: r && r.plan ? r.plan.id : null };
+      },
+      afterClose: function (res) {
+        if (!res) return;
+        if (res.open) { if (view.mode !== 'fichas') { view.mode = 'fichas'; JS.app.render(); } planMenu(res.open); return; }
+        JS.app.render({ enter: 'view:r' });
+        ui.toast('Ficha "' + t.name + '" adicionada! Escolha os dias em Semana.');
+        JS.anim.mark('[data-action="plan-menu"][data-id="' + res.added + '"]', 'is-new', { closest: '.item', delay: 160 });
+      }
+    });
+  }
+
+  function openProgram(id) {
+    var p = TP.PROGRAMAS.filter(function (x) { return x.id === id; })[0];
+    if (!p) return;
+    var keys = [];
+    p.dias.forEach(function (d) { if (keys.indexOf(d[1]) < 0 && TP.FICHAS[d[1]]) keys.push(d[1]); });
+    var week = WEEK_ORDER.map(function (w) {
+      var d = p.dias.filter(function (x) { return x[0] === w; })[0], t = d && TP.FICHAS[d[1]];
+      return '<div class="tpl-wd' + (t ? ' on' : '') + '"><span>' + esc(C.WEEKDAY_SHORT[w]) + '</span><strong>' + (t ? esc(t.name) : 'Descanso') + '</strong></div>';
+    }).join('');
+    var body = '<p class="tpl-desc">' + esc(p.desc) + '</p><p class="tpl-meta">' + ui.tag(p.nivel, 'muted') + '</p>' +
+      '<h3 class="tpl-h">A semana</h3><div class="tpl-week">' + week + '</div>' +
+      '<h3 class="tpl-h">Fichas (' + keys.length + ')</h3>' + keys.map(fichaRow).join('') +
+      '<button type="button" class="btn soft full" data-only-add>' + ui.icon('plus', 18) + 'Só adicionar as fichas, sem mudar a semana</button>';
+    ui.openSheet({
+      title: p.name, subtitle: p.dias.length + ' dias por semana', body: body, submitLabel: 'Usar esta semana', cancelLabel: 'Voltar',
+      onOpen: function (form) {
+        backButton(form, openLibrary);
+        form.querySelectorAll('[data-tpl]').forEach(function (b) { b.addEventListener('click', function () { openTemplate(b.dataset.tpl, id); }); });
+        form.querySelector('[data-only-add]').addEventListener('click', function () { ui.closeSheet(); setTimeout(function () { applyProgram(p, false); }, 60); });
+      },
+      onSubmit: function () { return { use: true }; },
+      afterClose: function (r) {
+        if (!r || !r.use) return;
+        var wk = JS.store.state.workout.week;
+        var busy = [0, 1, 2, 3, 4, 5, 6].some(function (w) { return !!wk[w]; });
+        (busy ? ui.confirm({ title: 'Trocar a sua semana?', message: 'A semana fixa passa a ser a do "' + p.name + '". Suas fichas atuais continuam salvas.', confirmLabel: 'Usar esta semana' }) : Promise.resolve(true))
+          .then(function (ok) { if (ok) applyProgram(p, true); });
+      }
+    });
+  }
+
+  function applyProgram(p, setWeek) {
+    var r = null;
+    view.mode = setWeek ? 'semana' : 'fichas';
+    JS.store.update(function (st, n) { r = T.applyProgram(st, p, TP.FICHAS, n, setWeek); });
+    if (JS.app.route() !== 'treino') JS.app.go('treino');
+    else JS.app.render({ enter: 'view:r' });
+    var news = r.created ? r.created + (r.created === 1 ? ' ficha nova' : ' fichas novas') : 'as fichas já existiam';
+    ui.toast(setWeek ? 'Semana "' + p.name + '" montada (' + news + ').' : (r.created ? news.charAt(0).toUpperCase() + news.slice(1) + ' nas suas fichas.' : 'Essas fichas já estavam nas suas fichas.'), { timeout: 4500 });
+  }
+  JS.openReadyWorkouts = openLibrary;
+
   /* ---------------- Registros ---------------- */
 
+  JS.actions['ready-open'] = function () { openLibrary(); };
   JS.actions['treino-mode'] = function (d) {
     if (d.mode === view.mode) return;
     var order = MODES.map(function (m) { return m[0]; });

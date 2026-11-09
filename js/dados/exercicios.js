@@ -97,7 +97,28 @@
     ['polichinelo', 'Polichinelo', 'cardio', 'Peso do corpo', 'Salte abrindo pernas e braços ao mesmo tempo e volte fechando. Anote minutos ou repetições.'],
     ['burpee', 'Burpee', 'cardio', 'Peso do corpo', 'Agache, apoie as mãos, leve as pernas para trás em prancha, volte e salte com os braços para cima.'],
     ['pular-corda', 'Pular corda', 'cardio', 'Corda', 'Saltos baixos na ponta dos pés, girando a corda com os punhos. Anote minutos em "repetições".'],
-    ['remo-ergometro', 'Remo ergômetro', 'cardio', 'Remo', 'Empurre primeiro com as pernas, depois incline o tronco e puxe a manopla até o peito. Volte na ordem inversa.']
+    ['remo-ergometro', 'Remo ergômetro', 'cardio', 'Remo', 'Empurre primeiro com as pernas, depois incline o tronco e puxe a manopla até o peito. Volte na ordem inversa.'],
+    // Versão 2.5: mais exercícios (usados também nos treinos prontos)
+    ['elevacao-pelvica-unilateral', 'Elevação pélvica unilateral', 'gluteos', 'Banco', 'Costas apoiadas no banco, um pé no chão e a outra perna estendida. Suba o quadril até alinhar com o tronco e aperte o glúteo lá em cima.'],
+    ['terra-sumo', 'Levantamento terra sumô', 'gluteos', 'Barra ou kettlebell', 'Pés bem afastados e pontas para fora. Segure a barra entre as pernas, peito aberto, e suba estendendo quadril e joelhos juntos.'],
+    ['agachamento-lateral', 'Agachamento lateral', 'gluteos', 'Peso do corpo ou halter', 'Pés bem afastados. Desça para um lado dobrando aquele joelho e mantendo a outra perna esticada; volte e troque de lado.'],
+    ['kettlebell-swing', 'Swing com kettlebell', 'gluteos', 'Kettlebell', 'Leve o quadril para trás com o kettlebell entre as pernas e projete o quadril para a frente; os braços só acompanham até a altura do peito.'],
+    ['stiff-unilateral', 'Stiff unilateral', 'posterior', 'Halter', 'Apoiada numa perna, joelho levemente dobrado. Desça o tronco levando a outra perna para trás, em linha com as costas, e volte contraindo glúteo e posterior.'],
+    ['good-morning', 'Bom dia (good morning)', 'posterior', 'Barra', 'Barra apoiada nas costas, joelhos levemente dobrados. Leve o quadril para trás inclinando o tronco com a coluna reta e volte.'],
+    ['flexora-em-pe', 'Flexora em pé', 'posterior', 'Máquina', 'Tronco apoiado e quadril parado. Dobre o joelho levando o calcanhar em direção ao glúteo e desça devagar.'],
+    ['agachamento-frontal', 'Agachamento frontal', 'quadriceps', 'Barra', 'Barra apoiada na frente dos ombros, cotovelos altos. Desça com o tronco bem reto e suba empurrando o chão.'],
+    ['agachamento-banco', 'Agachamento no banco', 'quadriceps', 'Banco ou cadeira', 'Pés na largura do quadril. Sente devagar até encostar no banco e levante sem usar as mãos. Ótimo para começar.'],
+    ['remada-invertida', 'Remada invertida', 'costas', 'Barra baixa ou TRX', 'Corpo reto como uma prancha, calcanhares no chão. Puxe o peito até a barra juntando as escápulas e desça controlando.'],
+    ['superman', 'Superman (lombar no solo)', 'costas', 'Peso do corpo', 'Deitada de barriga para baixo, braços estendidos à frente. Tire braços, peito e pernas do chão ao mesmo tempo e segure 2 segundos.'],
+    ['desenvolvimento-arnold', 'Desenvolvimento Arnold', 'ombros', 'Halteres', 'Comece com os halteres à frente do rosto, palmas para você. Gire as palmas para a frente enquanto empurra acima da cabeça.'],
+    ['flexao-inclinada', 'Flexão inclinada (mãos no banco)', 'peito', 'Banco', 'Mãos no banco e corpo reto dos pés à cabeça. Desça o peito até perto do banco e empurre. Mais fácil que a flexão no chão.'],
+    ['abdominal-canivete', 'Abdominal canivete', 'abdomen', 'Peso do corpo', 'Deitada com braços e pernas estendidos. Suba tronco e pernas ao mesmo tempo, tentando tocar os pés, e desça devagar.'],
+    ['dead-bug', 'Dead bug', 'abdomen', 'Peso do corpo', 'Deitada, braços para cima e joelhos a 90°. Estenda um braço e a perna oposta sem tirar a lombar do chão; volte e alterne.'],
+    ['abdominal-polia', 'Abdominal na polia', 'abdomen', 'Cabo com corda', 'Ajoelhada de frente para a polia, corda junto à cabeça. Enrole o tronco levando os cotovelos em direção às coxas e volte devagar.'],
+    ['abdominal-russo', 'Abdominal russo (giro)', 'abdomen', 'Peso do corpo ou anilha', 'Sentada, tronco inclinado para trás e pés apoiados (ou no ar). Gire o tronco levando as mãos de um lado para o outro.'],
+    ['agachamento-salto', 'Agachamento com salto', 'cardio', 'Peso do corpo', 'Agache e suba explodindo num salto. Aterrisse macio, já descendo para o próximo agachamento.'],
+    ['skipping', 'Skipping (corrida no lugar)', 'cardio', 'Peso do corpo', 'Corra no lugar subindo os joelhos até a altura do quadril, com os braços acompanhando e pisando na ponta dos pés.'],
+    ['corda-naval', 'Corda naval', 'cardio', 'Corda naval', 'Semiagachada e com o abdômen firme. Movimente os braços alternando para cima e para baixo, criando ondas na corda.']
   ];
 
   var ITENS = LISTA.map(function (r) {

@@ -386,6 +386,104 @@
       { p: [72, 103], t: 62, an: { t: [118, 90] }, ln: { t: [113, 100], b: 1 }, fn: 70 },
       { p: [59, 103], t: 106, an: { t: [64, 74], b: -1 }, ln: { t: [113, 100], b: 1 }, fn: 70 }] };
 
+  /* ================= Versão 2.5: mais exercícios ================= */
+
+  // Glúteos
+  A['elevacao-pelvica-unilateral'] = { dur: 2.6, props: [F, bench(36, 82, 97, [44, 76])],
+    frames: [
+      { p: [120, 105], t: 160, an: { t: [118, 99] }, ln: { t: [141, 116] }, lf: { a: [30, 30] }, ff: 115 },
+      { p: [114, 90], t: 180, an: { t: [112, 84] }, ln: { t: [141, 116] }, lf: { a: [6, 6] }, ff: 95 }] };
+  A['terra-sumo'] = { view: 'front', dur: 2.8, props: [F, { k: 'handle', at: 'mh', len: 76, v: 0, front: true }, { k: 'plate', at: 'mh', d: [-38, 0], r: 10, front: true }, { k: 'plate', at: 'mh', d: [38, 0], r: 10, front: true }],
+    frames: [
+      { p: [100, 86], t: 90, an: { t: [106, 104] }, ln: { t: [130, 117] }, fn: -60, l: { torso: 26 } },
+      { p: [100, 66], t: 90, an: { t: [105, 68] }, ln: { t: [130, 117] }, fn: -60, l: { torso: 40 } }] };
+  A['agachamento-lateral'] = { view: 'front', dur: 2.8, props: [F],
+    frames: [
+      // Mãos na cintura (o outro braço é espelhado).
+      { p: [100, 67], t: 90, an: { t: [110, 64] }, ln: { t: [126, 117] }, lf: { t: [74, 117] }, fn: -60 },
+      { p: [116, 86], t: 90, an: { t: [126, 83] }, ln: { t: [130, 117] }, lf: { t: [70, 117] }, fn: -60 }] };
+  A['kettlebell-swing'] = { dur: 1.6, props: [F, { k: 'db', at: 'hn', d: [0, 4], r: 6, front: true }],
+    frames: [
+      { p: [86, 70], t: 32, an: { t: [102, 96] }, ln: { t: [100, 117] } },
+      { p: [96, 63], t: 92, an: { t: [136, 22] }, ln: { t: [100, 117] } }] };
+
+  // Posterior de coxa
+  A['stiff-unilateral'] = { dur: 2.8, props: [F, { k: 'db', at: 'hn', v: 1, front: true }],
+    frames: [
+      { p: [100, 63], t: 90, an: { t: [103, 104] }, ln: { t: [108, 117] }, lf: { a: [-100, -97] }, ff: 0 },
+      { p: [95, 67], t: 28, an: { t: [131, 108] }, ln: { t: [108, 117] }, lf: { a: [208, 208] }, ff: -62 }] };
+  A['good-morning'] = { dur: 2.8, props: [F, { k: 'plate', at: 'hn' }],
+    frames: [
+      { p: [100, 63], t: 90, an: { t: [93, 21], b: 1 }, ln: { t: [108, 117] } },
+      { p: [93, 67], t: 20, an: { t: [127, 45], b: 1 }, ln: { t: [108, 117] } }] };
+  A['flexora-em-pe'] = { dur: 2.6, props: [F, { k: 'line', pts: [[130, 18], [130, 121]], w: 4 }, { k: 'rect', x: 108, y: 34, w: 8, h: 40, r: 3 }, { k: 'handle', at: 'hn', len: 10, v: 1, front: true }, { k: 'roll', at: 'an', d: [-4, -4], r: 4.5, front: true }],
+    frames: [
+      { p: [92, 63], t: 82, an: { t: [118, 42] }, ln: { a: [-88, -91] }, lf: { t: [96, 117] }, fn: 0, ff: 0 },
+      { p: [92, 63], t: 82, an: { t: [118, 42] }, ln: { a: [-84, 172] }, lf: { t: [96, 117] }, fn: -95, ff: 0 }] };
+
+  // Quadríceps
+  // Barra apoiada na frente dos ombros, cotovelos para a frente (a anilha fica atrás da cabeça no desenho).
+  A['agachamento-frontal'] = { dur: 2.8, props: [F, { k: 'plate', at: 'hn', d: [3, 4], r: 8 }],
+    frames: [
+      { p: [101, 63], t: 88, an: { t: [105, 19], b: -1 }, ln: { t: [110, 117] } },
+      { p: [95, 92], t: 72, an: { t: [110, 50], b: -1 }, ln: { t: [110, 117] } }] };
+  A['agachamento-banco'] = { dur: 2.8, props: [F, bench(50, 84, 97, [56, 78])],
+    frames: [
+      { p: [96, 63], t: 90, an: { a: [0, 0] }, ln: { t: [106, 117] } },
+      { p: [82, 89], t: 66, an: { a: [8, 6] }, ln: { t: [106, 117] } }] };
+
+  // Costas
+  A['remada-invertida'] = { dur: 2.6, props: [F, { k: 'line', pts: [[98, 18], [98, 121]], w: 3, c: '#C9BBC2' }, { k: 'plate', at: [98, 65], r: 4, front: true }],
+    frames: [
+      { p: [114.2, 105.6], t: 168, an: { t: [98, 65], b: -1 }, ln: { a: [-12, -12] }, fn: 78 },
+      { p: [121.4, 87.9], t: 148, an: { t: [98, 65], b: -1 }, ln: { a: [-32, -32] }, fn: 58 }] };
+  A['superman'] = { dur: 2.6, props: [F],
+    frames: [
+      { p: [116, 113], t: 180, an: { a: [180, 180] }, ln: { a: [0, 0] }, fn: 0 },
+      { p: [116, 112], t: 166, an: { a: [168, 170] }, ln: { a: [10, 10] }, fn: 10 }] };
+
+  // Ombros e peito
+  A['desenvolvimento-arnold'] = { dur: 2.8, props: [F, bench(74, 112, 96, [80, 106]), { k: 'line', pts: [[76, 96], [76, 44]], w: 5 }, { k: 'db', at: 'hn', v: 1, front: true }],
+    frames: [
+      { p: [95, 90], t: 90, an: { t: [106, 42], b: -1 }, ln: { t: [124, 117] } },
+      { p: [95, 90], t: 90, an: { t: [97, 9] }, ln: { t: [124, 117] } }] };
+  A['flexao-inclinada'] = { dur: 2.4, props: [F, bench(112, 162, 109, [118, 156])],
+    frames: [
+      { p: [93.9, 85.6], t: 33.5, an: { t: [132, 105] }, ln: { a: [213.5, 213.5] }, fn: -100 },
+      { p: [99.7, 97.2], t: 20, an: { t: [132, 105], b: -1 }, ln: { a: [200, 200] }, fn: -100 }] };
+
+  // Abdômen
+  A['abdominal-canivete'] = { dur: 2.6, props: [F],
+    frames: [
+      { p: [108, 114], t: 180, an: { a: [178, 178] }, ln: { a: [2, 2] }, fn: 90 },
+      { p: [108, 114], t: 125, hd: -10, an: { a: [52, 50] }, ln: { a: [55, 55] }, fn: 145 }] };
+  A['dead-bug'] = { dur: 2.8, props: [F],
+    frames: [
+      { p: [112, 113], t: 180, an: { a: [90, 90] }, af: { a: [90, 90] }, ln: { a: [90, 0] }, lf: { a: [90, 0] }, fn: 90, ff: 90 },
+      { p: [112, 113], t: 180, an: { a: [168, 172] }, af: { a: [90, 90] }, ln: { a: [90, 0] }, lf: { a: [10, 8] }, fn: 90, ff: 98 }] };
+  A['abdominal-polia'] = { dur: 2.6, props: [F, { k: 'line', pts: [[174, 2], [174, 121]], w: 4 }, { k: 'cable', from: [168, 6], to: 'hn' }, { k: 'rope', at: 'hn', front: true }],
+    frames: [
+      { p: [100, 89], t: 80, an: { t: [110, 41], b: 1 }, ln: { a: [-90, 180] }, fn: 180 },
+      { p: [98, 89], t: 22, hd: -40, an: { t: [140, 70], b: 1 }, ln: { a: [-88, 180] }, fn: 180 }] };
+  A['abdominal-russo'] = { view: 'front', dur: 2.2, props: [F, { k: 'plate', at: 'mh', r: 6, front: true }],
+    frames: [
+      { p: [100, 112], t: 88, hd: -8, an: { t: [122, 98], b: 1 }, af: { t: [120, 100], b: 1 }, ln: { a: [62, -96] }, l: { torso: 34, th: 14, sh: 16 }, fn: -80 },
+      { p: [100, 112], t: 92, hd: 8, an: { t: [80, 100], b: -1 }, af: { t: [78, 98], b: -1 }, ln: { a: [62, -96] }, l: { torso: 34, th: 14, sh: 16 }, fn: -80 }] };
+
+  // Cardio e funcional
+  A['agachamento-salto'] = { dur: 1.8, vb: '0 -28 200 153', props: [F],
+    frames: [
+      { p: [91, 90], t: 52, an: { a: [-120, -100] }, ln: { t: [110, 117] }, fn: 0 },
+      { p: [100, 56], t: 88, an: { a: [70, 75] }, ln: { t: [104, 108] }, fn: -30 }] };
+  A['skipping'] = { mode: 'loop', dur: 0.9, props: [F],
+    frames: [
+      { p: [98, 60], t: 92, an: { t: [86, 50], b: 1 }, af: { t: [116, 34], b: -1 }, ln: { a: [-2, -95] }, lf: { a: [-88, -92] }, fn: -20, ff: 0 },
+      { p: [98, 60], t: 92, an: { t: [116, 34], b: -1 }, af: { t: [86, 50], b: 1 }, ln: { a: [-88, -92] }, lf: { a: [-2, -95] }, fn: 0, ff: -20 }] };
+  A['corda-naval'] = { mode: 'loop', dur: 0.8, props: [F, { k: 'cable', from: [186, 114], to: 'hn' }, { k: 'cable', from: [186, 114], to: 'hf' }],
+    frames: [
+      { p: [86, 78], t: 70, an: { t: [124, 58] }, af: { t: [118, 76] }, ln: { t: [104, 117] }, lf: { t: [74, 117] }, fn: 0, ff: 0 },
+      { p: [86, 78], t: 70, an: { t: [118, 76] }, af: { t: [124, 58] }, ln: { t: [104, 117] }, lf: { t: [74, 117] }, fn: 0, ff: 0 }] };
+
   if (typeof module === 'object' && module.exports) module.exports = A;
   else root.JSAnimacoes = A;
 })(typeof self !== 'undefined' ? self : this);

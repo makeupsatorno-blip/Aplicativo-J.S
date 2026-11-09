@@ -439,8 +439,49 @@
     return out;
   }
 
+  /* ---------------- Treinos prontos (js/dados/treinos.js) ---------------- */
+
+  // Ficha pronta -> valores de uma ficha da usuária. A carga começa na última usada em cada exercício.
+  function planFromTemplate(state, tpl, color) {
+    return validatePlan({
+      name: tpl.name, color: color || PLAN_COLORS[state.workoutPlans.length % PLAN_COLORS.length],
+      items: tpl.items.map(function (r) {
+        var id = 'ex:' + r[0], last = lastLoad(state, id);
+        return { exerciseId: id, sets: r[1], reps: r[2], restSec: r[3], load: last || 0, loads: [] };
+      })
+    });
+  }
+  function planByName(state, name) {
+    var k = String(name || '').trim().toLowerCase();
+    return state.workoutPlans.filter(function (p) { return p.name.trim().toLowerCase() === k; })[0] || null;
+  }
+  // Adiciona a ficha pronta; se já existe uma ficha com o mesmo nome, usa a que existe (não duplica).
+  function addTemplate(state, tpl, nowISO) {
+    var have = planByName(state, tpl.name);
+    if (have) return { plan: have, created: false };
+    var r = planFromTemplate(state, tpl);
+    if (!r.ok) return { plan: null, created: false, errors: r.errors };
+    return { plan: createPlan(state, r.value, nowISO), created: true };
+  }
+  // Semana pronta: cria (ou reaproveita) as fichas e, se setWeek, monta a semana fixa
+  // (dias do programa com a ficha; os outros, descanso).
+  function applyProgram(state, prog, fichas, nowISO, setWeek) {
+    var byKey = {}, created = 0;
+    prog.dias.forEach(function (d) {
+      if (byKey[d[1]] || !fichas[d[1]]) return;
+      var r = addTemplate(state, fichas[d[1]], nowISO);
+      if (r.plan) { byKey[d[1]] = r.plan; if (r.created) created++; }
+    });
+    if (setWeek) {
+      for (var w = 0; w < 7; w++) setWeekPlan(state, w, null);
+      prog.dias.forEach(function (d) { if (byKey[d[1]]) setWeekPlan(state, d[0], byKey[d[1]].id); });
+    }
+    return { plans: Object.keys(byKey).map(function (k) { return byKey[k]; }), created: created };
+  }
+
   return {
     PLAN_COLORS: PLAN_COLORS, GRUPOS: X.GRUPOS,
+    planFromTemplate: planFromTemplate, planByName: planByName, addTemplate: addTemplate, applyProgram: applyProgram,
     exercises: exercises, exerciseById: exerciseById, exerciseName: exerciseName,
     validateExercise: validateExercise, createExercise: createExercise, updateExercise: updateExercise,
     validatePlan: validatePlan, createPlan: createPlan, itemLoads: itemLoads, samePerSet: samePerSet, updatePlan: updatePlan, deletePlan: deletePlan,

@@ -373,3 +373,97 @@ test('tarefa toda semana nos dias marcados (ex.: segunda e quarta)', () => {
   R.updateTask(s, t.id, R.validateTask({ title: 'Pilates', dueDate: '2026-11-09', recurrence: 'daily' }).value, 'all', null, NOW);
   assert.equal(s.tasks[0].weekdays, null);
 });
+
+/* ---------------- Treinos prontos e exercícios novos (2.5) ---------------- */
+
+const X = require('../js/dados/exercicios.js');
+const A = require('../js/dados/animacoes.js');
+const TP = require('../js/dados/treinos.js');
+
+test('todos os exercícios da lista têm desenho da execução (100 exercícios)', () => {
+  assert.ok(X.ITENS.length >= 100);
+  assert.equal(new Set(X.ITENS.map(e => e.id)).size, X.ITENS.length, 'ids repetidos');
+  const sem = X.ITENS.filter(e => !A[e.id.slice(3)]).map(e => e.id);
+  assert.deepEqual(sem, []);
+  // cada desenho tem posições válidas (números, sem misturar alvo e ângulo no mesmo membro)
+  for (const k of Object.keys(A)) {
+    const sp = A[k];
+    assert.ok(sp.frames.length >= 2, k);
+    for (const limb of ['an', 'af', 'ln', 'lf']) {
+      const kinds = sp.frames.map(f => f[limb] ? (f[limb].t ? 't' : 'a') : '-').filter(x => x !== '-');
+      assert.ok(new Set(kinds).size <= 1, k + ': ' + limb + ' mistura alvo e ângulo');
+    }
+    sp.frames.forEach(f => assert.ok(f.p.every(Number.isFinite), k));
+  }
+});
+
+test('treinos prontos: exercícios existem, fichas válidas e semanas consistentes', () => {
+  const s = R.emptyState();
+  const ids = new Set(X.ITENS.map(e => e.id));
+  const keys = Object.keys(TP.FICHAS);
+  assert.ok(keys.length >= 20);
+  for (const k of keys) {
+    const t = TP.FICHAS[k];
+    assert.ok(t.name.length <= 40, k + ': nome longo');
+    assert.ok(TP.LOCAIS[t.local], k + ': local');
+    t.items.forEach(r => {
+      assert.ok(ids.has('ex:' + r[0]), k + ': exercício ' + r[0] + ' não existe');
+      assert.ok(String(r[2]).length <= 12, k + ': repetições longas ' + r[2]);
+      // o descanso precisa ser uma das opções do editor de ficha (senão vira "Sem descanso" ao editar)
+      assert.ok([0, 15, 20, 30, 45, 60, 90, 120, 150, 180, 240].includes(r[3]), k + ': descanso ' + r[3] + ' fora das opções');
+    });
+    const v = T.planFromTemplate(s, t);
+    assert.ok(v.ok, k + ' ' + JSON.stringify(v.errors));
+    assert.equal(v.value.items.length, t.items.length);
+  }
+  assert.ok(TP.PROGRAMAS.length >= 7);
+  TP.PROGRAMAS.forEach(p => {
+    const dias = p.dias.map(d => d[0]);
+    assert.equal(new Set(dias).size, dias.length, p.id + ': dia repetido');
+    p.dias.forEach(d => { assert.ok(d[0] >= 0 && d[0] <= 6); assert.ok(TP.FICHAS[d[1]], p.id + ': ficha ' + d[1]); });
+  });
+});
+
+test('adicionar ficha pronta: carga começa na última usada e não duplica', () => {
+  const s = R.emptyState();
+  // já treinou leg press com 80 kg
+  const p0 = plan(s, 'Minha perna', [{ exerciseId: 'ex:leg-press', sets: 1, reps: '10', load: 80 }]);
+  const x = T.startSession(s, '2026-11-07', p0.id, iso(-1440));
+  T.logSet(s, x.id, x.items[0].id, iso(-1430));
+  T.finishSession(s, x.id, iso(-1400));
+  const t = TP.FICHAS['inferior-quadriceps'];
+  const r1 = T.addTemplate(s, t, NOW);
+  assert.ok(r1.created);
+  assert.equal(r1.plan.name, t.name);
+  const lp = r1.plan.items.find(i => i.exerciseId === 'ex:leg-press');
+  assert.equal(lp.load, 80);
+  assert.equal(lp.sets, 4); assert.equal(lp.reps, '10-12'); assert.equal(lp.restSec, 90);
+  assert.equal(r1.plan.items.find(i => i.exerciseId === 'ex:agachamento-livre').load, 0);
+  const r2 = T.addTemplate(s, t, NOW);
+  assert.equal(r2.created, false);
+  assert.equal(r2.plan.id, r1.plan.id);
+  assert.equal(s.workoutPlans.length, 2);
+});
+
+test('usar uma semana pronta: cria as fichas, monta a semana e reaproveita fichas iguais', () => {
+  const s = R.emptyState();
+  const old = plan(s, 'Antiga', [{ exerciseId: 'ex:supino-reto', sets: 3, reps: '10' }]);
+  T.setWeekPlan(s, 0, old.id);
+  const abc = TP.PROGRAMAS.find(p => p.id === 'abc');
+  const r = T.applyProgram(s, abc, TP.FICHAS, NOW, true);
+  assert.equal(r.created, 3);
+  assert.equal(s.workoutPlans.length, 4, 'a ficha antiga continua');
+  const name = w => (s.workoutPlans.find(p => p.id === s.workout.week[w]) || {}).name || null;
+  assert.equal(name(1), TP.FICHAS['inferior-quadriceps'].name);
+  assert.equal(name(3), TP.FICHAS['superior-completo'].name);
+  assert.equal(name(5), TP.FICHAS['posterior-gluteos'].name);
+  assert.equal(name(0), null, 'domingo vira descanso');
+  assert.equal(name(2), null);
+  // full body usa a mesma ficha A em dois dias e ABCD reaproveita fichas que já existem
+  const fb = T.applyProgram(s, TP.PROGRAMAS.find(p => p.id === 'full-body'), TP.FICHAS, NOW, true);
+  assert.equal(fb.created, 2);
+  assert.equal(s.workout.week[1], s.workout.week[5]);
+  const abcd = T.applyProgram(s, TP.PROGRAMAS.find(p => p.id === 'abcd'), TP.FICHAS, NOW, false);
+  assert.equal(abcd.created, 2, 'inferior e posterior já existiam');
+  assert.equal(name(1), 'Full body A', 'só adicionar as fichas não muda a semana');
+});
