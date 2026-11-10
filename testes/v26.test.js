@@ -54,6 +54,16 @@ test('água: meta automática pelo peso, registro, desfazer e totais', () => {
   const v = R.validateWaterSettings({ goalMl: '', cupMl: '300', remind: true, every: '90', from: '08:00', to: '07:00' });
   assert.equal(v.ok, false);
   assert.ok(v.errors.to);
+  // tamanho do copo digitado: qualquer valor de 30 a 2000 ml
+  const v2 = R.validateWaterSettings({ goalMl: '', cupMl: '330', remind: false, every: '120', from: '09:00', to: '21:00' });
+  assert.equal(v2.ok, true);
+  assert.equal(v2.value.cupMl, 330);
+  assert.ok(R.validateWaterSettings({ goalMl: '', cupMl: '10', every: '120', from: '09:00', to: '21:00' }).errors.cupMl);
+  assert.ok(R.validateWaterSettings({ goalMl: '', cupMl: '', every: '120', from: '09:00', to: '21:00' }).errors.cupMl);
+  s.settings.water.cupMl = 330;
+  assert.equal(R.waterCup(s), 330);
+  s.settings.water.cupMl = 'x';
+  assert.equal(R.waterCup(s), 250);
 });
 
 test('água: lembretes no intervalo, param ao bater a meta e pulam se bebeu há pouco', () => {

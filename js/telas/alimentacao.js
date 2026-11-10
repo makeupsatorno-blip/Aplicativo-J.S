@@ -210,7 +210,7 @@
       '<div class="water-cups" aria-hidden="true">' + Array.apply(null, Array(cups)).map(function (x, i) { return '<i class="' + (i < full ? 'on' : '') + '">' + ui.icon('drop', 16) + '</i>'; }).join('') + '</div></div>' +
       (ml ? '<button type="button" class="icon-btn water-undo" data-action="water-undo" aria-label="Desfazer o último registro de água" title="Desfazer o último">' + ui.icon('undo', 18) + '</button>' : '') + '</div>' +
       '<div class="btn-row tight water-btns"><button type="button" class="btn small primary" data-action="water-add" data-ml="' + cup + '">' + ui.icon('plus', 16) + '1 copo (' + cup + ' ml)</button>' +
-      '<button type="button" class="btn small soft" data-action="water-add" data-ml="500">+ 500 ml</button>' +
+      (cup !== 500 ? '<button type="button" class="btn small soft" data-action="water-add" data-ml="500">+ 500 ml</button>' : '<button type="button" class="btn small soft" data-action="water-add" data-ml="1000">+ 1 L</button>') +
       '<button type="button" class="btn small soft" data-action="water-other">Outra</button></div>' +
       '<div class="water-week" aria-label="Água nos últimos 7 dias">' + week.map(function (d) {
         var p = Math.min(100, Math.round(d.ml / goal.ml * 100));
@@ -255,7 +255,9 @@
     var body = ui.input({ label: 'Meta de água por dia (ml)', name: 'goalMl', type: 'number', value: w.goalMl || '', attrs: 'inputmode="numeric" min="500" max="6000" step="50"',
       placeholder: 'Automática: ' + auto.ml + ' ml',
       hint: 'Em branco = automática: ' + (auto.source === 'peso' ? '35 ml por kg do seu último peso (' + JS.graf.fmtNum(auto.kg, 1) + ' kg) = ' + R.formatMl(auto.ml) + '.' : '2 L (registre seu peso em Corpo para calcular pelo peso).') }) +
-      ui.select({ label: 'Tamanho do seu copo/garrafinha', name: 'cupMl', options: R.WATER_CUPS.map(function (c) { return [c, c + ' ml']; }), value: R.waterCup(s) }) +
+      ui.input({ label: 'Tamanho do seu copo/garrafinha (ml)', name: 'cupMl', type: 'number', value: R.waterCup(s), attrs: 'inputmode="numeric" min="' + R.CUP_MIN + '" max="' + R.CUP_MAX + '" step="1"',
+        placeholder: 'Ex.: 330', hint: 'Digite o tamanho que você usa; é o que o botão "+1 copo" soma.' }) +
+      ui.chips(R.WATER_CUPS.map(function (c) { return { label: R.formatMl(c), attrs: 'data-cup="' + c + '"' }; })) +
       ui.checkbox({ label: 'Lembretes para beber água', hint: 'Param quando você bate a meta do dia; se acabou de beber, o aviso daquele horário pula.', name: 'remind', checked: !!w.remind }) +
       '<div data-water-remind>' + ui.select({ label: 'Lembrar a cada', name: 'every', options: [[60, '1 hora'], [90, '1 hora e meia'], [120, '2 horas'], [150, '2 horas e meia'], [180, '3 horas'], [240, '4 horas']], value: w.every }) +
       '<div class="row2">' + ui.input({ label: 'Das', name: 'from', type: 'time', value: w.from }) + ui.input({ label: 'Até', name: 'to', type: 'time', value: w.to }) + '</div></div>' +
@@ -263,6 +265,7 @@
     ui.openSheet({
       title: 'Água', body: body, submitLabel: 'Salvar',
       onOpen: function (form) {
+        form.querySelectorAll('[data-cup]').forEach(function (b) { b.addEventListener('click', function () { form.elements.cupMl.value = b.dataset.cup; }); });
         var box = form.querySelector('[data-water-remind]'), cb = form.elements.remind;
         function sync() { box.hidden = !cb.checked; }
         cb.addEventListener('change', sync); sync();

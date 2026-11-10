@@ -795,7 +795,9 @@
 
   /* ================= Água ================= */
 
-  var WATER_CUPS = [150, 200, 250, 300, 350, 400, 500];
+  // Atalhos de tamanho do copo; a usuária pode digitar qualquer valor entre CUP_MIN e CUP_MAX ml.
+  var WATER_CUPS = [150, 200, 250, 300, 350, 400, 500, 750, 1000];
+  var CUP_MIN = 30, CUP_MAX = 2000;
   function formatMl(ml) {
     ml = Math.round(ml || 0);
     if (ml >= 1000) return (Math.round(ml / 100) / 10).toString().replace('.', ',') + ' L';
@@ -815,8 +817,8 @@
     return { ml: 2000, source: 'padrao' };
   }
   function waterCup(state) {
-    var c = Number(((state.settings || {}).water || {}).cupMl);
-    return WATER_CUPS.indexOf(c) >= 0 ? c : 250;
+    var c = Math.round(Number(((state.settings || {}).water || {}).cupMl));
+    return c >= CUP_MIN && c <= CUP_MAX ? c : 250;
   }
   function waterLogsOn(state, date) {
     return (state.waterLogs || []).filter(function (l) { return l.date === date; }).sort(function (a, b) { return cmp(a.at || '', b.at || ''); });
@@ -847,12 +849,13 @@
     var goal = raw === '' ? null : Math.round(Number(raw.replace(',', '.')));
     var v = {
       goalMl: goal,
-      cupMl: WATER_CUPS.indexOf(Number(input.cupMl)) >= 0 ? Number(input.cupMl) : 250,
+      cupMl: Math.round(Number(String(input.cupMl == null ? '' : input.cupMl).replace(',', '.'))),
       remind: input.remind === true || input.remind === 'on' || input.remind === 'true',
       every: [60, 90, 120, 150, 180, 240].indexOf(Number(input.every)) >= 0 ? Number(input.every) : 120,
       from: String(input.from || ''), to: String(input.to || '')
     };
     if (goal != null && !(goal >= 500 && goal <= 6000)) e.goalMl = 'Entre 500 e 6000 ml (ou deixe em branco para a automática).';
+    if (!(v.cupMl >= CUP_MIN && v.cupMl <= CUP_MAX)) e.cupMl = 'Digite de ' + CUP_MIN + ' a ' + CUP_MAX + ' ml.';
     if (!C.isTimeKey(v.from)) e.from = 'Escolha o horário.';
     if (!C.isTimeKey(v.to)) e.to = 'Escolha o horário.';
     if (!e.from && !e.to && v.to <= v.from) e.to = 'O fim precisa ser depois do início.';
@@ -1090,7 +1093,7 @@
     billPayments: billPayments, billPaidCents: billPaidCents, billsInMonth: billsInMonth,
     monthSummary: monthSummary, overdueBills: overdueBills, upcomingBills: upcomingBills, seriesBills: seriesBills,
     // água
-    WATER_CUPS: WATER_CUPS, formatMl: formatMl, latestWeight: latestWeight, waterGoal: waterGoal, waterCup: waterCup,
+    WATER_CUPS: WATER_CUPS, CUP_MIN: CUP_MIN, CUP_MAX: CUP_MAX, formatMl: formatMl, latestWeight: latestWeight, waterGoal: waterGoal, waterCup: waterCup,
     waterLogsOn: waterLogsOn, waterTotal: waterTotal, addWater: addWater, undoWater: undoWater, waterDays: waterDays,
     validateWaterSettings: validateWaterSettings,
     // lembretes, painel e agenda

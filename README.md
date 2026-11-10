@@ -39,7 +39,7 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.6.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.6.1'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
@@ -87,7 +87,7 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
 
 ## 3.2 Alimentação e Corpo
 
-- **Água:** no Diário, um copo que enche, gotinhas e os últimos 7 dias. Botões "+1 copo" (do tamanho escolhido), "+500 ml" e "Outra", com desfazer. A meta é automática (35 ml por kg do último peso, entre 1,5 e 4 L; sem peso, 2 L) ou definida por você. **Lembretes de água** opcionais (de 1 em 1 h até 4 em 4 h, no horário escolhido): param quando você bate a meta do dia, e o aviso de um horário pula se você bebeu há pouco. No Início há o cartão "Água hoje" e o botão **Água** em Adicionar soma um copo.
+- **Água:** no Diário, um copo que enche, gotinhas e os últimos 7 dias. Botões "+1 copo" (do tamanho que você digitar, de 30 ml a 2 L), "+500 ml" e "Outra", com desfazer. A meta é automática (35 ml por kg do último peso, entre 1,5 e 4 L; sem peso, 2 L) ou definida por você. **Lembretes de água** opcionais (de 1 em 1 h até 4 em 4 h, no horário escolhido): param quando você bate a meta do dia, e o aviso de um horário pula se você bebeu há pouco. No Início há o cartão "Água hoje" e o botão **Água** em Adicionar soma um copo.
 - **Repetir refeição:** num dia vazio, o Diário oferece "Repetir o dia de ontem" (ou do último dia com alimentos, até 14 dias). Com o dia começado, cada refeição vazia mostra "Repetir de ontem" com os alimentos daquela refeição. Sempre com desfazer.
 - **Favoritos e recentes:** a estrela ☆ na tabela nutricional de um alimento o deixa nos favoritos. Ao adicionar um alimento, aparecem primeiro os favoritos e depois os usados recentemente, já com a última quantidade.
 - **Diário:** registre o que comeu em cada refeição. Os nutrientes de cada alimento, de cada refeição e do dia vêm da **Tabela TACO** (Tabela Brasileira de Composição de Alimentos, 4ª edição, NEPA/UNICAMP), com 597 alimentos. A tabela completa tem energia, macronutrientes, fibras, sódio, colesterol, minerais e vitaminas. Valores que a TACO não analisou aparecem como "—", nunca como zero. Dá para salvar porções (ex.: "1 unidade = 50 g") e cadastrar alimentos que não estão na tabela.
