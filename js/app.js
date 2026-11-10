@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui;
-  var VERSION = '2.5.1';
+  var VERSION = '2.6.0';
   var lastToday = null;
   var deferredInstall = null;
 
@@ -16,9 +16,9 @@
     else location.hash = '#/' + r;
   }
 
-  var TAB_ORDER = ['inicio', 'rotina', 'treino', 'alimentacao', 'mais', 'autocuidado', 'financeiro', 'corpo', 'graficos', 'agenda', 'config'];
+  var TAB_ORDER = ['inicio', 'rotina', 'treino', 'alimentacao', 'mais', 'autocuidado', 'financeiro', 'ciclo', 'corpo', 'graficos', 'agenda', 'config'];
   // No celular essas telas ficam dentro de "Mais" (a aba Mais fica marcada nelas).
-  var MORE_GROUP = ['mais', 'autocuidado', 'financeiro', 'corpo', 'graficos'];
+  var MORE_GROUP = ['mais', 'autocuidado', 'financeiro', 'ciclo', 'corpo', 'graficos'];
   var lastRoute = null;
 
   // Direção da animação ao trocar de tela: segue a posição das abas.

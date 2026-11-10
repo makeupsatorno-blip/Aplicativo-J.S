@@ -177,7 +177,7 @@
   }
 
   // Faíscas coloridas saindo de um elemento (começar tarefa).
-  var SPARK = ['#B96788', '#2A78D6', '#C98500', '#D98EAA', '#8F6BB3'];
+  var SPARK = ['var(--rose600, #B96788)', 'var(--ph-lut, #8F6BB3)', 'var(--ph-ovu, #C98A4E)', 'var(--rose400, #D98EAA)', 'var(--m-work, #94589A)'];
   function sparks(el) {
     if (!el || reduced() || !Element.prototype.animate) return;
     var r = el.getBoundingClientRect(), l = layer();

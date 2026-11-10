@@ -25,13 +25,17 @@
       schemaVersion: SCHEMA_VERSION,
       settings: {
         name: 'Julia',
-        notifications: { task: true, hair: true, meal: true, bill: true },
+        notifications: { task: true, hair: true, meal: true, bill: true, water: true, cycle: true },
         showAmountsInNotifications: false,
         mealHistory: true,
         lastBackupAt: null,
         body: { heightCm: null, sex: 'f', birthYear: null },
         nutrition: { kcalTarget: null, activity: 'moderada' },
-        backTap: { enabled: true, sensitivity: 3, threshold: null }
+        backTap: { enabled: true, sensitivity: 3, threshold: null },
+        // Água: meta (null = automática pelo peso), copo padrão e lembretes de tanto em tanto tempo
+        water: { goalMl: null, cupMl: 250, remind: false, every: 120, from: '09:00', to: '21:00' },
+        // Ciclo menstrual: médias usadas até existirem ciclos registrados; aviso antes da menstruação
+        cycle: { cycleLen: 28, periodLen: 5, remind: true, showInTreino: true }
       },
       tasks: [],
       taskOcc: {},          // "idTarefa|AAAA-MM-DD" -> { status: 'done'|'skipped', completedAt }
@@ -52,9 +56,17 @@
       foodLogs: [],         // { id, date, meal, foodId, name, grams, createdAt }
       customFoods: [],      // alimentos cadastrados pela usuária, valores por 100 g
       foodPortions: {},     // idAlimento -> [{ label, grams }]
+      foodFavorites: [],    // ids de alimentos marcados com estrela
+      // Água (versão 2.6)
+      waterLogs: [],        // { id, date, ml, at }
+      // Ciclo menstrual (versão 2.6)
+      cyclePeriods: [],     // { id, start, end|null }
+      cycleDays: {},        // "AAAA-MM-DD" -> { flow 1-3, energy 1-5, mood 1-5, symptoms: [], note }
       firedReminders: {}    // chave do lembrete -> ISO de quando foi exibido
     };
   }
+  // 2.6: cores das fichas mais delicadas (as antigas eram fortes demais).
+  var OLD_PLAN_COLORS = { '#2A78D6': '#4F6F9A', '#C98500': '#A85E3C', '#6250D6': '#7A5BA6', '#1B8F66': '#4E7D62', '#E34948': '#8E4C7E' };
   function emptyWeek() { return { 0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null }; }
 
   function isObj(x) { return !!x && typeof x === 'object' && !Array.isArray(x); }
@@ -68,20 +80,23 @@
     var out = Object.assign({}, base, data);
     out.settings = Object.assign({}, base.settings, isObj(data.settings) ? data.settings : {});
     var ds = isObj(data.settings) ? data.settings : {};
-    ['notifications', 'body', 'nutrition', 'backTap'].forEach(function (k) {
+    ['notifications', 'body', 'nutrition', 'backTap', 'water', 'cycle'].forEach(function (k) {
       out.settings[k] = Object.assign({}, base.settings[k], isObj(ds[k]) ? ds[k] : {});
     });
     ['tasks', 'hairEvents', 'meals', 'mealLogs', 'bills', 'payments',
-      'workoutPlans', 'exercises', 'workoutSessions', 'bodyRecords', 'foodLogs', 'customFoods'].forEach(function (k) {
+      'workoutPlans', 'exercises', 'workoutSessions', 'bodyRecords', 'foodLogs', 'customFoods', 'waterLogs', 'cyclePeriods'].forEach(function (k) {
       out[k] = Array.isArray(out[k]) ? out[k].filter(hasId) : [];
     });
-    ['taskOcc', 'mealExceptions', 'firedReminders', 'foodPortions'].forEach(function (k) { if (!isObj(out[k])) out[k] = {}; });
+    ['taskOcc', 'mealExceptions', 'firedReminders', 'foodPortions', 'cycleDays'].forEach(function (k) { if (!isObj(out[k])) out[k] = {}; });
+    out.foodFavorites = Array.isArray(out.foodFavorites) ? out.foodFavorites.filter(function (x, i, a) { return typeof x === 'string' && x && a.indexOf(x) === i; }) : [];
+    out.waterLogs = out.waterLogs.filter(function (l) { return C.isDateKey(l.date) && Number(l.ml) > 0; });
+    out.cyclePeriods = out.cyclePeriods.filter(function (p) { return C.isDateKey(p.start) && (p.end == null || (C.isDateKey(p.end) && p.end >= p.start)); });
     // v1 -> v2: estruturas de treino, corpo e diário alimentar (os dados antigos ficam iguais).
     var w = isObj(data.workout) ? data.workout : {};
     out.workout = Object.assign({}, base.workout, w);
     out.workout.week = Object.assign(emptyWeek(), isObj(w.week) ? w.week : {});
     if (!isObj(out.workout.overrides)) out.workout.overrides = {};
-    out.workoutPlans.forEach(function (p) { if (!Array.isArray(p.items)) p.items = []; });
+    out.workoutPlans.forEach(function (p) { if (!Array.isArray(p.items)) p.items = []; if (OLD_PLAN_COLORS[p.color]) p.color = OLD_PLAN_COLORS[p.color]; });
     out.workoutSessions.forEach(function (s) { if (!Array.isArray(s.items)) s.items = []; s.items.forEach(function (i) { if (!Array.isArray(i.sets)) i.sets = []; }); });
     out.foodLogs = out.foodLogs.filter(function (l) { return C.isDateKey(l.date) && Number(l.grams) > 0; });
     out.tasks = out.tasks.filter(function (t) { return typeof t.title === 'string'; });
@@ -95,7 +110,8 @@
 
   function hasAnyData(state) {
     return state.tasks.length + state.hairEvents.length + state.meals.length + state.bills.length +
-      (state.workoutPlans || []).length + (state.bodyRecords || []).length + (state.foodLogs || []).length > 0;
+      (state.workoutPlans || []).length + (state.bodyRecords || []).length + (state.foodLogs || []).length +
+      (state.waterLogs || []).length + (state.cyclePeriods || []).length > 0;
   }
 
   // Ficha de treino de um dia: troca feita só naquele dia > ficha fixa do dia da semana.
@@ -777,13 +793,86 @@
       .sort(function (a, b) { return cmp(a.dueDate, b.dueDate); });
   }
 
+  /* ================= Água ================= */
+
+  var WATER_CUPS = [150, 200, 250, 300, 350, 400, 500];
+  function formatMl(ml) {
+    ml = Math.round(ml || 0);
+    if (ml >= 1000) return (Math.round(ml / 100) / 10).toString().replace('.', ',') + ' L';
+    return ml + ' ml';
+  }
+  function latestWeight(state) {
+    var recs = (state.bodyRecords || []).filter(function (r) { return Number(r.weightKg) > 0 && C.isDateKey(r.date); })
+      .sort(function (a, b) { return cmp(a.date, b.date); });
+    return recs.length ? Number(recs[recs.length - 1].weightKg) : null;
+  }
+  // Meta do dia: a escolhida; sem ela, 35 ml por kg do último peso (entre 1,5 e 4 L); sem peso, 2 L.
+  function waterGoal(state) {
+    var w = (state.settings && state.settings.water) || {};
+    if (Number(w.goalMl) >= 500) return { ml: Math.round(Number(w.goalMl)), source: 'manual' };
+    var kg = latestWeight(state);
+    if (kg) return { ml: Math.min(4000, Math.max(1500, Math.round(kg * 35 / 50) * 50)), source: 'peso', kg: kg };
+    return { ml: 2000, source: 'padrao' };
+  }
+  function waterCup(state) {
+    var c = Number(((state.settings || {}).water || {}).cupMl);
+    return WATER_CUPS.indexOf(c) >= 0 ? c : 250;
+  }
+  function waterLogsOn(state, date) {
+    return (state.waterLogs || []).filter(function (l) { return l.date === date; }).sort(function (a, b) { return cmp(a.at || '', b.at || ''); });
+  }
+  function waterTotal(state, date) { return waterLogsOn(state, date).reduce(function (a, l) { return a + Number(l.ml || 0); }, 0); }
+  function addWater(state, date, ml, nowISO) {
+    ml = Math.round(Number(ml));
+    if (!C.isDateKey(date) || !(ml >= 10 && ml <= 3000)) return null;
+    var l = { id: C.uuid(), date: date, ml: ml, at: nowISO };
+    state.waterLogs.push(l);
+    return l;
+  }
+  // Desfaz o último registro do dia.
+  function undoWater(state, date) {
+    var list = waterLogsOn(state, date);
+    var last = list[list.length - 1];
+    if (last) removeById(state.waterLogs, last.id);
+    return last || null;
+  }
+  function waterDays(state, from, to) {
+    var out = [];
+    for (var d = from; d <= to; d = C.addDays(d, 1)) out.push({ date: d, ml: waterTotal(state, d) });
+    return out;
+  }
+  function validateWaterSettings(input) {
+    var e = {};
+    var raw = input.goalMl == null ? '' : String(input.goalMl).trim();
+    var goal = raw === '' ? null : Math.round(Number(raw.replace(',', '.')));
+    var v = {
+      goalMl: goal,
+      cupMl: WATER_CUPS.indexOf(Number(input.cupMl)) >= 0 ? Number(input.cupMl) : 250,
+      remind: input.remind === true || input.remind === 'on' || input.remind === 'true',
+      every: [60, 90, 120, 150, 180, 240].indexOf(Number(input.every)) >= 0 ? Number(input.every) : 120,
+      from: String(input.from || ''), to: String(input.to || '')
+    };
+    if (goal != null && !(goal >= 500 && goal <= 6000)) e.goalMl = 'Entre 500 e 6000 ml (ou deixe em branco para a automática).';
+    if (!C.isTimeKey(v.from)) e.from = 'Escolha o horário.';
+    if (!C.isTimeKey(v.to)) e.to = 'Escolha o horário.';
+    if (!e.from && !e.to && v.to <= v.from) e.to = 'O fim precisa ser depois do início.';
+    return result(e, v);
+  }
+
+  // Ciclo menstrual (js/regras-ciclo.js), carregado depois deste arquivo no navegador.
+  function cycleApi() {
+    if (typeof self !== 'undefined' && self.JSCiclo) return self.JSCiclo;
+    if (typeof require === 'function') { try { return require('./regras-ciclo.js'); } catch (e) { return null; } }
+    return null;
+  }
+
   /* ================= Lembretes ================= */
 
   // Lista os lembretes de ontem até depois de amanhã, já com texto e chave
   // de idempotência no formato tipo:entidade:AAAA-MM-DDTHH:MM.
   function computeReminders(state, now) {
     var today = C.toDateKey(now);
-    return remindersInRange(state, C.addDays(today, -1), C.addDays(today, 2));
+    return remindersInRange(state, C.addDays(today, -1), C.addDays(today, 2), { today: today });
   }
 
   // Lembretes que ainda vão acontecer nos próximos "days" dias (enviados ao servidor
@@ -791,7 +880,7 @@
   function upcomingReminders(state, now, days) {
     var today = C.toDateKey(now);
     var limit = now.getTime() + days * 86400000;
-    return remindersInRange(state, today, C.addDays(today, days))
+    return remindersInRange(state, today, C.addDays(today, days), { today: today })
       .filter(function (r) { var t = r.at.getTime(); return t > now.getTime() - 60000 && t <= limit; });
   }
 
@@ -805,8 +894,9 @@
     var recurringDays = opts.recurringDays || SERVER_RECURRING_DAYS;
     var singleDays = opts.singleDays || SERVER_SINGLE_DAYS;
     var today = C.toDateKey(now);
-    var near = remindersInRange(state, today, C.addDays(today, recurringDays));
-    var far = remindersInRange(state, C.addDays(today, recurringDays), C.addDays(today, singleDays), { singleOnly: true });
+    // Água: só 14 dias à frente (são vários por dia; renovados quando o app abre).
+    var near = remindersInRange(state, today, C.addDays(today, recurringDays), { today: today, waterUntil: C.addDays(today, 14) });
+    var far = remindersInRange(state, C.addDays(today, recurringDays), C.addDays(today, singleDays), { singleOnly: true, today: today });
     var seen = {}, out = [];
     var min = now.getTime() - 60000, max = now.getTime() + singleDays * 86400000;
     near.concat(far).forEach(function (r) {
@@ -885,6 +975,34 @@
           push('bill', b.id, C.combine(C.addDays(b.dueDate, -n), b.reminderTime), b.title + ' vence em ' + n + (n === 1 ? ' dia.' : ' dias.'), body, 'financeiro');
         }
         push('bill', b.id, C.combine(b.dueDate, b.reminderTime), 'Hoje vence: ' + b.title, body, 'financeiro');
+      });
+    }
+    // Água: de tanto em tanto tempo, no horário escolhido, até bater a meta do dia.
+    // Se bebeu há pouco (menos da metade do intervalo), o aviso daquele horário não vem.
+    var wa = s.water || {};
+    if (mods.water !== false && !singleOnly && wa.remind && C.isTimeKey(wa.from) && C.isTimeKey(wa.to) && wa.to > wa.from) {
+      var every = Math.min(Math.max(Number(wa.every) || 120, 30), 480) * 60000;
+      var goal = waterGoal(state).ml;
+      var wEnd = opts && opts.waterUntil && opts.waterUntil < to ? opts.waterUntil : to;
+      for (var wday = from; wday <= wEnd; wday = C.addDays(wday, 1)) {
+        var logs = waterLogsOn(state, wday), drank = 0, lastAt = 0;
+        logs.forEach(function (l) { drank += Number(l.ml || 0); var t = new Date(l.at).getTime(); if (t > lastAt) lastAt = t; });
+        if (drank >= goal) continue;
+        var t1 = C.combine(wday, wa.to).getTime();
+        for (var wt = C.combine(wday, wa.from).getTime(); wt <= t1; wt += every) {
+          if (lastAt && wt >= lastAt && wt - lastAt < every / 2) continue;
+          push('water', 'dia', new Date(wt), 'Hora de beber água 💧',
+            drank > 0 ? 'Faltam ' + formatMl(goal - drank) + ' para a meta de hoje.' : 'Meta do dia: ' + formatMl(goal) + '.', 'alimentacao');
+        }
+      }
+    }
+    // Ciclo: aviso 2 dias antes da menstruação prevista, às 9h.
+    var cyc = s.cycle || {}, Cy = cycleApi();
+    if (mods.cycle !== false && !singleOnly && cyc.remind !== false && Cy) {
+      Cy.predictedStarts(state, (opts && opts.today) || from, 6).forEach(function (d) {
+        var at = C.combine(C.addDays(d, -2), '09:00'), k = C.toDateKey(at);
+        if (k < from || k > to) return;
+        push('cycle', 'menstruacao', at, 'Sua menstruação deve vir em 2 dias 🌸', 'Previsão pela média dos seus ciclos • ' + C.formatDayMonth(d), 'ciclo');
       });
     }
     return list.sort(function (a, b) { return a.at - b.at; });
@@ -971,6 +1089,10 @@
     restoreBill: restoreBill, deleteBill: deleteBill, ensureRecurringBills: ensureRecurringBills,
     billPayments: billPayments, billPaidCents: billPaidCents, billsInMonth: billsInMonth,
     monthSummary: monthSummary, overdueBills: overdueBills, upcomingBills: upcomingBills, seriesBills: seriesBills,
+    // água
+    WATER_CUPS: WATER_CUPS, formatMl: formatMl, latestWeight: latestWeight, waterGoal: waterGoal, waterCup: waterCup,
+    waterLogsOn: waterLogsOn, waterTotal: waterTotal, addWater: addWater, undoWater: undoWater, waterDays: waterDays,
+    validateWaterSettings: validateWaterSettings,
     // lembretes, painel e agenda
     computeReminders: computeReminders, upcomingReminders: upcomingReminders, futureReminders: futureReminders,
     SERVER_RECURRING_DAYS: SERVER_RECURRING_DAYS, SERVER_SINGLE_DAYS: SERVER_SINGLE_DAYS,

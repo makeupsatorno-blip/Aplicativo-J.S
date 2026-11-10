@@ -1,11 +1,13 @@
 # J.S. — Julia Satorno
 
-Aplicativo pessoal de organização: **Rotina**, **Treino**, **Alimentação** (com tabela nutricional e cardápio), **Cronograma capilar**, **Corpo** (bioimpedância), **Financeiro** e **Gráficos**, com painel inicial, agenda unificada, lembretes e backup.
+Aplicativo pessoal de organização: **Rotina**, **Treino**, **Alimentação** (com tabela nutricional, cardápio e água), **Ciclo menstrual**, **Cronograma capilar**, **Corpo** (bioimpedância e fotos de evolução), **Financeiro** e **Gráficos**, com painel inicial, agenda unificada, busca geral, lembretes e backup.
 Sem login: os dados ficam no próprio aparelho. O único servidor é opcional e serve só para os avisos chegarem com o app fechado (seção 4).
 
-No celular, a barra de baixo tem **Início, Rotina, Treino, Alimentação e Mais** (Cronograma capilar, Financeiro, Corpo, Gráficos, Agenda e Configurações). Em tablet deitado ou computador, a barra vira uma coluna lateral com todos os módulos e as telas usam duas colunas.
+No celular, a barra de baixo tem **Início, Rotina, Treino, Alimentação e Mais** (Cronograma capilar, Financeiro, Ciclo menstrual, Corpo, Gráficos, Agenda e Configurações). A **lupa** no topo abre a busca geral: tarefas, contas, tratamentos, horários de refeição, fichas, exercícios, alimentos e qualquer tela ou ajuste do app. Em tablet deitado ou computador, a barra vira uma coluna lateral com todos os módulos e as telas usam duas colunas.
 
 **Tamanho da tela:** o app se adapta sozinho a qualquer aparelho. No celular fica em 100%; em tablet, aumenta conforme o tamanho da tela (até 160%, igual em pé e deitado sempre que o layout permite); em computador com tela larga, aumenta um pouco (até 135%). Se o navegador do tablet estiver no modo "site para computador", que desenha a página com 980 px e encolhe tudo, o app compensa. Em Configurações → Aplicativo → **Tamanho da tela** dá para escolher na mão (90% a 150%) ou voltar ao automático. Por dentro: todo o CSS usa `rem`, e o `<head>` do `index.html` (`window.JS_FIT`) define quanto vale 1rem e recalcula quando a tela gira.
+
+**Aparência:** títulos em Cormorant Garamond itálico e texto em Nunito (as duas guardadas em `fonts/`, funcionam sem internet), tons pastéis e detalhes florais. Em Configurações → **Aparência** dá para escolher o tema (Automático, que segue o celular, Claro ou **Escuro**, em tons de ameixa) e a paleta (**Rosé, Lavanda, Pêssego ou Nude**). Por dentro: todas as cores são variáveis CSS (`css/style.css`), e o `<head>` do `index.html` (`window.JS_THEME`) aplica o tema antes de desenhar a tela.
 
 Ele é um app web (PWA): abre no navegador e pode ser **instalado no celular pelo Chrome**, com ícone na tela inicial, abrindo em tela cheia e funcionando sem internet.
 
@@ -37,19 +39,21 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.5.1'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.6.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
 - Os dados ficam **só no aparelho e no navegador onde foram cadastrados**. O que você cadastrar no computador não aparece no celular, e vice-versa.
 - Limpar os dados do navegador, desinstalar o app ou perder o celular **apaga tudo**, a menos que exista um backup.
 - Em **Configurações → Backup** dá para salvar um arquivo, enviá-lo por WhatsApp, e-mail ou Drive, e restaurá-lo em outro aparelho. O painel lembra de fazer backup a cada 14 dias.
+- As **fotos de evolução** ficam no próprio navegador (IndexedDB), nunca vão para servidor, e entram no arquivo de backup (o arquivo fica maior). Restaurar um backup sem fotos não apaga as fotos do aparelho.
 
 ## 3.1 Treino
 
 - **Fichas:** monte fichas (ex.: "Treino A — Pernas") com exercícios da biblioteca (100 exercícios por grupo muscular, cada um com desenho animado da execução e dica) ou criados por você, com séries, repetições, carga e descanso.
 - **Semana fixa e troca do dia:** em Treino → Semana, cada dia da semana recebe uma ficha (ou descanso). Para mudar só um dia (ex.: na terça treinar braço em vez de perna), use **Trocar** em Hoje ou toque no dia em **Mês**. As próximas semanas continuam iguais.
 - **Calendário do mês:** mostra a ficha de cada dia (letra e cor), os treinos feitos (✓) e os descansos.
+- **Séries por grupo muscular:** em Treino → Hoje, quantas séries cada grupo (quadríceps, glúteos, costas...) recebeu na semana, comparado com a semana passada, com a referência comum de 10 a 20 séries semanais por grupo.
 - **Execução:** "Iniciar treino" faz uma contagem 3-2-1 e abre o treino em tela cheia, com a tela sempre acesa. Ajuste a carga e as repetições com **+/−** e toque em **Série feita**. O descanso começa sozinho e avisa com bipe e vibração quando acaba. Ao terminar, aparece o resumo (duração, séries, volume e recordes) e a ficha passa a sugerir a última carga usada.
 - **Toque atrás:** com o J.S. aberto no treino, **bata 2 vezes na parte de trás do celular** para abrir a **telinha do peso**: mostra o exercício atual com o peso e as repetições em botões grandes (+, −, +2,5 kg, +5 kg, ou digitar). "Registrar série" (ou bater 2 vezes de novo) salva a série com esse peso; "Só salvar o peso" muda a carga sem registrar. O descanso começa sozinho. Funciona no Android e no iPhone, pelo sensor de movimento. No iPhone o app pede permissão para usar o sensor. Em Configurações → Treino dá para mudar a sensibilidade e **testar e calibrar** com as suas batidas. Com o app fechado, nenhum site instalado consegue ouvir o sensor. Por isso, o toque atrás do próprio celular (Samsung Good Lock/RegiStar, Pixel "Toque rápido") pode ser configurado para **abrir o J.S.**, que vai direto para o treino em andamento.
 - **Toque atrás em qualquer tela:** com o app aberto, as 2 batidas levam ao treino (e, em Treino → Hoje, iniciam o treino do dia); com treino em andamento, abrem a telinha do peso.
@@ -83,10 +87,14 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
 
 ## 3.2 Alimentação e Corpo
 
+- **Água:** no Diário, um copo que enche, gotinhas e os últimos 7 dias. Botões "+1 copo" (do tamanho escolhido), "+500 ml" e "Outra", com desfazer. A meta é automática (35 ml por kg do último peso, entre 1,5 e 4 L; sem peso, 2 L) ou definida por você. **Lembretes de água** opcionais (de 1 em 1 h até 4 em 4 h, no horário escolhido): param quando você bate a meta do dia, e o aviso de um horário pula se você bebeu há pouco. No Início há o cartão "Água hoje" e o botão **Água** em Adicionar soma um copo.
+- **Repetir refeição:** num dia vazio, o Diário oferece "Repetir o dia de ontem" (ou do último dia com alimentos, até 14 dias). Com o dia começado, cada refeição vazia mostra "Repetir de ontem" com os alimentos daquela refeição. Sempre com desfazer.
+- **Favoritos e recentes:** a estrela ☆ na tabela nutricional de um alimento o deixa nos favoritos. Ao adicionar um alimento, aparecem primeiro os favoritos e depois os usados recentemente, já com a última quantidade.
 - **Diário:** registre o que comeu em cada refeição. Os nutrientes de cada alimento, de cada refeição e do dia vêm da **Tabela TACO** (Tabela Brasileira de Composição de Alimentos, 4ª edição, NEPA/UNICAMP), com 597 alimentos. A tabela completa tem energia, macronutrientes, fibras, sódio, colesterol, minerais e vitaminas. Valores que a TACO não analisou aparecem como "—", nunca como zero. Dá para salvar porções (ex.: "1 unidade = 50 g") e cadastrar alimentos que não estão na tabela.
 - **Meta de calorias:** definida por você ou estimada automaticamente pelo metabolismo basal (da bioimpedância ou, sem ela, pela fórmula de Mifflin-St Jeor com peso, altura e idade) × nível de atividade.
 - **Cardápio:** sugestões para as refeições do dia (as de Horários; sem horários, 4 refeições), montadas com alimentos da TACO e com as porções ajustadas à meta. Há "Outra opção" e "Usar no diário". São sugestões gerais e equilibradas, que não substituem a orientação de uma nutricionista.
 - **Corpo:** registre os dados da balança de bioimpedância (peso, % de gordura, massa muscular, massa magra, água, gordura visceral, metabolismo basal, massa óssea, proteína, idade metabólica) e medidas com fita. O app mostra a diferença para a medição anterior, a **indicação de massa muscular** (ganhando, estável ou perdendo, % do peso e kg/m²), o IMC (faixas da OMS), a faixa de gordura (referência geral da ACE) e gráficos.
+- **Fotos de evolução (Corpo):** adicione fotos (frente, lado, costas), que são reduzidas para até 1600 px. Elas aparecem desfocadas até você tocar em Mostrar. **Antes e depois:** escolha duas fotos e deslize a divisória (ou veja lado a lado), com os dias entre elas e a diferença de peso.
 - **Imagens dos alimentos:** cada alimento aparece com uma imagem (ícone) no cardápio, no diário e na busca; o cartão de cada refeição sugerida mostra o "prato" com as imagens.
 - **Gráficos:** painel em 30 dias, 90 dias ou 12 meses, com filtro por módulo (Treino, Corpo, Alimentação, Rotina, Finanças, Capilar):
   - números do período comparados com o período anterior, com minilinha de tendência;
@@ -96,6 +104,14 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
   - Toque num gráfico para ver o valor; cada gráfico tem a tabela equivalente. Linhas e barras aparecem com animação (menos no modo "menos animação").
 - **Tarefas:** além de concluir, dá para **Começar agora** (botão ▶ nas tarefas de hoje). A tarefa ganha uma animação de largada e fica "Em andamento" com cronômetro. Ao concluir, o app mostra quanto tempo levou. Para repetir em dias certos, marque os **dias da semana** escritos (Seg, Ter, Qua...) acima de Repetição: a tarefa repete toda semana nesses dias.
 
+## 3.3 Ciclo menstrual
+
+- Registre o 1º dia da menstruação ("Minha menstruação começou") e, se quiser, o último ("terminou"). O J.S. calcula a média dos seus ciclos (dos últimos 6; até ter 2, usa a média que você informou), a **fase de cada dia** (menstrual, folicular, ovulatória, lútea), a **próxima menstruação**, o **período fértil estimado** e avisa quando está atrasada.
+- **Como você está:** fluxo, energia, humor, sintomas e uma anotação para cada dia (dá para voltar a dias anteriores). Marcar fluxo num dia sem menstruação registrada começa uma.
+- **Treino e energia:** em Treino → Hoje aparece a fase do dia com uma dica de treino e a pergunta "Como está sua energia hoje?". Na tela do Ciclo, o quadro **Energia e treino por fase** mostra a energia média, os sintomas mais comuns, os treinos por semana e o volume médio em cada fase.
+- Calendário do mês com menstruação registrada e prevista, período fértil, ovulação e registros; histórico dos ciclos. Aviso opcional 2 dias antes da menstruação prevista.
+- São estimativas pela média (fase lútea de cerca de 14 dias): **não servem como método anticoncepcional** nem substituem a orientação médica. Os dados ficam só no aparelho.
+
 ## 4. Notificações
 
 - **Tudo com horário avisa por padrão:** ao pôr a hora numa tarefa, o lembrete vira "15 min antes"; num tratamento, "na hora". Refeições avisam na hora e contas 1 dia antes e no dia. Dá para mudar ou desligar em cada item. Itens antigos sem lembrete aparecem num aviso no painel e em Configurações, com o botão **Ligar todos**.
@@ -104,6 +120,7 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
 - **Com "Avisos com o app fechado" ligado** (Configurações → Notificações), os avisos chegam na hora **mesmo com o app fechado**. Ao permitir as notificações, o app oferece ligar isso uma vez.
 - Funcionam melhor no Android com Chrome. No iPhone, só com o app instalado na tela de início (iOS 16.4 ou mais novo).
 - Por privacidade, o valor das contas não aparece na notificação. Isso pode ser ligado em Configurações.
+- **Água** e **Ciclo** também avisam (ligue os lembretes de água em Alimentação → Água). Para o servidor, vão os lembretes de água dos próximos 14 dias, renovados ao abrir o app.
 
 ### Servidor de avisos (Web Push) e do registro rápido
 
@@ -149,10 +166,10 @@ supabase functions deploy js-push --no-verify-jwt --use-api            # funçã
 
 ## 6. Testes
 
-As regras de negócio têm testes automáticos. `regras.test.js` cobre recorrência, centavos, contas recorrentes, lembretes e backup. `v2.test.js` cobre fichas, troca do dia, execução, evolução de carga, corpo, TACO, cardápio, tarefa em andamento, o reconhecimento do toque atrás com sinais simulados, os treinos prontos e os desenhos de todos os exercícios.
+As regras de negócio têm testes automáticos. `regras.test.js` cobre recorrência, centavos, contas recorrentes, lembretes e backup. `v2.test.js` cobre fichas, troca do dia, execução, evolução de carga, corpo, TACO, cardápio, tarefa em andamento, o reconhecimento do toque atrás com sinais simulados, os treinos prontos e os desenhos de todos os exercícios. `v26.test.js` cobre água (meta, lembretes inteligentes), ciclo menstrual (médias, fases, previsões, atraso, registros), séries por grupo muscular, favoritos e repetir refeição.
 
 ```
-node --test testes/regras.test.js testes/v2.test.js
+node --test testes/regras.test.js testes/v2.test.js testes/v26.test.js
 ```
 
 ## 7. Estrutura
@@ -166,6 +183,8 @@ aplicativo/
 ├── rapido.html             página do registro rápido aberta pelo atalho do iPhone
 ├── css/style.css           visual (paleta do design system em ../JS_Starter/docs)
 ├── css/v2.css              telas da versão 2 e layout para tablet/computador
+├── css/v26.css             água, ciclo, fotos, busca e as outras novidades da 2.6
+├── fonts/                  Nunito e Cormorant Garamond (licença OFL)
 ├── icons/                  ícones do app gerados a partir da logo
 ├── js/
 │   ├── intro.js            intro animada e interativa
@@ -174,7 +193,9 @@ aplicativo/
 │   ├── regras.js           regras de negócio de todos os módulos (testadas)
 │   ├── regras-treino.js    fichas, semana, execução e evolução (testadas)
 │   ├── regras-corpo.js     bioimpedância e indicações (testadas)
-│   ├── regras-nutricao.js  TACO, diário, meta e cardápio (testadas)
+│   ├── regras-nutricao.js  TACO, diário, meta, cardápio, favoritos e repetir refeição (testadas)
+│   ├── regras-ciclo.js     ciclo menstrual: médias, fases, previsões, energia por fase (testadas)
+│   ├── fotos.js            fotos de evolução (IndexedDB, redução, backup)
 │   ├── toque.js            reconhecimento das 2 batidas atrás do celular
 │   ├── graficos.js         gráficos em SVG (sem bibliotecas)
 │   ├── exanim.js           desenhos animados da execução dos exercícios
@@ -187,11 +208,11 @@ aplicativo/
 │   ├── ui.js               componentes de tela
 │   ├── app.js              navegação, instalação e inicialização
 │   └── telas/              inicio, rotina, treino, sessao (execução), alimentacao, autocuidado (cronograma capilar),
-│                           corpo, financeiro, graficos, mais, agenda, config
+│                           corpo, ciclo, busca (busca geral), financeiro, graficos, mais, agenda, config
 ├── supabase/
 │   ├── functions/js-push/  servidor de avisos (Edge Function)
 │   └── sql/                tabelas e agendamento a cada minuto
-└── testes/                 regras.test.js e v2.test.js
+└── testes/                 regras.test.js, v2.test.js e v26.test.js
 ```
 
 A especificação original está em `../JS_Starter/docs/`.

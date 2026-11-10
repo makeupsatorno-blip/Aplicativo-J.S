@@ -4,13 +4,19 @@
  * depois do desenho da tela, mountAll() monta o SVG na largura real (celular, tablet).
  * Regras visuais: linhas de 2px, barras de no máximo 24px com ponta arredondada, grade fina,
  * rótulos só no último valor, dica (tooltip) ao tocar/passar o mouse e tabela para ler sem cor.
- * Cores validadas para daltonismo: rosa, azul, âmbar (nesta ordem).
+ * Cores: tokens do css/style.css (--ser1 rosa, --ser2 lavanda, --ser3 âmbar), que mudam com a paleta e o tema escuro.
+ * Cores antigas em hexadecimal que as telas passarem são traduzidas para os tokens (paint).
  */
 (function () {
   'use strict';
   var JS = window.JS = window.JS || {};
-  var SERIES = ['#A0526D', '#2A78D6', '#C98500'];
-  var INK = '#30262B', MUTED = '#75676F', GRID = '#F1E7EB', AXIS = '#D9CCD2', SURFACE = '#FFFFFF';
+  var SERIES = ['var(--ser1)', 'var(--ser2)', 'var(--ser3)'];
+  var INK = 'var(--text)', MUTED = 'var(--muted)', GRID = 'var(--chart-grid)', AXIS = 'var(--chart-axis)', SURFACE = 'var(--surface)';
+  var LEGACY = {
+    '#A0526D': 'var(--ser1)', '#2A78D6': 'var(--ser2)', '#C98500': 'var(--ser3)', '#8F6BB3': 'var(--m-hair)',
+    '#3B6FD0': 'var(--m-work)', '#1E8A70': 'var(--m-body)', '#6250D6': 'var(--m-chart)', '#C2622D': 'var(--m-kcal)', '#3F8C86': 'var(--m-meal)'
+  };
+  function paint(c) { return c == null ? c : (LEGACY[String(c).toUpperCase()] || c); }
   var NS = 'http://www.w3.org/2000/svg';
 
   function esc(s) { return JS.ui.esc(s); }
@@ -32,7 +38,7 @@
     }
     if (spec.type === 'stack' && spec.series) {
       legend = '<div class="chart-legend">' + spec.series.map(function (s, i) {
-        return '<span><i style="background:' + (s.color || SERIES[i]) + '"></i>' + esc(s.name) + '</span>';
+        return '<span><i style="background:' + paint(s.color || SERIES[i]) + '"></i>' + esc(s.name) + '</span>';
       }).join('') + '</div>';
     }
     return '<figure class="chart-fig">' + legend +
@@ -77,9 +83,14 @@
     return fmtNum(v, dec);
   }
 
+  // fill/stroke com var(--token) vão no style (atributo de SVG não entende var()).
   function el(name, attrs, parent) {
     var e = document.createElementNS(NS, name);
-    Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    Object.keys(attrs || {}).forEach(function (k) {
+      var v = attrs[k];
+      if (k === 'fill' || k === 'stroke') { v = paint(v); if (String(v).indexOf('var(') === 0) { e.style[k] = v; return; } }
+      e.setAttribute(k, v);
+    });
     if (parent) parent.appendChild(e);
     return e;
   }
@@ -152,7 +163,7 @@
   }
 
   // Calendário de constância: uma coluna por semana (dom-sáb), cada quadradinho é um dia.
-  var HEAT = ['#F3E9ED', '#D98EAA', '#B96788', '#78465A'];
+  var HEAT = ['var(--heat0)', 'var(--heat1)', 'var(--heat2)', 'var(--heat3)'];
   function drawHeat(svg, spec, W, H) {
     var weeks = spec.weeks || [], left = 26, top = 16;
     var fit = Math.max(4, Math.floor((W - left - 4) / 11)); // no celular, 12 meses não cabem: mostra as semanas mais recentes
@@ -173,8 +184,8 @@
         if (!d) return;
         var y = top + r * (cell + gap);
         var lvl = d.future ? -1 : Math.min(3, d.v || 0);
-        var rect = el('rect', { x: x, y: y, width: cell, height: cell, rx: Math.min(6, cell / 4), fill: lvl < 0 ? '#FBF7F9' : HEAT[lvl] }, svg);
-        if (d.today) rect.setAttribute('stroke', INK), rect.setAttribute('stroke-width', 1.5);
+        var rect = el('rect', { x: x, y: y, width: cell, height: cell, rx: Math.min(6, cell / 4), fill: lvl < 0 ? 'var(--heat-future)' : HEAT[lvl] }, svg);
+        if (d.today) rect.style.stroke = INK, rect.setAttribute('stroke-width', 1.5);
         if (animating() && lvl > 0) rect.animate([{ opacity: 0, transform: 'scale(.4)' }, { opacity: 1, transform: 'none' }], { duration: 380, delay: c * 18, easing: 'ease-out', fill: 'backwards' });
         if (!d.future) cells.push({ x: x, y: y, s: cell, d: d, rect: rect });
       });
@@ -205,8 +216,8 @@
     values.forEach(function (x, i) { if (x != null && isFinite(x)) pts.push([xs[i], H - 4 - (x - min) / rng * (H - 8)]); });
     var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join('');
     var last = pts[pts.length - 1];
-    return '<svg class="spark" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><path d="' + d + '" fill="none" stroke="#CDBDC4" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>' +
-      '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3" fill="' + (color || SERIES[0]) + '" stroke="#fff" stroke-width="1.5"/></svg>';
+    return '<svg class="spark" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><path d="' + d + '" fill="none" style="stroke:var(--spark-line)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>' +
+      '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="3" style="fill:' + paint(color || SERIES[0]) + ';stroke:var(--surface)" stroke-width="1.5"/></svg>';
   }
 
   function frame(spec, W, H, vals, zero) {
@@ -250,7 +261,7 @@
   }
 
   function drawLine(svg, spec, W, H) {
-    var pts = spec.points, color = spec.color || SERIES[0];
+    var pts = spec.points, color = paint(spec.color || SERIES[0]);
     var f = frame(spec, W, H, pts.map(function (p) { return p.v; }), !!spec.zero);
     var n = pts.length;
     var xs = pts.map(function (p, i) { return n === 1 ? f.left + f.pw / 2 : f.left + i * f.pw / (n - 1); });
@@ -398,7 +409,7 @@
       var t = document.createElement('div'); t.className = 'tip-title'; t.textContent = info.title; tip.appendChild(t);
       info.rows.forEach(function (r) {
         var row = document.createElement('div'); row.className = 'tip-row';
-        var k = document.createElement('i'); k.style.background = r.color; row.appendChild(k);
+        var k = document.createElement('i'); k.style.background = paint(r.color); row.appendChild(k);
         var v = document.createElement('strong'); v.textContent = r.value; row.appendChild(v);
         if (r.name) { var s = document.createElement('span'); s.textContent = r.name; row.appendChild(s); }
         tip.appendChild(row);
@@ -440,5 +451,5 @@
     document.querySelectorAll('.chart').forEach(function (b) { if (b !== inside && b._hide) b._hide(); });
   }, true);
 
-  JS.graf = { chart: chart, mountAll: mountAll, spark: spark, SERIES: SERIES, HEAT: HEAT, fmtNum: fmtNum };
+  JS.graf = { chart: chart, mountAll: mountAll, spark: spark, paint: paint, SERIES: SERIES, HEAT: HEAT, fmtNum: fmtNum };
 })();

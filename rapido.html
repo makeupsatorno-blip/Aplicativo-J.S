@@ -4,7 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Registro rápido • J.S.</title>
-  <meta name="theme-color" content="#FFF7FA">
+  <meta name="theme-color" content="#FFF7FA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#20151B" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
   <meta name="robots" content="noindex">
   <link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
   <!--
@@ -16,33 +18,43 @@
   -->
   <style>
     :root { --rose50: #FFF7FA; --rose100: #FCEBF1; --rose200: #F5D5E1; --rose400: #D98EAA; --rose600: #B96788; --rose700: #A0526D; --rose800: #78465A;
-      --text: #30262B; --muted: #75676F; --border: #F0E3E8; --ok: #39865A; --bad: #B54747; }
+      --text: #30262B; --muted: #75676F; --border: #F0E3E8; --ok: #357C53; --bad: #B54747;
+      --surface: #FFFFFF; --accent: #A0526D; --on-accent: #FFFFFF; --glow: rgba(160,82,109,.3); --shadow-c: rgba(120,70,90,.07);
+      --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2378465A' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+    /* Esta página abre no Safari (atalho do iPhone) e não enxerga as escolhas do app: segue o modo escuro do iPhone. */
+    @media (prefers-color-scheme: dark) {
+      :root { --rose50: #2E1F27; --rose100: #3D2631; --rose200: #5A3848; --rose400: #B77490; --rose600: #E39AB7; --rose700: #F0B3CA; --rose800: #F7CFDD;
+        --text: #F6E9EF; --muted: #C3AEB8; --border: #45313B; --ok: #7FCB9C; --bad: #F29A9A;
+        --surface: #2A1C23; --accent: #E49BB8; --on-accent: #2A1420; --glow: rgba(0,0,0,.35); --shadow-c: rgba(0,0,0,.25);
+        --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23C3AEB8' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+    }
+    @font-face { font-family: 'Nunito'; font-style: normal; font-weight: 400 800; font-display: swap; src: url(fonts/nunito-latin.woff2) format('woff2'); }
     * { box-sizing: border-box; }
-    body { margin: 0; font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text);
-      background: radial-gradient(circle at 50% 0%, #fff 0%, var(--rose50) 55%, var(--rose100) 100%); min-height: 100vh; min-height: 100dvh; }
+    body { margin: 0; font: 16px/1.4 'Nunito', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text);
+      background: radial-gradient(circle at 50% 0%, var(--surface) 0%, var(--rose50) 55%, var(--rose100) 100%); min-height: 100vh; min-height: 100dvh; }
     main { max-width: 440px; margin: 0 auto; padding: calc(14px + env(safe-area-inset-top, 0px)) 16px calc(20px + env(safe-area-inset-bottom, 0px)); }
     header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
     .logo { width: 40px; height: 40px; border-radius: 12px; background: var(--rose100); display: grid; place-items: center; font: italic 700 18px Georgia, serif; color: var(--rose700); box-shadow: 0 0 0 1px var(--rose200); }
     h1 { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--rose700); margin: 0; }
     .sub { color: var(--muted); font-size: 13.5px; margin: 0; }
-    .card { background: #fff; border: 1px solid var(--border); border-radius: 22px; padding: 16px; box-shadow: 0 2px 6px rgba(120,70,90,.06), 0 10px 30px rgba(120,70,90,.08); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 16px; box-shadow: 0 2px 6px var(--shadow-c), 0 10px 30px var(--shadow-c); }
     label.ex { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-    select { width: 100%; margin: 6px 0 12px; font: 700 20px system-ui, sans-serif; color: var(--text); padding: 10px 36px 10px 12px; border-radius: 14px; border: 1px solid var(--rose200);
-      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2378465A' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center; appearance: none; -webkit-appearance: none; }
+    select { width: 100%; margin: 6px 0 12px; font: 700 20px 'Nunito', system-ui, sans-serif; color: var(--text); padding: 10px 36px 10px 12px; border-radius: 14px; border: 1px solid var(--rose200);
+      background: var(--surface) var(--arrow) no-repeat right 12px center; appearance: none; -webkit-appearance: none; }
     .row { background: var(--rose50); border-radius: 18px; padding: 10px; margin-bottom: 10px; text-align: center; }
     .row span { display: block; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
     .step { display: flex; align-items: center; gap: 8px; }
-    .step button { width: 62px; height: 62px; flex: none; border: 0; border-radius: 18px; background: #fff; color: var(--rose700); font-size: 32px; font-weight: 700; box-shadow: 0 1px 4px rgba(160,82,109,.2); touch-action: manipulation; }
+    .step button { width: 62px; height: 62px; flex: none; border: 0; border-radius: 18px; background: var(--surface); color: var(--rose700); font-size: 32px; font-weight: 700; box-shadow: 0 1px 4px var(--glow); touch-action: manipulation; }
     .step button:active { transform: scale(.92); }
     .val { flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 4px; }
-    .val input { width: 100%; max-width: 150px; border: 0; background: transparent; text-align: center; font: 800 44px system-ui, sans-serif; color: var(--text); padding: 0; outline: none; }
+    .val input { width: 100%; max-width: 150px; border: 0; background: transparent; text-align: center; font: 800 44px 'Nunito', system-ui, sans-serif; color: var(--text); padding: 0; outline: none; }
     .val small { font-size: 15px; color: var(--muted); font-weight: 700; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .two .step button { width: 44px; height: 52px; font-size: 26px; }
     .two .val input { font-size: 34px; }
     .chips { display: flex; justify-content: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-    .chips button { border: 1px solid var(--rose200); background: #fff; color: var(--rose800); border-radius: 99px; padding: 6px 11px; font-weight: 600; font-size: 13.5px; }
-    .save { width: 100%; min-height: 64px; border: 0; border-radius: 18px; background: var(--rose700); color: #fff; font: 800 20px system-ui, sans-serif; margin-top: 4px; box-shadow: 0 8px 20px rgba(160,82,109,.3); }
+    .chips button { border: 1px solid var(--rose200); background: var(--surface); color: var(--rose800); border-radius: 99px; padding: 6px 11px; font-weight: 600; font-size: 13.5px; }
+    .save { width: 100%; min-height: 64px; border: 0; border-radius: 99px; background: var(--accent); color: var(--on-accent); font: 800 20px 'Nunito', system-ui, sans-serif; margin-top: 4px; box-shadow: 0 8px 20px var(--glow); }
     .save:disabled { opacity: .6; }
     .close { width: 100%; min-height: 46px; border: 0; background: none; color: var(--rose800); font-weight: 700; font-size: 16px; margin-top: 6px; }
     .msg { text-align: center; font-weight: 700; min-height: 24px; margin: 10px 0 0; }

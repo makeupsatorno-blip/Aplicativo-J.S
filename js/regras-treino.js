@@ -13,9 +13,10 @@
 })(typeof self !== 'undefined' ? self : this, function (C, R, X) {
   'use strict';
 
-  // Cores das fichas (validadas para daltonismo nas 3 primeiras); a letra da ficha
-  // aparece junto, então a identidade nunca depende só da cor.
-  var PLAN_COLORS = ['#A0526D', '#2A78D6', '#C98500', '#6250D6', '#1B8F66', '#E34948'];
+  // Cores das fichas em tons delicados (rosé, azul-acinzentado, terracota, lavanda, sálvia, ameixa),
+  // todas com contraste AA para a letra branca; a letra da ficha aparece junto, então a
+  // identidade nunca depende só da cor. As cores antigas são trocadas na migração (js/regras.js).
+  var PLAN_COLORS = ['#A0526D', '#4F6F9A', '#A85E3C', '#7A5BA6', '#4E7D62', '#8E4C7E'];
   var MAX_ITEMS = 30, MAX_SETS = 10;
 
   function str(v, max) { return String(v == null ? '' : v).trim().slice(0, max || 200); }
@@ -439,6 +440,32 @@
     return out;
   }
 
+  /* ---------------- Séries por grupo muscular ---------------- */
+
+  // Séries feitas na semana (domingo a sábado) por grupo muscular, com a semana anterior para comparar.
+  // Conta os treinos concluídos e o que está em andamento.
+  function weeklyMuscleSets(state, today) {
+    var start = C.addDays(today, -C.weekday(today)), prevStart = C.addDays(start, -7), end = C.addDays(start, 6);
+    var cur = {}, prev = {};
+    state.workoutSessions.forEach(function (s) {
+      if (s.status !== 'done' && s.status !== 'active') return;
+      var bucket = s.date >= start && s.date <= end ? cur : s.date >= prevStart && s.date < start ? prev : null;
+      if (!bucket) return;
+      s.items.forEach(function (it) {
+        if (!it.sets.length) return;
+        var g = (exerciseById(state, it.exerciseId) || {}).group || 'outro';
+        bucket[g] = (bucket[g] || 0) + it.sets.length;
+      });
+    });
+    var keys = Object.keys(cur).concat(Object.keys(prev)).filter(function (k, i, a) { return a.indexOf(k) === i; });
+    return {
+      from: start, to: end,
+      total: Object.keys(cur).reduce(function (a, k) { return a + cur[k]; }, 0),
+      groups: keys.map(function (k) { return { group: k, label: X.GRUPOS[k] || 'Outro', sets: cur[k] || 0, last: prev[k] || 0 }; })
+        .sort(function (a, b) { return b.sets - a.sets || b.last - a.last || cmp(a.label, b.label); })
+    };
+  }
+
   /* ---------------- Treinos prontos (js/dados/treinos.js) ---------------- */
 
   // Ficha pronta -> valores de uma ficha da usuária. A carga começa na última usada em cada exercício.
@@ -493,6 +520,6 @@
     finishSession: finishSession, discardSession: discardSession, deleteSession: deleteSession, sessionSummary: sessionSummary,
     lastSet: lastSet, quickSet: quickSet, quickContext: quickContext, exerciseSets: exerciseSets,
     exerciseHistory: exerciseHistory, exerciseTrend: exerciseTrend, trainedExercises: trainedExercises,
-    weeklyStats: weeklyStats, monthCalendar: monthCalendar
+    weeklyStats: weeklyStats, monthCalendar: monthCalendar, weeklyMuscleSets: weeklyMuscleSets
   };
 });

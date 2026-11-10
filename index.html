@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, shrink-to-fit=no">
   <title>J.S.</title>
   <meta name="description" content="J.S. — rotina, treino, alimentação, cronograma capilar, corpo e finanças da Julia Satorno.">
-  <meta name="theme-color" content="#FFF7FA">
+  <meta name="theme-color" content="#FFF7FA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#20151B" media="(prefers-color-scheme: dark)">
+  <meta name="color-scheme" content="light dark">
   <script>
     // Decide antes da primeira pintura se a intro aparece (evita "piscar" quando está desligada).
     // Também decide se as animações ficam reduzidas (preferência do sistema, a menos que a usuária force).
@@ -55,6 +57,43 @@
       var sys = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
       if (sys && s.animations !== 'on') h.classList.add('reduce-motion');
 
+      // Aparência, antes da primeira pintura (sem piscar): tema e paleta de cores.
+      //  - settings.theme: 'auto' (padrão: segue o modo claro/escuro do celular) | 'light' | 'dark';
+      //  - settings.palette: 'rose' (padrão) | 'lavanda' | 'pessego' | 'nude'.
+      // No <html>: data-theme só quando a usuária força; data-palette só fora do rosé (css/style.css).
+      var THEME_COLORS = { rose: ['#FFF7FA', '#20151B'], lavanda: ['#FAF7FD', '#1A1621'], pessego: ['#FFF8F4', '#221915'], nude: ['#FBF8F6', '#1F1A18'] };
+      window.JS_THEME = function (theme, palette, animate) {
+        var de = document.documentElement;
+        theme = theme === 'dark' || theme === 'light' ? theme : 'auto';
+        palette = THEME_COLORS[palette] ? palette : 'rose';
+        if (animate && window.requestAnimationFrame) {
+          de.classList.add('theme-anim');
+          clearTimeout(window.JS_THEME_T);
+          window.JS_THEME_T = setTimeout(function () { de.classList.remove('theme-anim'); }, 450);
+        }
+        if (theme === 'auto') de.removeAttribute('data-theme'); else de.setAttribute('data-theme', theme);
+        if (palette === 'rose') de.removeAttribute('data-palette'); else de.setAttribute('data-palette', palette);
+        // Cor da barra do sistema: uma para o claro e outra para o escuro (no automático, o celular escolhe).
+        var c = THEME_COLORS[palette], metas = document.querySelectorAll('meta[name="theme-color"]');
+        for (var i = 0; i < metas.length; i++) {
+          var forDark = (metas[i].getAttribute('media') || '').indexOf('dark') >= 0;
+          metas[i].setAttribute('content', c[theme === 'auto' ? (forDark ? 1 : 0) : (theme === 'dark' ? 1 : 0)]);
+        }
+        var cs = document.querySelector('meta[name="color-scheme"]');
+        if (cs) cs.setAttribute('content', theme === 'auto' ? 'light dark' : theme);
+        var sysDark = !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+        window.JS_THEME_STATE = { theme: theme, palette: palette, dark: theme === 'dark' || (theme === 'auto' && sysDark) };
+        return window.JS_THEME_STATE;
+      };
+      window.JS_THEME(s.theme, s.palette);
+      // Celular mudou de claro para escuro (ou o contrário) com o app aberto, no automático.
+      try {
+        matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+          var st = window.JS_THEME_STATE || {};
+          window.JS_THEME(st.theme, st.palette);
+        });
+      } catch (e) { /* navegador antigo */ }
+
       // Tamanho da tela. Todo o CSS é em rem; aqui se escolhe quanto vale 1rem (100% = 16px).
       //  - celular: 100%;
       //  - tablet (tela de toque grande): aumenta conforme o tamanho da tela, até 160%;
@@ -98,7 +137,6 @@
       });
     })(document.documentElement);
   </script>
-  <meta name="color-scheme" content="light">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="J.S.">
@@ -109,6 +147,7 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/v2.css">
+  <link rel="stylesheet" href="css/v26.css">
 </head>
 <body>
   <!--logo:inicio--><svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><path id="js-j" transform="translate(256 256) scale(0.9305) translate(-264.07 -280.22)" pathLength="1" d="M178.75 392.11L178.75 392.11Q178.21 392.38 177.40 391.03Q176.59 389.68 177.13 389.14L177.13 389.14Q189.82 381.58 196.84 366.46Q203.86 351.34 207.91 329.20L207.91 329.20L231.94 193.12Q234.10 181.51 231.26 178Q228.43 174.49 217.36 174.49L217.36 174.49Q216.55 174.49 216.55 172.87Q216.55 171.25 217.36 171.25L217.36 171.25Q223.30 171.25 230.59 171.66Q237.88 172.06 245.98 172.06L245.98 172.06Q255.43 172.06 262.72 171.66Q270.01 171.25 275.68 171.25L275.68 171.25Q276.49 171.25 276.49 172.87Q276.49 174.49 275.68 174.49L275.68 174.49Q268.12 174.49 264.07 176.11Q260.02 177.73 258.13 181.78Q256.24 185.83 254.89 193.66L254.89 193.66L232.21 321.91Q228.43 342.97 221.95 356.20Q215.47 369.43 205.07 377.53Q194.68 385.63 178.75 392.11Z"/><path id="js-s" transform="translate(256 256) scale(0.9305) translate(-264.07 -280.22)" pathLength="1" d="M277.99 343.24L277.99 343.24Q268.53 343.24 258.95 341.21Q249.36 339.19 238.83 334.06L238.83 334.06Q237.75 333.25 237.21 332.04Q236.67 330.82 237.21 328.93L237.21 328.93L244.23 291.67Q244.23 290.32 245.72 290.32Q247.20 290.32 247.20 291.67L247.20 291.67Q249.63 305.98 254.49 316.24Q259.36 326.50 266.91 332.04Q274.47 337.57 285.00 337.57L285.00 337.57Q292.83 337.57 299.45 334.19Q306.06 330.82 310.65 324.48Q315.25 318.13 316.59 308.41L316.59 308.41Q318.75 296.53 314.84 287.89Q310.92 279.25 303.63 272.37Q296.34 265.48 287.97 259.54L287.97 259.54Q279.61 253.33 272.04 246.58Q264.49 239.83 260.57 231.06Q256.65 222.28 258.81 210.13L258.81 210.13Q261.78 195.82 270.69 186.64Q279.61 177.46 291.89 172.87Q304.17 168.28 317.13 168.28L317.13 168.28Q324.15 168.28 331.99 169.76Q339.81 171.25 347.91 174.76L347.91 174.76Q351.69 176.65 351.15 179.35L351.15 179.35L347.38 212.56Q347.11 213.64 345.75 213.64Q344.40 213.64 344.13 212.56L344.13 212.56Q342.25 201.22 337.79 192.44Q333.33 183.67 326.72 178.54Q320.11 173.41 310.92 173.41L310.92 173.41Q302.01 173.41 296.07 177.46Q290.13 181.51 286.76 187.58Q283.38 193.66 282.31 199.60L282.31 199.60Q280.41 210.40 284.19 218.09Q287.97 225.79 295.13 232Q302.28 238.21 310.12 244.42L310.12 244.42Q319.02 250.90 327.13 258.19Q335.23 265.48 339.68 274.93Q344.13 284.38 341.98 297.07L341.98 297.07Q339.54 309.76 331.44 320.29Q323.34 330.82 309.98 337.03Q296.62 343.24 277.99 343.24Z"/><path id="js-word" d="M-2.30 19.30L-2.30 19.30Q-2.50 19.40-2.80 18.90Q-3.10 18.40-2.90 18.20L-2.90 18.20Q1.80 15.40 4.40 9.80Q7 4.20 8.50-4L8.50-4L17.40-54.40Q18.20-58.70 17.15-60Q16.10-61.30 12-61.30L12-61.30Q11.70-61.30 11.70-61.90Q11.70-62.50 12-62.50L12-62.50Q14.20-62.50 16.90-62.35Q19.60-62.20 22.60-62.20L22.60-62.20Q26.10-62.20 28.80-62.35Q31.50-62.50 33.60-62.50L33.60-62.50Q33.90-62.50 33.90-61.90Q33.90-61.30 33.60-61.30L33.60-61.30Q30.80-61.30 29.30-60.70Q27.80-60.10 27.10-58.60Q26.40-57.10 25.90-54.20L25.90-54.20L17.50-6.70Q16.10 1.10 13.70 6Q11.30 10.90 7.45 13.90Q3.60 16.90-2.30 19.30ZM37.80 0.90L37.80 0.90Q35.50 0.90 34.05-0.50Q32.60-1.90 32.60-4.30L32.60-4.30Q32.60-6.60 34-7.95Q35.40-9.30 37.80-9.30L37.80-9.30Q40.20-9.30 41.55-7.95Q42.90-6.60 42.90-4.30L42.90-4.30Q42.90 0.90 37.80 0.90ZM69.70 1.20L69.70 1.20Q66.20 1.20 62.65 0.45Q59.10-0.30 55.20-2.20L55.20-2.20Q54.80-2.50 54.60-2.95Q54.40-3.40 54.60-4.10L54.60-4.10L57.20-17.90Q57.20-18.40 57.75-18.40Q58.30-18.40 58.30-17.90L58.30-17.90Q59.20-12.60 61.00-8.80Q62.80-5 65.60-2.95Q68.40-0.90 72.30-0.90L72.30-0.90Q75.20-0.90 77.65-2.15Q80.10-3.40 81.80-5.75Q83.50-8.10 84-11.70L84-11.70Q84.80-16.10 83.35-19.30Q81.90-22.50 79.20-25.05Q76.50-27.60 73.40-29.80L73.40-29.80Q70.30-32.10 67.50-34.60Q64.70-37.10 63.25-40.35Q61.80-43.60 62.60-48.10L62.60-48.10Q63.70-53.40 67-56.80Q70.30-60.20 74.85-61.90Q79.40-63.60 84.20-63.60L84.20-63.60Q86.80-63.60 89.70-63.05Q92.60-62.50 95.60-61.20L95.60-61.20Q97-60.50 96.80-59.50L96.80-59.50L95.40-47.20Q95.30-46.80 94.80-46.80Q94.30-46.80 94.20-47.20L94.20-47.20Q93.50-51.40 91.85-54.65Q90.20-57.90 87.75-59.80Q85.30-61.70 81.90-61.70L81.90-61.70Q78.60-61.70 76.40-60.20Q74.20-58.70 72.95-56.45Q71.70-54.20 71.30-52L71.30-52Q70.60-48 72-45.15Q73.40-42.30 76.05-40Q78.70-37.70 81.60-35.40L81.60-35.40Q84.90-33 87.90-30.30Q90.90-27.60 92.55-24.10Q94.20-20.60 93.40-15.90L93.40-15.90Q92.50-11.20 89.50-7.30Q86.50-3.40 81.55-1.10Q76.60 1.20 69.70 1.20ZM104.90 0.90L104.90 0.90Q102.60 0.90 101.15-0.50Q99.70-1.90 99.70-4.30L99.70-4.30Q99.70-6.60 101.10-7.95Q102.50-9.30 104.90-9.30L104.90-9.30Q107.30-9.30 108.65-7.95Q110-6.60 110-4.30L110-4.30Q110 0.90 104.90 0.90Z"/></defs></svg><!--logo:fim-->
@@ -181,6 +220,9 @@
         <svg class="brand-word" viewBox="-4.0 -64.6 115.0 84.9" aria-hidden="true"><use href="#js-word" fill="currentColor"/></svg>
       </a>
       <nav class="top-actions" aria-label="Atalhos">
+        <button type="button" class="icon-btn" data-action="search" aria-label="Buscar no J.S." title="Buscar">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        </button>
         <a href="#/agenda" class="icon-btn" data-route-link="agenda" aria-label="Agenda" title="Agenda">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
         </a>
@@ -230,6 +272,10 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
         <span>Financeiro</span>
       </a>
+      <a href="#/ciclo" data-route-link="ciclo" class="rail-only">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.6A8.4 8.4 0 1 1 9.4 4a6.7 6.7 0 0 0 10.6 10.6Z"/></svg>
+        <span>Ciclo</span>
+      </a>
       <a href="#/corpo" data-route-link="corpo" class="rail-only">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M5 9h14M12 9v6M9 22l3-7 3 7"/></svg>
         <span>Corpo</span>
@@ -257,11 +303,13 @@
   <script src="js/regras-treino.js" defer></script>
   <script src="js/regras-corpo.js" defer></script>
   <script src="js/regras-nutricao.js" defer></script>
+  <script src="js/regras-ciclo.js" defer></script>
   <script src="js/toque.js" defer></script>
   <script src="js/ui.js" defer></script>
   <script src="js/anim.js" defer></script>
   <script src="js/graficos.js" defer></script>
   <script src="js/store.js" defer></script>
+  <script src="js/fotos.js" defer></script>
   <script src="js/notify.js" defer></script>
   <script src="js/config.js" defer></script>
   <script src="js/push.js" defer></script>
@@ -272,6 +320,8 @@
   <script src="js/telas/treino.js" defer></script>
   <script src="js/telas/sessao.js" defer></script>
   <script src="js/telas/corpo.js" defer></script>
+  <script src="js/telas/ciclo.js" defer></script>
+  <script src="js/telas/busca.js" defer></script>
   <script src="js/telas/graficos.js" defer></script>
   <script src="js/telas/mais.js" defer></script>
   <script src="js/registro.js" defer></script>

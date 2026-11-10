@@ -94,6 +94,7 @@
       (target ? '<span class="mini-bar"><i style="width:' + Math.min(100, Math.round((dl.total.kcal || 0) / target.value * 100)) + '%"></i></span>' : '') + '</button>' +
       '<button type="button" class="mini-card m-hair" data-action="go" data-route="autocuidado"><span class="mini-label">' + ui.icon('flower', 16) + (d.hairToday.length ? 'Capilar hoje' : 'Próximo capilar') + '</span>' + hairTxt + '</button>' +
       '<button type="button" class="mini-card m-meal" data-action="go" data-route="alimentacao"><span class="mini-label">' + ui.icon('utensils', 16) + 'Próxima refeição</span>' + mealTxt + '</button>' +
+      waterMini(s, today) + cycleMini(s, today) +
       '</div>';
 
     // Contas próximas
@@ -108,11 +109,31 @@
     }
 
     // Adicionar rápido
-    html += '<section class="quick"><h2>Adicionar</h2><div class="quick-grid six">' +
+    html += '<section class="quick"><h2>Adicionar</h2><div class="quick-grid six eight">' +
       quick('task', 'list', 'Tarefa') + quick('food', 'utensils', 'Alimento') + quick('workout', 'dumbbell', 'Treino') +
       quick('hair', 'flower', 'Tratamento') + quick('bill', 'wallet', 'Conta') + quick('body', 'body', 'Medição') +
+      quick('water', 'drop', 'Água') + quick('cycle', 'moon', 'Ciclo') +
       '</div></section>';
     return html;
+  }
+
+  // Água de hoje (tocar leva ao diário, onde fica o cartão da água).
+  function waterMini(s, today) {
+    var goal = R.waterGoal(s).ml, ml = R.waterTotal(s, today), pct = Math.min(100, Math.round(ml / goal * 100));
+    return '<button type="button" class="mini-card m-water" data-action="go-water"><span class="mini-label">' + ui.icon('drop', 16) + 'Água hoje</span>' +
+      '<strong>' + esc(R.formatMl(ml)) + ' / ' + esc(R.formatMl(goal)) + '</strong><span>' + (ml >= goal ? 'Meta batida! 💧' : 'Faltam ' + esc(R.formatMl(goal - ml))) + '</span>' +
+      '<span class="mini-bar"><i style="width:' + pct + '%"></i></span></button>';
+  }
+  // Fase do ciclo (só quando o ciclo está sendo acompanhado).
+  function cycleMini(s, today) {
+    var Cy = window.JSCiclo;
+    if (!Cy || !Cy.enabled(s) || !Cy.settings(s).showInTreino) return '';
+    var cur = Cy.current(s, today);
+    if (!cur) return '';
+    var sub = cur.late ? 'Atrasada há ' + cur.late + (cur.late === 1 ? ' dia' : ' dias') : cur.inPeriod ? 'Menstruação • dia ' + cur.info.day
+      : 'Menstruação ' + (cur.daysToNext === 0 ? 'hoje' : cur.daysToNext === 1 ? 'amanhã' : 'em ' + cur.daysToNext + ' dias');
+    return '<button type="button" class="mini-card m-cycle ph-' + cur.phase.key + '" data-action="go" data-route="ciclo"><span class="mini-label">' + ui.icon('moon', 16) + 'Ciclo</span>' +
+      '<strong>' + esc(cur.phase.emoji + ' Fase ' + cur.phase.name.toLowerCase()) + '</strong><span>Dia ' + cur.info.day + ' • ' + esc(sub) + '</span></button>';
   }
 
   function quick(kind, iconName, label) {
@@ -130,7 +151,14 @@
       JS.app.go('treino');
       return;
     }
+    if (d.kind === 'water') { JS.addWater(R.waterCup(JS.store.state), C.toDateKey(new Date())); return; }
+    if (d.kind === 'cycle') { JS.app.go('ciclo'); return; }
     if (JS.forms[d.kind]) JS.forms[d.kind]();
+  };
+  JS.actions['go-water'] = function () {
+    if (JS.alimView) { JS.alimView.mode = 'hoje'; JS.alimView.date = null; }
+    JS.app.go('alimentacao');
+    setTimeout(function () { var el = document.querySelector('.water-card'); if (el) el.scrollIntoView({ block: 'center', behavior: JS.anim.reduced() ? 'auto' : 'smooth' }); }, 150);
   };
   JS.actions['backup-dismiss'] = function (d, el) {
     JS.anim.removeThen(el, '.banner', function () { dismissedBackup = true; JS.app.render(); });

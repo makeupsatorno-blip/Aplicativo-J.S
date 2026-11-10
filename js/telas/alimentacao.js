@@ -4,7 +4,7 @@
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, N = window.JSNutri, ui = JS.ui, esc = ui.esc;
   var view = { mode: 'hoje', date: null, variants: {}, query: '' };
   var MODES = [['hoje', 'Diário'], ['cardapio', 'Cardápio'], ['horarios', 'Horários'], ['tabela', 'Tabela']];
-  var MACROS = [['prot', 'Proteínas', '#A0526D'], ['carb', 'Carboidratos', '#2A78D6'], ['lip', 'Gorduras', '#C98500']];
+  var MACROS = [['prot', 'Proteínas', 'var(--mac-prot, #A0526D)'], ['carb', 'Carboidratos', 'var(--mac-carb, #4F6F9A)'], ['lip', 'Gorduras', 'var(--mac-lip, #A85E3C)']];
   var GRAM_CHIPS = [30, 50, 100, 150, 200];
 
   function f0(v) { return v == null ? '—' : JS.graf.fmtNum(v, 0); }
@@ -126,7 +126,8 @@
       out.push({ type: o.meal.type, name: o.meal.name, time: o.time });
     });
     dl.meals.forEach(function (m) { if (!seen[m.meal]) { seen[m.meal] = true; out.push({ type: m.meal, name: C.MEAL_TYPES[m.meal], time: null }); } });
-    if (!out.length) ['breakfast', 'lunch', 'afternoon_snack', 'dinner'].forEach(function (t) { out.push({ type: t, name: C.MEAL_TYPES[t], time: null }); });
+    // As 4 principais sempre aparecem (com o botão de repetir quando estão vazias).
+    ['breakfast', 'lunch', 'afternoon_snack', 'dinner'].forEach(function (t) { if (!seen[t]) { seen[t] = true; out.push({ type: t, name: C.MEAL_TYPES[t], time: null }); } });
     return out.sort(function (a, b) { return N.MEAL_ORDER.indexOf(a.type) - N.MEAL_ORDER.indexOf(b.type); });
   }
 
@@ -155,6 +156,16 @@
       macroBar(t) +
       (dl.count ? '<button type="button" class="link" data-action="food-day-table">Tabela nutricional completa do dia' + ui.icon('right', 16) + '</button>' : '') + '</section>';
 
+    html += waterCard(s, date, today);
+    // Dia ainda vazio: oferece repetir o último dia com alimentos (até 14 dias atrás).
+    var prevDay = !dl.count ? N.lastMealDay(s, date, null) : null;
+    if (prevDay) {
+      var pd = N.dayLog(s, prevDay);
+      html += '<div class="banner soft copy-day"><span class="banner-ic">' + ui.icon('copy', 20) + '</span><div><strong>Repetir o dia de ' + esc(dayName(prevDay, today)) + '?</strong>' +
+        '<p>' + pd.count + (pd.count === 1 ? ' alimento' : ' alimentos') + ' • ' + f0(pd.total.kcal) + ' kcal — dá para ajustar depois.</p></div>' +
+        '<button type="button" class="btn primary small" data-action="food-copy" data-from="' + prevDay + '">Repetir</button></div>';
+    }
+
     var groups = {};
     dl.meals.forEach(function (m) { groups[m.meal] = m; });
     mealsOfDay(s, date, dl).forEach(function (m) {
@@ -163,13 +174,110 @@
         return '<button type="button" class="food-row" data-action="food-log" data-id="' + esc(x.log.id) + '">' + foodIcon(x.food || { name: x.log.name }) + '<span class="fr-main"><span class="fr-name">' + foodName(x.log.name) + '</span>' +
           '<span class="fr-meta">' + f1(x.log.grams) + ' g • P ' + f1(x.nutr.prot) + ' • C ' + f1(x.nutr.carb) + ' • G ' + f1(x.nutr.lip) + '</span></span><strong>' + f0(x.nutr.kcal) + '<small> kcal</small></strong></button>';
       }).join('') : '';
+      // Refeição vazia: "Repetir de ontem" (ou do último dia em que ela teve alimentos).
+      var lastD = !g && !prevDay ? N.lastMealDay(s, date, m.type) : null, copy = '';
+      if (lastD) {
+        var src = N.dayLog(s, lastD).meals.filter(function (x) { return x.meal === m.type; })[0];
+        copy = '<button type="button" class="copy-meal" data-action="food-copy" data-from="' + lastD + '" data-meal="' + m.type + '">' + ui.icon('repeat', 16) +
+          '<span>Repetir de ' + esc(dayName(lastD, today)) + '<small>' + src.items.map(function (x) { return esc(String(x.log.name).split(',')[0]); }).slice(0, 3).join(', ') +
+          (src.items.length > 3 ? '…' : '') + ' • ' + f0(src.total.kcal) + ' kcal</small></span></button>';
+      }
       html += '<section class="card meal-card"><div class="card-head"><h2>' + esc(m.name) + (m.time ? ' <span class="muted small">' + esc(m.time) + '</span>' : '') + '</h2>' +
-        (g ? '<span class="count">' + f0(g.total.kcal) + ' kcal</span>' : '') + '</div>' + rows +
+        (g ? '<span class="count">' + f0(g.total.kcal) + ' kcal</span>' : '') + '</div>' + rows + copy +
         '<button type="button" class="add-food" data-action="food-add" data-meal="' + m.type + '">' + ui.icon('plus', 18) + 'Adicionar alimento</button></section>';
     });
     html += '<p class="note">Valores da Tabela Brasileira de Composição de Alimentos (TACO — NEPA/UNICAMP), por quantidade registrada.</p>';
     return html;
   }
+
+  // "ontem", "seg, 9 de nov"...
+  function dayName(d, today) { return C.formatDayLabel(d, today).toLowerCase(); }
+
+  /* ---------------- Água ---------------- */
+
+  function waterCard(s, date, today) {
+    var goal = R.waterGoal(s), ml = R.waterTotal(s, date), cup = R.waterCup(s);
+    var pct = Math.min(100, Math.round(ml / goal.ml * 100)), left = goal.ml - ml;
+    var cups = Math.min(12, Math.max(1, Math.round(goal.ml / cup))), full = Math.min(cups, Math.floor(ml / cup + 0.001));
+    var week = R.waterDays(s, C.addDays(date, -6), date);
+    var w = s.settings.water || {};
+    return '<section class="card water-card" data-water-card><div class="card-head"><h2>' + ui.icon('drop', 18) + 'Água</h2>' +
+      '<button type="button" class="link small-link" data-action="water-settings">' + (w.remind ? ui.icon('bell', 14) : '') + 'Meta e lembretes</button></div>' +
+      '<div class="water-main"><div class="water-glass" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100" aria-label="Água: ' + pct + '% da meta">' +
+      '<span class="water-fill" style="height:' + pct + '%"></span></div>' +
+      '<div class="water-nums"><p class="hero-num">' + JS.graf.fmtNum(ml, 0) + ' <small>ml de ' + esc(R.formatMl(goal.ml)) + '</small></p>' +
+      '<p class="muted small">' + (left > 0 ? 'Faltam ' + esc(R.formatMl(left)) + ' • ' + Math.ceil(left / cup) + (Math.ceil(left / cup) === 1 ? ' copo' : ' copos') : 'Meta do dia batida! 💧') + '</p>' +
+      '<div class="water-cups" aria-hidden="true">' + Array.apply(null, Array(cups)).map(function (x, i) { return '<i class="' + (i < full ? 'on' : '') + '">' + ui.icon('drop', 16) + '</i>'; }).join('') + '</div></div>' +
+      (ml ? '<button type="button" class="icon-btn water-undo" data-action="water-undo" aria-label="Desfazer o último registro de água" title="Desfazer o último">' + ui.icon('undo', 18) + '</button>' : '') + '</div>' +
+      '<div class="btn-row tight water-btns"><button type="button" class="btn small primary" data-action="water-add" data-ml="' + cup + '">' + ui.icon('plus', 16) + '1 copo (' + cup + ' ml)</button>' +
+      '<button type="button" class="btn small soft" data-action="water-add" data-ml="500">+ 500 ml</button>' +
+      '<button type="button" class="btn small soft" data-action="water-other">Outra</button></div>' +
+      '<div class="water-week" aria-label="Água nos últimos 7 dias">' + week.map(function (d) {
+        var p = Math.min(100, Math.round(d.ml / goal.ml * 100));
+        return '<span class="ww' + (d.date === date ? ' on' : '') + (d.ml >= goal.ml ? ' full' : '') + '" title="' + esc(C.formatDateBR(d.date) + ': ' + R.formatMl(d.ml)) + '"><b><i style="height:' + p + '%"></i></b><em>' + C.WEEKDAY_LETTERS[C.weekday(d.date)] + '</em></span>';
+      }).join('') + '</div></section>';
+  }
+  JS.waterCard = waterCard;
+
+  function addWater(ml, date) {
+    date = date || curDate();
+    var added = null, s = JS.store.state, before = R.waterTotal(s, date), goal = R.waterGoal(s).ml;
+    JS.anim.mark('[data-water-card] .water-glass', 'pop', { ms: 700 });
+    JS.store.update(function (st, n) { added = R.addWater(st, date, ml, n); });
+    if (!added) return;
+    var now = before + added.ml;
+    ui.toast((before < goal && now >= goal ? 'Meta de água batida! 💧 ' : '+' + added.ml + ' ml de água. ') + R.formatMl(now) + ' de ' + R.formatMl(goal) + '.',
+      { actionLabel: 'Desfazer', onAction: function () { JS.store.update(function (st) { R.removeById(st.waterLogs, added.id); }); } });
+  }
+  JS.addWater = addWater;
+
+  function waterOther() {
+    var body = ui.input({ label: 'Quantidade (ml)', name: 'ml', type: 'number', value: '', attrs: 'inputmode="numeric" min="10" max="3000" step="10"', placeholder: 'Ex.: 350' }) +
+      ui.chips([100, 150, 200, 300, 350, 600, 750, 1000].map(function (v) { return { label: v + ' ml', attrs: 'data-ml="' + v + '"' }; }));
+    ui.openSheet({
+      title: 'Registrar água', subtitle: C.formatDayLabel(curDate(), C.toDateKey(new Date())), body: body, submitLabel: 'Adicionar',
+      onOpen: function (form) {
+        form.querySelectorAll('[data-ml]').forEach(function (b) { b.addEventListener('click', function () { form.elements.ml.value = b.dataset.ml; }); });
+        setTimeout(function () { form.elements.ml.focus(); }, 250);
+      },
+      onSubmit: function (v) {
+        var ml = Math.round(Number(v.ml));
+        if (!(ml >= 10 && ml <= 3000)) return { errors: { ml: 'De 10 a 3000 ml.' } };
+        return { ml: ml };
+      },
+      afterClose: function (r) { if (r && r.ml) addWater(r.ml); }
+    });
+  }
+
+  function waterSettings() {
+    var s = JS.store.state, w = Object.assign({ cupMl: 250, every: 120, from: '09:00', to: '21:00' }, s.settings.water || {});
+    var auto = R.waterGoal(Object.assign({}, s, { settings: Object.assign({}, s.settings, { water: Object.assign({}, w, { goalMl: null }) }) }));
+    var body = ui.input({ label: 'Meta de água por dia (ml)', name: 'goalMl', type: 'number', value: w.goalMl || '', attrs: 'inputmode="numeric" min="500" max="6000" step="50"',
+      placeholder: 'Automática: ' + auto.ml + ' ml',
+      hint: 'Em branco = automática: ' + (auto.source === 'peso' ? '35 ml por kg do seu último peso (' + JS.graf.fmtNum(auto.kg, 1) + ' kg) = ' + R.formatMl(auto.ml) + '.' : '2 L (registre seu peso em Corpo para calcular pelo peso).') }) +
+      ui.select({ label: 'Tamanho do seu copo/garrafinha', name: 'cupMl', options: R.WATER_CUPS.map(function (c) { return [c, c + ' ml']; }), value: R.waterCup(s) }) +
+      ui.checkbox({ label: 'Lembretes para beber água', hint: 'Param quando você bate a meta do dia; se acabou de beber, o aviso daquele horário pula.', name: 'remind', checked: !!w.remind }) +
+      '<div data-water-remind>' + ui.select({ label: 'Lembrar a cada', name: 'every', options: [[60, '1 hora'], [90, '1 hora e meia'], [120, '2 horas'], [150, '2 horas e meia'], [180, '3 horas'], [240, '4 horas']], value: w.every }) +
+      '<div class="row2">' + ui.input({ label: 'Das', name: 'from', type: 'time', value: w.from }) + ui.input({ label: 'Até', name: 'to', type: 'time', value: w.to }) + '</div></div>' +
+      '<p class="hint">Referência geral; em dias quentes ou de treino, beba um pouco mais. Se você tem orientação médica sobre líquidos, siga a orientação.</p>';
+    ui.openSheet({
+      title: 'Água', body: body, submitLabel: 'Salvar',
+      onOpen: function (form) {
+        var box = form.querySelector('[data-water-remind]'), cb = form.elements.remind;
+        function sync() { box.hidden = !cb.checked; }
+        cb.addEventListener('change', sync); sync();
+      },
+      onSubmit: function (input) {
+        var r = R.validateWaterSettings(input);
+        if (!r.ok) return { errors: r.errors };
+        JS.store.update(function (st) { st.settings.water = r.value; });
+        ui.toast(r.value.remind ? 'Pronto! Vou lembrar de beber água.' : 'Meta de água salva.');
+        return { remind: r.value.remind };
+      },
+      afterClose: function (res) { if (res && res.remind) JS.notify.askIfNeeded(); }
+    });
+  }
+  JS.waterSettings = waterSettings;
 
   /* ---------------- Cardápio sugerido ---------------- */
 
@@ -218,7 +326,11 @@
       '<p class="note">' + N.count + ' alimentos da ' + esc(N.source) + '. Valores por 100 g.</p>';
   }
   function resultsHtml(q) {
-    if (!q) return '<p class="muted small">Digite o nome de um alimento para ver a tabela nutricional.</p>';
+    if (!q) {
+      var fav = N.favorites(JS.store.state);
+      return fav.length ? '<p class="stat-label">' + ui.icon('star', 14) + ' Favoritos</p>' + fav.map(function (x) { return foodRow(x.food, x.grams, 'favorito'); }).join('')
+        : '<p class="muted small">Digite o nome de um alimento para ver a tabela nutricional. Toque na estrela ☆ de um alimento para deixá-lo nos favoritos.</p>';
+    }
     var list = N.search(JS.store.state, q, 40);
     if (!list.length) return '<p class="muted small">Nada encontrado para "' + esc(q) + '". Tente outra palavra ou cadastre o alimento.</p>';
     return list.map(function (f) {
@@ -275,7 +387,9 @@
     var portions = N.portions(s, foodId);
     var chips = GRAM_CHIPS.map(function (g) { return { label: g + ' g', attrs: 'data-g="' + g + '"' }; })
       .concat(portions.map(function (p) { return { label: p.label + ' (' + JS.graf.fmtNum(p.grams, 1) + ' g)', attrs: 'data-g="' + p.grams + '"' }; }));
-    var body = '<div class="food-head">' + foodIcon(f) + '<div><p class="food-title">' + foodName(f.name) + '</p><p class="muted small">' + esc(f.group) + '</p></div></div>' +
+    var fav = N.isFavorite(s, foodId);
+    var body = '<div class="food-head">' + foodIcon(f) + '<div><p class="food-title">' + foodName(f.name) + '</p><p class="muted small">' + esc(f.group) + '</p></div>' +
+      '<button type="button" class="fav-btn' + (fav ? ' on' : '') + '" data-fav aria-pressed="' + fav + '" aria-label="' + (fav ? 'Tirar dos favoritos' : 'Colocar nos favoritos') + '" title="Favorito">' + ui.icon('star', 22) + '</button></div>' +
       '<div class="row2">' + ui.input({ label: 'Quantidade (g)', name: 'grams', type: 'text', value: String(grams).replace('.', ','), attrs: 'inputmode="decimal" min="1" max="3000" step="1"' }) +
       ui.select({ label: 'Refeição', name: 'meal', options: ui.entries(C.MEAL_TYPES), value: opts.meal || guessMeal() }) + '</div>' +
       ui.chips(chips) +
@@ -288,6 +402,15 @@
         var gi = form.elements.grams, tb = form.querySelector('[data-table]');
         function redraw() { var g = Number(String(gi.value).replace(',', '.')); if (g > 0) tb.innerHTML = nutriTable(f.per100, g); }
         gi.addEventListener('input', redraw);
+        var fb = form.querySelector('[data-fav]');
+        fb.addEventListener('click', function () {
+          var on = false;
+          JS.store.silentUpdate(function (st) { on = N.toggleFavorite(st, foodId); });
+          fb.classList.toggle('on', on); fb.setAttribute('aria-pressed', String(on));
+          fb.setAttribute('aria-label', on ? 'Tirar dos favoritos' : 'Colocar nos favoritos');
+          JS.anim.restartClass(fb, 'pop');
+          ui.toast(on ? 'Nos favoritos ⭐ — aparece primeiro quando você for adicionar.' : 'Tirado dos favoritos.');
+        });
         form.querySelectorAll('[data-g]').forEach(function (b) { b.addEventListener('click', function () { gi.value = b.dataset.g; redraw(); }); });
         form.querySelector('[data-save-portion]').addEventListener('click', function () {
           var g = Number(String(gi.value).replace(',', '.'));
@@ -348,15 +471,21 @@
       }
     });
   }
-  // Alimentos usados recentemente (atalho).
+  // Linha de alimento com a quantidade sugerida (favoritos, recentes).
+  function foodRow(f, grams, kind) {
+    var fav = N.isFavorite(JS.store.state, f.id);
+    return '<button type="button" class="food-row" data-action="food-info" data-id="' + esc(f.id) + '" data-grams="' + grams + '">' + foodIcon(f) + '<span class="fr-main"><span class="fr-name">' + foodName(f.name) +
+      (fav && kind !== 'favorito' ? ' <span class="fav-mini" aria-label="favorito">★</span>' : '') + '</span><span class="fr-meta">' + (kind === 'recente' ? 'última vez ' : '') + f1(grams) + ' g</span></span><strong>' +
+      f0(N.scale(f.per100, grams).kcal) + '<small> kcal</small></strong></button>';
+  }
+  // Atalhos antes de digitar: favoritos e usados recentemente.
   function recentHtml() {
-    var s = JS.store.state, seen = {}, out = [];
-    s.foodLogs.slice().reverse().forEach(function (l) { if (!seen[l.foodId] && out.length < 8) { seen[l.foodId] = 1; out.push(l); } });
-    if (!out.length) return '<p class="muted small">Digite para buscar na tabela TACO (597 alimentos).</p>';
-    return '<p class="stat-label">Usados recentemente</p>' + out.map(function (l) {
-      var f = N.foodById(s, l.foodId);
-      return f ? '<button type="button" class="food-row" data-id="' + esc(f.id) + '" data-grams="' + l.grams + '">' + foodIcon(f) + '<span class="fr-main"><span class="fr-name">' + foodName(f.name) + '</span><span class="fr-meta">última vez ' + f1(l.grams) + ' g</span></span><strong>' + f0(N.scale(f.per100, l.grams).kcal) + '<small> kcal</small></strong></button>' : '';
-    }).join('');
+    var s = JS.store.state, fav = N.favorites(s), favIds = fav.map(function (x) { return x.food.id; });
+    var rec = N.recentFoods(s, 10).filter(function (x) { return favIds.indexOf(x.food.id) < 0; }).slice(0, 8);
+    if (!fav.length && !rec.length) return '<p class="muted small">Digite para buscar na tabela TACO (' + N.count + ' alimentos).</p>';
+    return (fav.length ? '<p class="stat-label">' + ui.icon('star', 14) + ' Favoritos</p>' + fav.map(function (x) { return foodRow(x.food, x.grams, 'favorito'); }).join('') : '') +
+      (rec.length ? '<p class="stat-label">Usados recentemente</p>' + rec.map(function (x) { return foodRow(x.food, x.grams, 'recente'); }).join('') : '') +
+      (!fav.length ? '<p class="hint">Dica: toque na estrela ☆ de um alimento para ele ficar sempre aqui em cima.</p>' : '');
   }
 
   function customFoodForm(meal) {
@@ -561,6 +690,24 @@
     JS.app.render({ enter: 'view:' + (Number(d.delta) > 0 ? 'r' : 'l') });
   };
   JS.actions['food-add'] = function (d) { addFood(d.meal); };
+  JS.actions['food-copy'] = function (d) {
+    var date = curDate(), added = [];
+    JS.store.update(function (st, n) { added = N.copyMeal(st, d.from, date, d.meal || null, n); });
+    if (!added.length) return;
+    var kcal = added.reduce(function (a, l) { return a + (N.logNutrients(JS.store.state, l).kcal || 0); }, 0);
+    ui.toast(added.length + (added.length === 1 ? ' alimento repetido' : ' alimentos repetidos') + ' (' + f0(kcal) + ' kcal).', {
+      actionLabel: 'Desfazer', timeout: 6000,
+      onAction: function () { JS.store.update(function (st) { added.forEach(function (l) { N.deleteFoodLog(st, l.id); }); }); }
+    });
+  };
+  JS.actions['water-add'] = function (d) { addWater(Number(d.ml)); };
+  JS.actions['water-other'] = function () { waterOther(); };
+  JS.actions['water-undo'] = function () {
+    var date = curDate(), last = null;
+    JS.store.update(function (st) { last = R.undoWater(st, date); });
+    if (last) ui.toast('Tirado: ' + last.ml + ' ml de água.');
+  };
+  JS.actions['water-settings'] = function () { waterSettings(); };
   JS.actions['food-log'] = function (d) { logMenu(d.id); };
   JS.actions['food-info'] = function (d) { foodInfo(d.id, { grams: d.grams, date: curDate(), fromSearch: true }); };
   JS.actions['food-q'] = function (d) { view.query = d.q; JS.app.render(); };

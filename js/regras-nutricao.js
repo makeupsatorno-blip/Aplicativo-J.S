@@ -187,6 +187,59 @@
   }
   function deleteFoodLog(state, id) { R.removeById(state.foodLogs, id); }
 
+  /* ---------------- Favoritos, recentes e repetir refeição ---------------- */
+
+  function isFavorite(state, foodId) { return (state.foodFavorites || []).indexOf(foodId) >= 0; }
+  function toggleFavorite(state, foodId) {
+    if (!state.foodFavorites) state.foodFavorites = [];
+    var i = state.foodFavorites.indexOf(foodId);
+    if (i >= 0) { state.foodFavorites.splice(i, 1); return false; }
+    if (!foodById(state, foodId)) return false;
+    state.foodFavorites.unshift(foodId);
+    return true;
+  }
+  // Quantidade usada da última vez (para já vir preenchida).
+  function lastGrams(state, foodId) {
+    for (var i = state.foodLogs.length - 1; i >= 0; i--) if (state.foodLogs[i].foodId === foodId) return state.foodLogs[i].grams;
+    return null;
+  }
+  function favorites(state) {
+    return (state.foodFavorites || []).map(function (id) { var f = foodById(state, id); return f ? { food: f, grams: lastGrams(state, id) || 100 } : null; }).filter(Boolean);
+  }
+  // Últimos alimentos diferentes registrados (do mais recente para o mais antigo).
+  function recentFoods(state, limit) {
+    var seen = {}, out = [];
+    var list = state.foodLogs.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : (a.createdAt || '') < (b.createdAt || '') ? 1 : -1; });
+    for (var i = 0; i < list.length && out.length < (limit || 8); i++) {
+      var l = list[i], f = seen[l.foodId] ? null : foodById(state, l.foodId);
+      if (!f) continue;
+      seen[l.foodId] = 1;
+      out.push({ food: f, grams: l.grams });
+    }
+    return out;
+  }
+  // Mais usados nos últimos 60 dias (quantas vezes apareceu no diário).
+  function frequentFoods(state, today, limit) {
+    var from = C.addDays(today, -60), count = {}, grams = {};
+    state.foodLogs.forEach(function (l) { if (l.date >= from && l.date <= today) { count[l.foodId] = (count[l.foodId] || 0) + 1; grams[l.foodId] = l.grams; } });
+    return Object.keys(count).filter(function (id) { return count[id] >= 2 && foodById(state, id); })
+      .sort(function (a, b) { return count[b] - count[a]; }).slice(0, limit || 8)
+      .map(function (id) { return { food: foodById(state, id), grams: grams[id], times: count[id] }; });
+  }
+  // Último dia antes de "date" (até 14 dias) em que a refeição teve alimentos.
+  function lastMealDay(state, date, meal) {
+    for (var k = 1; k <= 14; k++) {
+      var d = C.addDays(date, -k);
+      if (state.foodLogs.some(function (l) { return l.date === d && (!meal || l.meal === meal); })) return d;
+    }
+    return null;
+  }
+  // Copia os alimentos de uma refeição (ou do dia inteiro, sem "meal") de um dia para outro.
+  function copyMeal(state, fromDate, toDate, meal, nowISO) {
+    var src = state.foodLogs.filter(function (l) { return l.date === fromDate && (!meal || l.meal === meal); });
+    return src.map(function (l) { return addFoodLog(state, { date: toDate, meal: l.meal, foodId: l.foodId, grams: l.grams }, nowISO); }).filter(Boolean);
+  }
+
   function logNutrients(state, l) {
     var f = foodById(state, l.foodId);
     return f ? scale(f.per100, l.grams) : scale(null, l.grams);
@@ -291,6 +344,8 @@
     validateCustomFood: validateCustomFood, createCustomFood: createCustomFood,
     portions: portions, addPortion: addPortion, removePortion: removePortion,
     validateFoodLog: validateFoodLog, addFoodLog: addFoodLog, updateFoodLog: updateFoodLog, deleteFoodLog: deleteFoodLog,
+    isFavorite: isFavorite, toggleFavorite: toggleFavorite, lastGrams: lastGrams, favorites: favorites, recentFoods: recentFoods,
+    frequentFoods: frequentFoods, lastMealDay: lastMealDay, copyMeal: copyMeal,
     logNutrients: logNutrients, dayLog: dayLog, dailyTotals: dailyTotals,
     kcalTarget: kcalTarget, mealsForSuggestions: mealsForSuggestions, templatesFor: templatesFor, suggestMenu: suggestMenu
   };

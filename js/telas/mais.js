@@ -8,6 +8,12 @@
       '<span class="mod-ic">' + ui.icon(icon, 24) + '</span><span class="mod-txt"><strong>' + esc(title) + '</strong><small>' + esc(line) + '</small></span>' + ui.icon('right', 18) + '</button>';
   }
 
+  function cycleLine(s, today) {
+    var Cy = window.JSCiclo, cur = Cy && Cy.enabled(s) ? Cy.current(s, today) : null;
+    if (!cur) return 'Menstruação, fases e energia';
+    return 'Dia ' + cur.info.day + ' • fase ' + cur.phase.name.toLowerCase() + (cur.late ? ' • atrasada' : cur.inPeriod ? '' : ' • menstruação ' + (cur.daysToNext <= 1 ? (cur.daysToNext ? 'amanhã' : 'hoje') : 'em ' + cur.daysToNext + ' dias'));
+  }
+
   function render(now) {
     var s = JS.store.state, today = C.toDateKey(now);
     var nextHair = R.hairUpcoming(s).filter(function (e) { return e.date >= today; })[0];
@@ -17,10 +23,11 @@
       '<div class="mod-grid">' +
       tile('autocuidado', 'flower', 'm-hair', 'Cronograma capilar', nextHair ? 'Próximo: ' + R.hairName(nextHair) + ' • ' + C.formatDayLabel(nextHair.date, today) : 'Monte seu cronograma') +
       tile('financeiro', 'wallet', 'm-bill', 'Financeiro', over ? over + (over === 1 ? ' conta atrasada' : ' contas atrasadas') : bills ? bills + ' conta(s) nos próximos 7 dias' : 'Contas e pagamentos') +
+      tile('ciclo', 'moon', 'm-cycle', 'Ciclo menstrual', cycleLine(s, today)) +
       tile('corpo', 'body', 'm-body', 'Corpo', L.weightKg ? 'Peso ' + JS.graf.fmtNum(L.weightKg.value, 1) + ' kg' + (L.muscleKg ? ' • músculo ' + JS.graf.fmtNum(L.muscleKg.value, 1) + ' kg' : '') : 'Bioimpedância e medidas') +
       tile('graficos', 'chart', 'm-chart', 'Gráficos', 'Painel com tudo do J.S.') +
       tile('agenda', 'calendar', 'm-task', 'Agenda', 'Tudo do mês num calendário') +
-      tile('config', 'settings', 'm-set', 'Configurações', 'Avisos, toque atrás, backup') +
+      tile('config', 'settings', 'm-set', 'Configurações', 'Aparência, avisos, toque atrás, backup') +
       '</div>';
   }
 

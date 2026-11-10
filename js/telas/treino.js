@@ -72,6 +72,7 @@
         esc(act.planName) + ' • ' + nSets + (nSets === 1 ? ' série' : ' séries') + '</p></div>' +
         '<button type="button" class="btn primary small" data-action="go" data-route="sessao">Continuar</button></div>';
     }
+    html += cycleCard(s, today);
     if (!s.workoutPlans.length) {
       return html + readyCard() + ui.empty('dumbbell', 'Comece por um treino pronto ou monte sua ficha: escolha os exercícios, séries, repetições e carga. Depois é só iniciar e ir marcando por toque.', { label: 'Montar minha primeira ficha', attrs: 'data-action="plan-new"' });
     }
@@ -112,7 +113,40 @@
     html += '<div class="summary"><div class="stat"><span class="stat-label">Nesta semana</span><strong>' + wk.count + (wk.count === 1 ? ' treino' : ' treinos') + '</strong>' +
       '<span class="stat-sub">' + duration(wk.minutes) + '</span></div><div class="stat"><span class="stat-label">Volume da semana</span><strong>' +
       JS.graf.fmtNum(wk.volume, 0) + ' kg</strong><span class="stat-sub">carga × repetições</span></div></div>';
+    html += muscleCard(s, today);
     return html;
+  }
+
+  /* ---------------- Séries por grupo muscular (semana) ---------------- */
+
+  function muscleCard(s, today) {
+    var m = T.weeklyMuscleSets(s, today);
+    if (!m.groups.length) return '';
+    var max = Math.max.apply(null, m.groups.map(function (g) { return Math.max(g.sets, g.last); }).concat([10]));
+    var rows = m.groups.map(function (g) {
+      return '<div class="mus-row"><span class="mus-name">' + esc(g.label) + '</span>' +
+        '<span class="mus-bar" aria-hidden="true"><i class="mus-last" style="width:' + Math.round(g.last / max * 100) + '%"></i><i class="mus-now" style="width:' + Math.round(g.sets / max * 100) + '%"></i></span>' +
+        '<span class="mus-num"><strong>' + g.sets + '</strong><small>' + (g.last ? 'vs. ' + g.last : '') + '</small></span></div>';
+    }).join('');
+    return '<section class="card muscle-card"><div class="card-head"><h2>' + ui.icon('chart', 18) + 'Séries por grupo muscular</h2><span class="count">' + m.total + ' séries</span></div>' +
+      '<p class="muted small mus-legend"><i class="lg-now"></i>esta semana <i class="lg-last"></i>semana passada</p>' + rows +
+      '<p class="hint">Referência comum para ganhar músculo: cerca de 10 a 20 séries por semana em cada grupo que você quer desenvolver. Sem pressa: o importante é a constância.</p></section>';
+  }
+
+  /* ---------------- Ciclo menstrual + energia do dia ---------------- */
+
+  function cycleCard(s, today) {
+    var Cy = window.JSCiclo;
+    if (!Cy || !Cy.enabled(s) || !Cy.settings(s).showInTreino) return '';
+    var cur = Cy.current(s, today);
+    if (!cur) return '';
+    var ph = cur.phase, log = Cy.dayLog(s, today) || {};
+    var energy = Cy.ENERGY.map(function (e) {
+      return '<button type="button" class="emo' + (log.energy === e[0] ? ' on' : '') + '" data-action="cycle-energy" data-v="' + e[0] + '" aria-pressed="' + (log.energy === e[0]) + '" title="' + esc(e[2]) + '"><span aria-hidden="true">' + e[1] + '</span><small>' + esc(e[2]) + '</small></button>';
+    }).join('');
+    return '<section class="card cycle-today ph-' + ph.key + '"><button type="button" class="cycle-line" data-action="go" data-route="ciclo"><span class="ph-dot" aria-hidden="true"></span>' +
+      '<span class="cl-txt"><strong>Fase ' + esc(ph.name.toLowerCase()) + ' • dia ' + cur.info.day + '</strong><small>' + esc(ph.treino) + '</small></span>' + ui.icon('right', 16) + '</button>' +
+      '<p class="emo-q">Como está sua energia hoje?</p><div class="emo-row">' + energy + '</div></section>';
   }
 
   /* ---------------- Semana ---------------- */
@@ -705,6 +739,13 @@
   JS.actions['plan-new'] = function () { openPlanEditor(null); };
   JS.actions['quick-open'] = function () { JS.openQuickRegister({ source: 'botao' }); };
   JS.actions['plan-menu'] = function (d) { planMenu(d.id); };
+  JS.actions['cycle-energy'] = function (d, el) {
+    var today = C.toDateKey(new Date()), v = Number(d.v), cur = (window.JSCiclo.dayLog(JS.store.state, today) || {}).energy;
+    JS.anim.mark('[data-action="cycle-energy"][data-v="' + v + '"]', 'pop', { ms: 600 });
+    JS.store.update(function (st, n) { window.JSCiclo.setDay(st, today, { energy: cur === v ? null : v }, n); });
+    if (cur !== v) ui.toast('Energia de hoje: ' + window.JSCiclo.ENERGY[v - 1][2].toLowerCase() + '. Veja a relação com o ciclo em Ciclo.');
+    void el;
+  };
   JS.actions['workout-day'] = function (d) { dayMenu(d.date); };
   JS.actions['workout-start'] = function (d) { startWorkout(d.plan); };
   JS.actions['session-view'] = function (d) { sessionView(d.id); };

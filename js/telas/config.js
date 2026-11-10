@@ -77,6 +77,8 @@
     html += '<section class="card"><div class="card-head"><h2>Você</h2></div>' +
       '<div class="field"><label for="cfg-name">Nome no painel</label><input id="cfg-name" type="text" maxlength="40" value="' + esc(st.name || '') + '" data-change="cfg-name" placeholder="Seu nome"></div></section>';
 
+    html += appearanceBlock(st);
+
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('phone', 18) + 'Aplicativo</h2></div>' + installBlock() +
       sw('intro', 'Intro animada ao abrir', st.intro !== false, 'Mostra a logo animada quando o app abre ou volta depois de 5 minutos fora.', 'cfg-intro') +
       (systemReducesMotion()
@@ -97,6 +99,8 @@
       sw('meal', 'Alimentação', n.meal !== false, 'Horários de refeição', 'cfg-notif') +
       sw('bill', 'Financeiro', n.bill !== false, 'Vencimento de contas', 'cfg-notif') +
       sw('workout', 'Treino', n.workout !== false, 'No horário escolhido em Treino → Semana', 'cfg-notif') +
+      sw('water', 'Água', n.water !== false, (st.water && st.water.remind ? 'Lembretes ligados' : 'Ligue os lembretes em Alimentação → Água') + ' • param ao bater a meta', 'cfg-notif') +
+      sw('cycle', 'Ciclo', n.cycle !== false, '2 dias antes da menstruação prevista', 'cfg-notif') +
       sw('showAmounts', 'Mostrar valor das contas', !!st.showAmountsInNotifications, 'Por privacidade, vem desligado: o valor não aparece na tela bloqueada.', 'cfg-amounts') +
       pushBlock() +
       '</section>';
@@ -133,6 +137,7 @@
       (canShare ? '<button type="button" class="btn soft" data-action="backup-share">' + ui.icon('share', 18) + 'Enviar backup (WhatsApp, e-mail, Drive...)</button>' : '') +
       '<button type="button" class="btn soft" data-action="backup-restore">' + ui.icon('upload', 18) + 'Restaurar de um backup</button>' +
       '</div><input type="file" id="restore-file" accept=".json,.txt,application/json,text/plain" data-change="backup-file" hidden>' +
+      '<p class="muted small" id="backup-photos"></p>' +
       '<p class="muted small" id="persist-status"></p></section>';
 
     html += '<section class="card danger-zone"><div class="card-head"><h2>Apagar dados</h2></div>' +
@@ -176,6 +181,13 @@
   }
 
   function after(main) {
+    // As fotos do corpo já ficam prontas para o backup (assim "Enviar backup" funciona no mesmo toque).
+    preparePhotos().then(function (list) {
+      var bp = main.querySelector('#backup-photos');
+      if (!bp || !bp.isConnected || !list.length) return;
+      var mb = list.reduce(function (a, r) { return a + r.full.length + r.thumb.length; }, 0) / 1048576;
+      bp.textContent = 'O backup inclui ' + list.length + (list.length === 1 ? ' foto' : ' fotos') + ' do corpo (≈ ' + JS.graf.fmtNum(Math.max(0.1, mb), 1) + ' MB).';
+    });
     var el = main.querySelector('#persist-status');
     if (!el || !navigator.storage || !navigator.storage.persisted) return;
     navigator.storage.persisted().then(function (p) {
@@ -185,16 +197,27 @@
 
   /* ---------------- Backup ---------------- */
 
+  // Fotos de evolução (IndexedDB) convertidas para entrar no arquivo de backup.
+  var photoPack = null;
+  function preparePhotos() {
+    if (!JS.fotos || !JS.fotos.supported()) { photoPack = []; return Promise.resolve([]); }
+    photoPack = null;
+    return JS.fotos.exportAll().then(function (l) { photoPack = l; return l; });
+  }
   function backupBlob() {
-    var json = JSON.stringify(JS.store.exportData(), null, 2);
+    var data = JS.store.exportData();
+    if (photoPack && photoPack.length) data.fotos = photoPack;
+    var json = JSON.stringify(data, null, photoPack && photoPack.length ? 0 : 2);
     return new Blob([json], { type: 'application/json' });
   }
   function markBackup() { JS.store.update(function (s, n) { s.settings.lastBackupAt = n; }); }
 
   function exportBackup() {
+    if (photoPack === null) { preparePhotos().then(exportBackup); return; }
+    var blob = backupBlob(); // antes de marcar a data (marcar redesenha a tela e prepara as fotos de novo)
     markBackup();
     var name = 'js-backup-' + C.toDateKey(new Date()) + '.json';
-    var url = URL.createObjectURL(backupBlob());
+    var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url; a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
@@ -204,7 +227,8 @@
 
   function shareBackup() {
     // Navegadores só compartilham alguns tipos de arquivo; .txt é aceito em todos.
-    var file = new File([backupBlob()], 'js-backup-' + C.toDateKey(new Date()) + '.txt', { type: 'text/plain' });
+    if (photoPack === null) { preparePhotos(); ui.toast('Preparando as fotos para o backup… toque de novo em Enviar.'); return; }
+    var file =new File([backupBlob()], 'js-backup-' + C.toDateKey(new Date()) + '.txt', { type: 'text/plain' });
     if (!navigator.canShare || !navigator.canShare({ files: [file] })) { exportBackup(); return; }
     navigator.share({ files: [file], title: 'Backup do J.S.' }).then(function () {
       markBackup(); ui.toast('Backup enviado.');
@@ -215,14 +239,15 @@
     var f = input.files && input.files[0];
     input.value = '';
     if (!f) return;
-    if (f.size > 10 * 1024 * 1024) { ui.toast('Arquivo grande demais para ser um backup do J.S.', { error: true }); return; }
+    if (f.size > 120 * 1024 * 1024) { ui.toast('Arquivo grande demais para ser um backup do J.S.', { error: true }); return; }
     f.text().then(function (txt) {
       var obj;
       try { obj = JSON.parse(txt); } catch (e) { throw new Error('O arquivo não é um backup válido.'); }
       if (!obj || obj.app !== 'J.S.' || !obj.dados) throw new Error('Este arquivo não é um backup do J.S.');
       var test = R.migrate(obj.dados);
       var resumo = test.tasks.length + ' tarefas, ' + test.hairEvents.length + ' tratamentos, ' + test.meals.length + ' horários de refeição, ' + test.bills.length + ' contas, ' +
-        test.workoutPlans.length + ' fichas de treino, ' + test.bodyRecords.length + ' medições e ' + test.foodLogs.length + ' alimentos registrados';
+        test.workoutPlans.length + ' fichas de treino, ' + test.bodyRecords.length + ' medições, ' + test.foodLogs.length + ' alimentos registrados' +
+        (test.cyclePeriods.length ? ', ' + test.cyclePeriods.length + ' ciclos' : '') + (Array.isArray(obj.fotos) && obj.fotos.length ? ' e ' + obj.fotos.length + ' fotos do corpo' : '');
       return ui.confirm({
         title: 'Restaurar backup?',
         message: 'Backup de ' + (obj.exportadoEm ? C.formatTimestamp(obj.exportadoEm) : 'data desconhecida') + ' com ' + resumo + '. Os dados atuais deste aparelho serão substituídos.',
@@ -231,6 +256,11 @@
         if (!ok) return;
         JS.store.importData(obj);
         JS.store.update(function (s, n) { R.ensureRecurringBills(s, C.toDateKey(new Date()), n); });
+        // Fotos: só são trocadas se o backup tiver fotos (um backup antigo não apaga as deste aparelho).
+        if (Array.isArray(obj.fotos) && obj.fotos.length && JS.fotos) {
+          photoPack = null;
+          return JS.fotos.importAll(obj.fotos).then(function (n) { JS.app.render(); ui.toast('Backup restaurado, com ' + n + (n === 1 ? ' foto.' : ' fotos.')); });
+        }
         ui.toast('Backup restaurado.');
       });
     }).catch(function (e) { ui.toast(e.message, { error: true, timeout: 5000 }); });
@@ -258,7 +288,7 @@
         if (!ok) return null;
         return ui.confirm({ title: 'Tem certeza?', message: 'Esta ação não pode ser desfeita.', confirmLabel: 'Apagar tudo', danger: true });
       })
-      .then(function (ok) { if (ok) { JS.store.reset(); ui.toast('Dados apagados.'); } });
+      .then(function (ok) { if (ok) { if (JS.fotos) JS.fotos.clear(); photoPack = null; JS.store.reset(); ui.toast('Dados apagados.'); } });
   };
 
   JS.changes['cfg-name'] = function (el) {
@@ -462,6 +492,34 @@
     JS.store.update(function (s) { s.settings.uiScale = v; });
     if (JS.graf) JS.graf.mountAll(document);
     ui.toast('Tamanho da tela: ' + Math.round(((window.JS_SCALE || {}).scale || 1) * 100) + '%' + (v === 'auto' ? ' (automático).' : '.'));
+  };
+
+  /* ---------------- Aparência: tema e paleta (aplicados pelo <head> do index.html: window.JS_THEME) ---------------- */
+  var THEMES = [['auto', 'Automático (segue o celular)'], ['light', 'Claro'], ['dark', 'Escuro']];
+  var PALETTES = [['rose', 'Rosé'], ['lavanda', 'Lavanda'], ['pessego', 'Pêssego'], ['nude', 'Nude']];
+  function pick(list, v, def) { return list.some(function (o) { return o[0] === v; }) ? v : def; }
+  function appearanceBlock(st) {
+    var th = pick(THEMES, st.theme, 'auto'), pa = pick(PALETTES, st.palette, 'rose');
+    return '<section class="card" id="cfg-look"><div class="card-head"><h2>' + ui.icon('sparkle', 18) + 'Aparência</h2></div>' +
+      '<div class="field"><label for="cfg-theme">Tema</label><select id="cfg-theme" data-change="cfg-theme">' + THEMES.map(function (o) {
+        return '<option value="' + o[0] + '"' + (th === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+      }).join('') + '</select><p class="hint">No automático, o J.S. fica escuro (tons de ameixa) quando o celular está no modo escuro.</p></div>' +
+      '<div class="field"><span class="label" id="cfg-pal-label">Paleta de cores</span><div class="palettes" role="radiogroup" aria-labelledby="cfg-pal-label">' + PALETTES.map(function (o) {
+        return '<label class="pal pal-' + o[0] + '"><input type="radio" name="palette" value="' + o[0] + '" data-change="cfg-palette"' + (pa === o[0] ? ' checked' : '') + '>' +
+          '<span class="pal-dot" aria-hidden="true"></span><span class="pal-name">' + esc(o[1]) + '</span></label>';
+      }).join('') + '</div></div></section>';
+  }
+  JS.changes['cfg-theme'] = function (el) {
+    var v = pick(THEMES, el.value, 'auto');
+    if (window.JS_THEME) window.JS_THEME(v, JS.store.state.settings.palette, true);
+    JS.store.update(function (s) { s.settings.theme = v; });
+    ui.toast(v === 'auto' ? 'Tema automático: segue o modo do celular.' : v === 'dark' ? 'Tema escuro ligado.' : 'Tema claro ligado.');
+  };
+  JS.changes['cfg-palette'] = function (el) {
+    var v = pick(PALETTES, el.value, 'rose');
+    if (window.JS_THEME) window.JS_THEME(JS.store.state.settings.theme, v, true);
+    JS.store.update(function (s) { s.settings.palette = v; });
+    ui.toast('Paleta ' + PALETTES.filter(function (o) { return o[0] === v; })[0][1] + ' aplicada.');
   };
 
   JS.telas.config = { title: 'Configurações', render: render, after: after };
