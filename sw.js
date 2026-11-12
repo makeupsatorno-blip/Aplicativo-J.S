@@ -4,13 +4,13 @@
  * sem internet (ou rede muito lenta), usa a cópia guardada.
  * Ao publicar uma versão nova, aumente o número em VERSION.
  */
-var VERSION = 'js-v2.6.1';
+var VERSION = 'js-v2.6.2';
 var ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/style.css', './css/v2.css', './css/v26.css', './icons/favicon.svg',
   './fonts/nunito-latin.woff2', './fonts/cormorant-garamond-italic-latin.woff2',
   './js/config.js', './js/intro.js', './js/core.js', './js/regras.js', './js/ui.js', './js/anim.js', './js/store.js',
   './js/notify.js', './js/push.js', './js/app.js', './js/graficos.js', './js/toque.js',
-  './js/regras-treino.js', './js/regras-corpo.js', './js/regras-nutricao.js', './js/regras-ciclo.js', './js/fotos.js',
+  './js/regras-treino.js', './js/regras-corpo.js', './js/regras-nutricao.js', './js/regras-ciclo.js', './js/fotos.js', './js/transferencia.js',
   './js/dados/exercicios.js', './js/exanim.js', './js/dados/animacoes.js', './js/dados/treinos.js', './js/dados/alimentos.js', './js/dados/cardapios.js',
   './js/telas/inicio.js', './js/telas/rotina.js', './js/telas/autocuidado.js', './js/telas/alimentacao.js',
   './js/telas/financeiro.js', './js/telas/agenda.js', './js/telas/config.js',

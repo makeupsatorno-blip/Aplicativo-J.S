@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, ui = JS.ui, esc = ui.esc;
-  var dismissedBackup = false;
+  var dismissedBackup = false, dismissedTransfer = false;
   var lastPct = null; // a barra de progresso cresce do valor anterior até o novo
 
   function greeting(now) {
@@ -35,6 +35,13 @@
         (miss.total === 1 ? ' item com horário está sem lembrete' : ' itens com horário estão sem lembrete') + '</strong>' +
         '<p>Sem lembrete, você não é avisada.</p></div>' +
         '<button type="button" class="btn primary small" data-action="reminders-fix">Ligar todos</button></div>';
+    }
+    // App vazio (ex.: acabou de instalar em outro celular): oferece trazer os dados do aparelho antigo.
+    if (!dismissedTransfer && !R.hasAnyData(s) && JS.transfer && JS.transfer.available()) {
+      html += '<div class="banner transfer-banner"><span class="banner-ic">' + ui.icon('phone', 20) + '</span><div><strong>Já usa o J.S. em outro aparelho?</strong>' +
+        '<p>Traga seus treinos e tudo mais com um código, sem arquivo.</p></div>' +
+        '<div class="banner-actions"><button type="button" class="btn primary small" data-action="transfer-receive">Receber meus dados</button>' +
+        '<button type="button" class="btn ghost small" data-action="transfer-dismiss">Agora não</button></div></div>';
     }
     var lb = s.settings.lastBackupAt;
     if (!dismissedBackup && R.hasAnyData(s) && (!lb || C.diffDays(C.toDateKey(new Date(lb)), today) >= 14)) {
@@ -159,6 +166,9 @@
     if (JS.alimView) { JS.alimView.mode = 'hoje'; JS.alimView.date = null; }
     JS.app.go('alimentacao');
     setTimeout(function () { var el = document.querySelector('.water-card'); if (el) el.scrollIntoView({ block: 'center', behavior: JS.anim.reduced() ? 'auto' : 'smooth' }); }, 150);
+  };
+  JS.actions['transfer-dismiss'] = function (d, el) {
+    JS.anim.removeThen(el, '.banner', function () { dismissedTransfer = true; JS.app.render(); });
   };
   JS.actions['backup-dismiss'] = function (d, el) {
     JS.anim.removeThen(el, '.banner', function () { dismissedBackup = true; JS.app.render(); });

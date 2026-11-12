@@ -140,6 +140,13 @@
       '<p class="muted small" id="backup-photos"></p>' +
       '<p class="muted small" id="persist-status"></p></section>';
 
+    if (JS.transfer && JS.transfer.available()) {
+      html += '<section class="card" id="cfg-transfer"><div class="card-head"><h2>' + ui.icon('phone', 18) + 'Passar para outro aparelho</h2></div>' +
+        '<p class="hint top">Trocou de celular ou quer usar no tablet também? Sem arquivo: este aparelho gera um código, e no outro você abre o J.S. pelo ícone e digita o código. Vai tudo: treinos feitos, fichas, alimentação, água, ciclo, rotina, contas e medições.</p>' +
+        '<div class="btn-col"><button type="button" class="btn primary" data-action="transfer-send">' + ui.icon('upload', 18) + 'Enviar deste aparelho</button>' +
+        '<button type="button" class="btn soft" data-action="transfer-receive">' + ui.icon('download', 18) + 'Receber neste aparelho</button></div></section>';
+    }
+
     html += '<section class="card danger-zone"><div class="card-head"><h2>Apagar dados</h2></div>' +
       '<p class="hint">Remove todas as tarefas, tratamentos, refeições, contas, treinos, medições e alimentos registrados deste aparelho.</p>' +
       '<button type="button" class="btn danger full" data-action="data-reset">' + ui.icon('trash', 18) + 'Apagar todos os dados</button></section>';
@@ -265,6 +272,101 @@
       });
     }).catch(function (e) { ui.toast(e.message, { error: true, timeout: 5000 }); });
   }
+
+  /* ---------------- Passar para outro aparelho (js/transferencia.js) ---------------- */
+
+  function transferSend() {
+    var TR = JS.transfer;
+    if (!TR || !TR.available()) { ui.toast('Não disponível neste navegador.', { error: true }); return; }
+    var count = JS.fotos && JS.fotos.supported() ? JS.fotos.count() : Promise.resolve(0);
+    count.then(function (nPhotos) {
+      var s = JS.store.state, done = s.workoutSessions.filter(function (x) { return x.status === 'done'; }).length;
+      var body = '<p>Vai tudo o que está neste aparelho: <strong>' + done + (done === 1 ? ' treino feito' : ' treinos feitos') + '</strong>, ' + s.workoutPlans.length + ' fichas, ' +
+        s.foodLogs.length + ' alimentos registrados, ' + s.tasks.length + ' tarefas, ' + s.bills.length + ' contas, ' + s.bodyRecords.length + ' medições e o resto.</p>' +
+        (nPhotos ? ui.checkbox({ label: 'Levar também as ' + nPhotos + (nPhotos === 1 ? ' foto' : ' fotos') + ' do corpo', hint: 'Demora um pouco mais para enviar e receber.', name: 'photos', checked: true }) : '') +
+        '<p class="muted small" data-tr-status></p>' +
+        '<p class="hint">Seus dados vão cifrados com o código: o servidor não consegue ler, e eles são apagados assim que o outro aparelho recebe (ou em 30 minutos). Este aparelho continua com tudo.</p>';
+      ui.openSheet({
+        title: 'Enviar para outro aparelho', body: body, submitLabel: 'Gerar código',
+        onSubmit: function (v, form) {
+          var st = form.querySelector('[data-tr-status]');
+          form.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+          return TR.send({ photos: v.photos === true, onProgress: function (p, t) { st.textContent = t + (p < 1 ? ' ' + Math.round(p * 100) + '%' : ''); } })
+            .then(function (r) { return { code: r.code }; }, function (e) {
+              form.querySelectorAll('button').forEach(function (b) { b.disabled = false; });
+              st.textContent = '';
+              return { errors: { photos: e.message } };
+            });
+        },
+        afterClose: function (r) { if (r && r.code) showCode(r.code); }
+      });
+    });
+  }
+
+  function showCode(code) {
+    var TR = JS.transfer, pretty = TR.pretty(code);
+    var body = '<p class="tr-label">Código</p><p class="tr-code" aria-label="Código: ' + esc(pretty.split('').join(' ')) + '">' + esc(pretty) + '</p>' +
+      '<button type="button" class="btn soft full" data-copy>' + ui.icon('copy', 18) + 'Copiar código</button>' +
+      '<ol class="tr-steps"><li>No outro aparelho, abra o J.S. <strong>pelo ícone</strong>. No iPhone, abra pelo ícone da tela de início, não pelo Safari: eles guardam os dados separados.</li>' +
+      '<li>Toque em <strong>Receber meus dados</strong> no Início (ou em Configurações → Passar para outro aparelho → Receber).</li>' +
+      '<li>Digite este código.</li></ol>' +
+      '<p class="hint">Vale por <strong>30 minutos</strong> e funciona uma vez. Se passar do tempo, é só gerar outro.</p>';
+    ui.openSheet({
+      title: 'Pronto! Agora no outro aparelho', body: body,
+      onOpen: function (form) {
+        form.querySelector('[data-copy]').addEventListener('click', function () {
+          var ok = function () { ui.toast('Código copiado.'); };
+          if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(pretty).then(ok, function () { ui.toast(pretty); });
+          else ui.toast(pretty);
+        });
+      }
+    });
+  }
+
+  function transferReceive() {
+    var TR = JS.transfer;
+    if (!TR || !TR.available()) { ui.toast('Não disponível neste navegador.', { error: true }); return; }
+    var body = '<p>No aparelho antigo, abra o J.S. e toque em <strong>Configurações → Passar para outro aparelho → Enviar deste aparelho</strong>. Depois digite aqui o código que aparecer.</p>' +
+      ui.input({ label: 'Código', name: 'code', placeholder: 'XXXX-XXXX-XXXX', attrs: 'autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="20" enterkeyhint="go" class="tr-input"' }) +
+      '<p class="muted small" data-tr-status></p>';
+    ui.openSheet({
+      title: 'Receber meus dados', body: body, submitLabel: 'Receber',
+      onOpen: function (form) { setTimeout(function () { form.elements.code.focus(); }, 250); },
+      onSubmit: function (v, form) {
+        if (!TR.valid(v.code)) return { errors: { code: 'O código tem 12 letras e números, como K7P2-9QXM-4TZB.' } };
+        var st = form.querySelector('[data-tr-status]');
+        return TR.receive(v.code, function (p, t) { st.textContent = t + (p < 1 ? ' ' + Math.round(p * 100) + '%' : ''); })
+          .then(function (res) { return { res: res }; }, function (e) { st.textContent = ''; return { errors: { code: e.message } }; });
+      },
+      afterClose: function (r) { if (r && r.res) confirmReceive(r.res); }
+    });
+  }
+
+  function confirmReceive(res) {
+    var obj = res.obj, test = R.migrate(obj.dados), cur = JS.store.state;
+    var done = test.workoutSessions.filter(function (x) { return x.status === 'done'; }).length;
+    var parts = [done + (done === 1 ? ' treino feito' : ' treinos feitos'), test.workoutPlans.length + ' fichas', test.foodLogs.length + ' alimentos', test.tasks.length + ' tarefas',
+      test.bills.length + ' contas', test.bodyRecords.length + ' medições'];
+    if (test.cyclePeriods.length) parts.push(test.cyclePeriods.length + ' ciclos');
+    if (Array.isArray(obj.fotos) && obj.fotos.length) parts.push(obj.fotos.length + ' fotos');
+    ui.confirm({
+      title: 'Trazer estes dados?',
+      message: 'Chegou: ' + parts.join(', ') + ' (enviado em ' + (obj.exportadoEm ? C.formatTimestamp(obj.exportadoEm) : 'agora') + ').' +
+        (R.hasAnyData(cur) ? ' O que está neste aparelho agora será substituído.' : ''),
+      confirmLabel: 'Trazer', danger: R.hasAnyData(cur)
+    }).then(function (ok) {
+      if (!ok) { ui.toast('Nada mudou. O código continua valendo até vencer.'); return; }
+      return JS.transfer.apply(res).then(function (r) {
+        JS.store.update(function (s, n) { R.ensureRecurringBills(s, C.toDateKey(new Date()), n); });
+        photoPack = null;
+        JS.app.go('inicio');
+        ui.toast('Pronto! Seus dados chegaram 🌷 ' + done + (done === 1 ? ' treino feito' : ' treinos feitos') + (r.photos ? ' e ' + r.photos + ' fotos' : '') + '.', { timeout: 6000 });
+      });
+    }).catch(function (e) { ui.toast('Não foi possível trazer os dados: ' + e.message, { error: true, timeout: 6000 }); });
+  }
+
+  JS.actions['transfer-send'] = transferSend;
+  JS.actions['transfer-receive'] = transferReceive;
 
   JS.actions['backup-export'] = exportBackup;
   JS.actions['backup-share'] = shareBackup;

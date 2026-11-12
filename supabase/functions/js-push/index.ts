@@ -17,6 +17,11 @@
 //   POST quick-ack     -> o app confirma que importou (as séries são apagadas)
 //   POST quick-off     -> o app desliga o atalho (apaga tudo deste aparelho)
 //
+// Passar para outro aparelho (dados cifrados no aparelho; o código não vem para o servidor):
+//   POST transfer-put  -> um pedaço cifrado (vence em 30 min)
+//   POST transfer-get  -> o outro aparelho baixa cada pedaço
+//   POST transfer-done -> recebeu: apaga tudo
+//
 // Sem login: cada aparelho tem um id e um segredo gerados no próprio celular.
 // O servidor guarda só o hash do segredo.
 import webpush from "npm:web-push@3.6.7";
@@ -350,6 +355,65 @@ async function handleQuickOff(body: QuickBody) {
   return json({ ok: true });
 }
 
+/* ---------------- Passar para outro aparelho ---------------- */
+// O aparelho que envia cifra tudo com uma chave tirada do código da tela (o código não vem para cá)
+// e manda em pedaços. O outro aparelho, com o mesmo código, calcula o mesmo id, baixa e decifra.
+// Tudo some quando ele confirma que recebeu (transfer-done) ou em 30 minutos.
+
+const TRANSFER_PART_MAX = 1_100_000;   // caracteres base64 por pedaço
+const TRANSFER_PARTS_MAX = 60;         // até ~45 MB cifrados (fotos)
+const TRANSFER_ROWS_MAX = 400;         // limite geral da tabela (evita abuso)
+type TransferBody = { id?: unknown; part?: unknown; parts?: unknown; data?: unknown };
+const validTransferId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
+
+async function cleanTransfers() {
+  await db.from("js_transfers").delete().lt("expires_at", new Date().toISOString());
+}
+
+async function handleTransferPut(body: TransferBody) {
+  const part = Number(body.part), parts = Number(body.parts);
+  if (!validTransferId(body.id)) return json({ error: "invalid-id" }, 400);
+  if (!Number.isInteger(parts) || parts < 1 || parts > TRANSFER_PARTS_MAX || !Number.isInteger(part) || part < 0 || part >= parts) return json({ error: "invalid-part" }, 400);
+  if (typeof body.data !== "string" || !body.data.length || body.data.length > TRANSFER_PART_MAX || !/^[A-Za-z0-9+/=]+$/.test(body.data)) return json({ error: "invalid-data" }, 400);
+  await cleanTransfers();
+  if (part === 0) {
+    const { count } = await db.from("js_transfers").select("id", { count: "exact", head: true });
+    if ((count ?? 0) + parts > TRANSFER_ROWS_MAX) return json({ error: "ocupado" }, 429);
+    await db.from("js_transfers").delete().eq("id", body.id);
+  } else {
+    const { data: first } = await db.from("js_transfers").select("parts, expires_at").eq("id", body.id).eq("part", 0).maybeSingle();
+    if (!first || first.parts !== parts) return json({ error: "comece-de-novo" }, 409);
+  }
+  const row: Record<string, unknown> = { id: body.id, part, parts, data: body.data };
+  if (part > 0) {
+    const { data: first } = await db.from("js_transfers").select("expires_at").eq("id", body.id).eq("part", 0).maybeSingle();
+    if (first) row.expires_at = first.expires_at; // todos os pedaços vencem juntos
+  }
+  const { error } = await db.from("js_transfers").upsert(row, { onConflict: "id,part" });
+  if (error) { console.error("transfer/put", error); return json({ error: "save-failed" }, 500); }
+  return json({ ok: true });
+}
+
+async function handleTransferGet(body: TransferBody) {
+  const part = Number(body.part ?? 0);
+  if (!validTransferId(body.id) || !Number.isInteger(part) || part < 0 || part >= TRANSFER_PARTS_MAX) return json({ error: "invalid-id" }, 400);
+  await cleanTransfers();
+  const { data, error } = await db.from("js_transfers").select("part, parts, data, expires_at").eq("id", body.id).eq("part", part).maybeSingle();
+  if (error) { console.error("transfer/get", error); return json({ error: "select-failed" }, 500); }
+  if (!data) return json({ error: "nao-encontrado" }, 404);
+  if (part === 0) {
+    const { count } = await db.from("js_transfers").select("part", { count: "exact", head: true }).eq("id", body.id);
+    if ((count ?? 0) < data.parts) return json({ error: "incompleto" }, 409);
+  }
+  return json({ ok: true, part: data.part, parts: data.parts, data: data.data, expiresAt: data.expires_at });
+}
+
+async function handleTransferDone(body: TransferBody) {
+  if (!validTransferId(body.id)) return json({ error: "invalid-id" }, 400);
+  await db.from("js_transfers").delete().eq("id", body.id);
+  return json({ ok: true });
+}
+
 /* ---------------- Roteamento ---------------- */
 
 Deno.serve(async (req) => {
@@ -372,6 +436,10 @@ Deno.serve(async (req) => {
     if (route === "quick-pull") return await handleQuickPull(qb);
     if (route === "quick-ack") return await handleQuickAck(qb);
     if (route === "quick-off") return await handleQuickOff(qb);
+    const tb = body as unknown as TransferBody;
+    if (route === "transfer-put") return await handleTransferPut(tb);
+    if (route === "transfer-get") return await handleTransferGet(tb);
+    if (route === "transfer-done") return await handleTransferDone(tb);
     return json({ error: "not-found" }, 404);
   } catch (e) {
     console.error("js-push", e);

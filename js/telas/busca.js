@@ -34,6 +34,7 @@
     ['Configurações', 'configuracoes ajustes', 'settings', { route: 'config' }],
     ['Aparência: tema, modo escuro e paleta', 'tema modo escuro claro noite cores paleta aparencia rosa lavanda', 'sparkle', { route: 'config', scroll: '#cfg-look' }],
     ['Notificações e lembretes', 'notificacoes avisos lembretes push', 'bell', { route: 'config' }],
+    ['Passar para outro aparelho', 'passar transferir outro aparelho celular iphone tablet novo trocar dados receber enviar codigo', 'phone', { route: 'config', scroll: '#cfg-transfer' }],
     ['Backup dos dados', 'backup copia restaurar salvar dados', 'shield', { route: 'config', scroll: '[data-action="backup-export"]' }],
     ['Toque atrás do celular', 'toque atras batida sensor', 'phone', { route: 'config', scroll: '#cfg-backtap' }],
     ['Tamanho da tela', 'tamanho tela letra zoom fonte', 'phone', { route: 'config', scroll: '#cfg-scale' }]

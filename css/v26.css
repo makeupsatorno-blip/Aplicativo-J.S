@@ -240,3 +240,15 @@
 #sheet .sheet-form.srch-form { min-height: min(85vh, 46rem); }
 /* Texto da barra de macronutrientes (Gráficos): tinta escura, legível sobre os tons pastéis nos dois temas (AA). */
 .split-bar span { color: #2B1D24; }
+
+/* ---------- Passar para outro aparelho ---------- */
+.tr-label { text-align: center; font-size: .75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .0625rem; margin-top: .25rem; }
+.tr-code {
+  text-align: center; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 2rem; font-weight: 700; letter-spacing: .125rem;
+  color: var(--rose800); background: var(--surface-2, var(--rose50)); border: .0625rem dashed var(--rose400); border-radius: var(--radius-sm, .75rem);
+  padding: .75rem .5rem; margin: .375rem 0 .75rem; user-select: all; overflow-wrap: anywhere;
+}
+.tr-steps { margin: .875rem 0 .5rem; padding-left: 1.25rem; display: grid; gap: .5rem; }
+.tr-steps li { padding-left: .25rem; }
+.tr-input { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 1.25rem !important; letter-spacing: .125rem; text-transform: uppercase; }
+.transfer-banner { background: var(--surface-2, var(--rose50)); }
