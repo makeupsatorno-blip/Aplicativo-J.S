@@ -30,7 +30,7 @@
         mealHistory: true,
         lastBackupAt: null,
         body: { heightCm: null, sex: 'f', birthYear: null },
-        nutrition: { kcalTarget: null, activity: 'moderada' },
+        nutrition: { kcalTarget: null, activity: 'moderada', proteinTarget: null, proteinPerKg: 1.6 },
         backTap: { enabled: true, sensitivity: 3, threshold: null },
         // Água: meta (null = automática pelo peso), copo padrão e lembretes de tanto em tanto tempo
         water: { goalMl: null, cupMl: 250, remind: false, every: 120, from: '09:00', to: '21:00' },
@@ -57,6 +57,7 @@
       customFoods: [],      // alimentos cadastrados pela usuária, valores por 100 g
       foodPortions: {},     // idAlimento -> [{ label, grams }]
       foodFavorites: [],    // ids de alimentos marcados com estrela
+      savedMeals: [],       // refeições salvas: { id, name, meal, items: [{ foodId, grams }], uses, lastUsedAt }
       // Água (versão 2.6)
       waterLogs: [],        // { id, date, ml, at }
       // Ciclo menstrual (versão 2.6)
@@ -88,6 +89,9 @@
       out[k] = Array.isArray(out[k]) ? out[k].filter(hasId) : [];
     });
     ['taskOcc', 'mealExceptions', 'firedReminders', 'foodPortions', 'cycleDays'].forEach(function (k) { if (!isObj(out[k])) out[k] = {}; });
+    out.savedMeals = (Array.isArray(out.savedMeals) ? out.savedMeals : []).filter(hasId).map(function (m) {
+      return Object.assign({}, m, { name: String(m.name || 'Minha refeição').slice(0, 40), items: (Array.isArray(m.items) ? m.items : []).filter(function (i) { return i && typeof i.foodId === 'string' && i.foodId && Number(i.grams) > 0; }) });
+    });
     out.foodFavorites = Array.isArray(out.foodFavorites) ? out.foodFavorites.filter(function (x, i, a) { return typeof x === 'string' && x && a.indexOf(x) === i; }) : [];
     out.waterLogs = out.waterLogs.filter(function (l) { return C.isDateKey(l.date) && Number(l.ml) > 0; });
     out.cyclePeriods = out.cyclePeriods.filter(function (p) { return C.isDateKey(p.start) && (p.end == null || (C.isDateKey(p.end) && p.end >= p.start)); });
@@ -111,7 +115,7 @@
   function hasAnyData(state) {
     return state.tasks.length + state.hairEvents.length + state.meals.length + state.bills.length +
       (state.workoutPlans || []).length + (state.bodyRecords || []).length + (state.foodLogs || []).length +
-      (state.waterLogs || []).length + (state.cyclePeriods || []).length > 0;
+      (state.waterLogs || []).length + (state.cyclePeriods || []).length + (state.savedMeals || []).length > 0;
   }
 
   // Ficha de treino de um dia: troca feita só naquele dia > ficha fixa do dia da semana.

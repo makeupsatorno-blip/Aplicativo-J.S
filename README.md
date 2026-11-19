@@ -39,13 +39,14 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.6.1'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.7.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
 - Os dados ficam **só no aparelho e no navegador onde foram cadastrados**. O que você cadastrar no computador não aparece no celular, e vice-versa.
 - Limpar os dados do navegador, desinstalar o app ou perder o celular **apaga tudo**, a menos que exista um backup.
 - Em **Configurações → Backup** dá para salvar um arquivo, enviá-lo por WhatsApp, e-mail ou Drive, e restaurá-lo em outro aparelho. O painel lembra de fazer backup a cada 14 dias.
+- **Passar para outro aparelho** (Configurações; e no Início quando o app está vazio): o aparelho antigo gera um **código de 12 caracteres**; no novo, abra o J.S. pelo ícone e digite o código. Vai tudo, inclusive os treinos feitos e, se quiser, as fotos. Os dados são comprimidos e **cifrados no aparelho** com uma chave tirada do código (o código não vai para o servidor); a função `js-push` guarda só o conteúdo cifrado, por até 30 minutos, e apaga quando o outro aparelho recebe. Para ligar: publicar `supabase/sql/04_transferencia.sql` e a função, e pôr `transfer: true` em `js/config.js`.
 - As **fotos de evolução** ficam no próprio navegador (IndexedDB), nunca vão para servidor, e entram no arquivo de backup (o arquivo fica maior). Restaurar um backup sem fotos não apaga as fotos do aparelho.
 
 ## 3.1 Treino
@@ -53,9 +54,11 @@ Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-
 - **Fichas:** monte fichas (ex.: "Treino A — Pernas") com exercícios da biblioteca (100 exercícios por grupo muscular, cada um com desenho animado da execução e dica) ou criados por você, com séries, repetições, carga e descanso.
 - **Semana fixa e troca do dia:** em Treino → Semana, cada dia da semana recebe uma ficha (ou descanso). Para mudar só um dia (ex.: na terça treinar braço em vez de perna), use **Trocar** em Hoje ou toque no dia em **Mês**. As próximas semanas continuam iguais.
 - **Calendário do mês:** mostra a ficha de cada dia (letra e cor), os treinos feitos (✓) e os descansos.
+- **Recordes pessoais:** o app compara cada série com todo o seu histórico do exercício. **Recorde de carga** = mais pesada do que qualquer série anterior; **recorde de repetições** = mais repetições do que já fez com a mesma carga. A primeira vez que você faz um exercício não conta. Na execução do treino aparece **"Seu recorde: 47 kg × 8"**, e a série que bate o recorde ganha troféu, um aviso grande ("Novo recorde!") e vibração; o registro rápido e o toque atrás também avisam. O resumo do treino destaca os recordes numa caixa, **Treino → Hoje** tem o cartão **Recordes pessoais** (últimos 30 dias), e **Evolução** marca as séries recordistas. Tudo é calculado do histórico: excluir um treino refaz os recordes.
 - **Séries por grupo muscular:** em Treino → Hoje, quantas séries cada grupo (quadríceps, glúteos, costas...) recebeu na semana, comparado com a semana passada, com a referência comum de 10 a 20 séries semanais por grupo.
 - **Execução:** "Iniciar treino" faz uma contagem 3-2-1 e abre o treino em tela cheia, com a tela sempre acesa. Ajuste a carga e as repetições com **+/−** e toque em **Série feita**. O descanso começa sozinho e avisa com bipe e vibração quando acaba. Ao terminar, aparece o resumo (duração, séries, volume e recordes) e a ficha passa a sugerir a última carga usada.
 - **Toque atrás:** com o J.S. aberto no treino, **bata 2 vezes na parte de trás do celular** para abrir a **telinha do peso**: mostra o exercício atual com o peso e as repetições em botões grandes (+, −, +2,5 kg, +5 kg, ou digitar). "Registrar série" (ou bater 2 vezes de novo) salva a série com esse peso; "Só salvar o peso" muda a carga sem registrar. O descanso começa sozinho. Funciona no Android e no iPhone, pelo sensor de movimento. No iPhone o app pede permissão para usar o sensor. Em Configurações → Treino dá para mudar a sensibilidade e **testar e calibrar** com as suas batidas. Com o app fechado, nenhum site instalado consegue ouvir o sensor. Por isso, o toque atrás do próprio celular (Samsung Good Lock/RegiStar, Pixel "Toque rápido") pode ser configurado para **abrir o J.S.**, que vai direto para o treino em andamento.
+- **Toque atrás no iPhone:** o iPhone só libera o sensor de movimento com um toque da usuária. Na primeira vez, o Início e o Treino mostram **"Ative o toque atrás neste iPhone" → Ativar agora** (também em Configurações → Treino: toque atrás). Depois disso, toda vez que o app abre, o **primeiro toque em qualquer lugar da tela religa o toque atrás sozinho**, sem perguntar de novo. O "Tocar Atrás" dos Ajustes do iPhone (que funciona com o app fechado) nenhum app consegue ligar sozinho: ele é configurado com o Atalho do Registro rápido (abaixo).
 - **Toque atrás em qualquer tela:** com o app aberto, as 2 batidas levam ao treino (e, em Treino → Hoje, iniciam o treino do dia); com treino em andamento, abrem a telinha do peso.
 - **Ao abrir o app:** pelo ícone, o J.S. abre como sempre, com a intro e no Início. Com **treino em andamento**, abre direto na execução do treino, sem a intro. Em Configurações → "Ao abrir o app" dá para escolher abrir no Treino nos dias de treino (útil para quem usa o toque atrás do celular, que só consegue abrir o app) ou sempre no Treino.
   - **Treino em andamento sempre ganha:** depois de iniciar o treino (pelo botão, pelo toque atrás ou pelo registro rápido), abrir ou voltar para o app leva à execução do treino, mesmo que o ícone tenha outra aba no endereço. Vale para treino do dia ou com série nas últimas 6 horas (um treino esquecido de ontem não prende a abertura). Recarregar a página mantém a aba que estava aberta.
@@ -88,6 +91,8 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
 ## 3.2 Alimentação e Corpo
 
 - **Água:** no Diário, um copo que enche, gotinhas e os últimos 7 dias. Botões "+1 copo" (do tamanho que você digitar, de 30 ml a 2 L), "+500 ml" e "Outra", com desfazer. A meta é automática (35 ml por kg do último peso, entre 1,5 e 4 L; sem peso, 2 L) ou definida por você. **Lembretes de água** opcionais (de 1 em 1 h até 4 em 4 h, no horário escolhido): param quando você bate a meta do dia, e o aviso de um horário pula se você bebeu há pouco. No Início há o cartão "Água hoje" e o botão **Água** em Adicionar soma um copo.
+- **Meta de proteína e macros por refeição:** o Diário tem o cartão **Proteína** com o total do dia, a meta, quanto falta e quanto veio de cada refeição, e cada refeição mostra seus **P / C / G** (proteínas, carboidratos e gorduras em gramas). A meta é a que você definir (Alimentação → Meta, ou Configurações) ou automática: **gramas por kg do seu último peso** (padrão 1,6 g/kg; dá para escolher de 1,2 a 2,0). Sem peso nem meta, o cartão pede para definir. É referência geral, não prescrição: se uma nutricionista passou metas, use as dela. O Início também mostra a proteína no cartão de calorias.
+- **Refeições salvas (aba Salvas):** monte uma vez refeições que você repete (ex.: "Meu café da manhã") e adicione com **um toque**. Para criar: toque no marcador de uma refeição do Diário (salva o que já está nela), ou em Alimentação → Salvas → **Nova refeição salva** (nome, refeição, alimentos e quantidades). Depois aparecem no atalho da refeição vazia do Diário, no topo de **Adicionar alimento** (as do mesmo tipo primeiro) e na aba Salvas, com desfazer. Dá para editar quantidades, trocar alimentos e excluir; entram no backup e na passagem para outro aparelho. Até 40 refeições, com até 30 alimentos cada.
 - **Repetir refeição:** num dia vazio, o Diário oferece "Repetir o dia de ontem" (ou do último dia com alimentos, até 14 dias). Com o dia começado, cada refeição vazia mostra "Repetir de ontem" com os alimentos daquela refeição. Sempre com desfazer.
 - **Favoritos e recentes:** a estrela ☆ na tabela nutricional de um alimento o deixa nos favoritos. Ao adicionar um alimento, aparecem primeiro os favoritos e depois os usados recentemente, já com a última quantidade.
 - **Diário:** registre o que comeu em cada refeição. Os nutrientes de cada alimento, de cada refeição e do dia vêm da **Tabela TACO** (Tabela Brasileira de Composição de Alimentos, 4ª edição, NEPA/UNICAMP), com 597 alimentos. A tabela completa tem energia, macronutrientes, fibras, sódio, colesterol, minerais e vitaminas. Valores que a TACO não analisou aparecem como "—", nunca como zero. Dá para salvar porções (ex.: "1 unidade = 50 g") e cadastrar alimentos que não estão na tabela.
@@ -140,6 +145,7 @@ Para publicar de novo, com a CLI do Supabase logada na conta dona do projeto, na
 supabase link --project-ref jmjenkgmicqbftzndvrl
 supabase db query --linked -f supabase/sql/01_tabelas.sql              # tabelas (só na primeira vez)
 supabase db query --linked -f supabase/sql/03_registro_rapido.sql      # registro rápido do iPhone (só na primeira vez)
+supabase db query --linked -f supabase/sql/04_transferencia.sql        # passar para outro aparelho (só na primeira vez)
 supabase secrets set JS_CRON_SECRET=<valor-aleatório>                   # segredo do agendamento
 supabase functions deploy js-push --no-verify-jwt --use-api            # função
 # agendamento: troque SEU-PROJETO e SEU-SEGREDO em supabase/sql/02_agendamento.sql e rode com db query
@@ -166,10 +172,10 @@ supabase functions deploy js-push --no-verify-jwt --use-api            # funçã
 
 ## 6. Testes
 
-As regras de negócio têm testes automáticos. `regras.test.js` cobre recorrência, centavos, contas recorrentes, lembretes e backup. `v2.test.js` cobre fichas, troca do dia, execução, evolução de carga, corpo, TACO, cardápio, tarefa em andamento, o reconhecimento do toque atrás com sinais simulados, os treinos prontos e os desenhos de todos os exercícios. `v26.test.js` cobre água (meta, lembretes inteligentes), ciclo menstrual (médias, fases, previsões, atraso, registros), séries por grupo muscular, favoritos e repetir refeição.
+As regras de negócio têm testes automáticos. `regras.test.js` cobre recorrência, centavos, contas recorrentes, lembretes e backup. `v2.test.js` cobre fichas, troca do dia, execução, evolução de carga, corpo, TACO, cardápio, tarefa em andamento, o reconhecimento do toque atrás com sinais simulados, os treinos prontos e os desenhos de todos os exercícios. `v27.test.js` cobre os recordes pessoais (carga, repetições, treino em andamento, ordem por data), a meta de proteína e as refeições salvas. `v26.test.js` cobre água (meta, lembretes inteligentes), ciclo menstrual (médias, fases, previsões, atraso, registros), séries por grupo muscular, favoritos e repetir refeição.
 
 ```
-node --test testes/regras.test.js testes/v2.test.js testes/v26.test.js
+node --test testes/regras.test.js testes/v2.test.js testes/v26.test.js testes/v27.test.js
 ```
 
 ## 7. Estrutura
@@ -212,7 +218,7 @@ aplicativo/
 ├── supabase/
 │   ├── functions/js-push/  servidor de avisos (Edge Function)
 │   └── sql/                tabelas e agendamento a cada minuto
-└── testes/                 regras.test.js, v2.test.js e v26.test.js
+└── testes/                 regras.test.js, v2.test.js, v26.test.js e v27.test.js
 ```
 
 A especificação original está em `../JS_Starter/docs/`.

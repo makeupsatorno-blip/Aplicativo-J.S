@@ -46,9 +46,17 @@
     if (!loads.length || loads.every(function (x) { return !x; })) return '';
     return ' • ' + (T.samePerSet(loads) ? kg(loads[0]) : loads.map(function (x) { return JS.graf.fmtNum(x, 1); }).join('/') + ' kg');
   }
+  // "50 kg × 8 (antes 45 kg)" ou "8 rep. com 50 kg (antes 6)".
+  function prText(p) {
+    if (p.kind === 'reps') return p.reps + ' rep. com ' + kg(p.load) + (p.prevReps != null ? ' (antes ' + p.prevReps + ')' : '');
+    return kg(p.load) + ' × ' + p.reps + (p.prevLoad ? ' (antes ' + kg(p.prevLoad) + ')' : '');
+  }
+  JS.prText = prText;
+
   function exerciseLine(s, it) {
-    var ex = T.exerciseById(s, it.exerciseId);
-    return '<div class="ex-row"><span class="ex-name">' + esc(ex ? ex.name : 'Exercício removido') + '</span>' +
+    var ex = T.exerciseById(s, it.exerciseId), best = T.exerciseBest(s, it.exerciseId);
+    return '<div class="ex-row"><span class="ex-name">' + esc(ex ? ex.name : 'Exercício removido') +
+      (best && best.load > 0 ? ' <span class="ex-pr" title="Seu recorde de carga neste exercício">' + ui.icon('trophy', 12) + kg(best.load) + '</span>' : '') + '</span>' +
       '<span class="ex-meta">' + it.sets + ' × ' + esc(it.reps) + loadsText(it) + '</span></div>';
   }
 
@@ -59,7 +67,8 @@
       '<div><strong>' + duration(sum.minutes) + '</strong><span>duração</span></div>' +
       '<div><strong>' + sum.sets + '</strong><span>séries</span></div>' +
       '<div><strong>' + JS.graf.fmtNum(sum.volume, 0) + ' kg</strong><span>volume</span></div></div>' +
-      (sum.prs.length ? '<p class="pr-line">' + ui.icon('sparkle', 16) + ' Recorde: ' + sum.prs.map(function (p) { return esc(p.name) + ' ' + kg(p.load); }).join(', ') + '</p>' : '');
+      (sum.prs.length ? '<div class="pr-box" role="status"><p class="pr-head">' + ui.icon('trophy', 18) + (sum.prs.length === 1 ? 'Novo recorde pessoal!' : sum.prs.length + ' novos recordes pessoais!') + '</p><ul>' +
+        sum.prs.map(function (p) { return '<li><strong>' + esc(p.name) + '</strong><span>' + esc(prText(p)) + '</span></li>'; }).join('') + '</ul></div>' : '');
   }
   JS.workoutSummaryHtml = summaryHtml;
 
@@ -72,9 +81,10 @@
         esc(act.planName) + ' • ' + nSets + (nSets === 1 ? ' série' : ' séries') + '</p></div>' +
         '<button type="button" class="btn primary small" data-action="go" data-route="sessao">Continuar</button></div>';
     }
+    if (JS.backTap && JS.backTap.banner) html += JS.backTap.banner(); // iPhone: liberar o sensor do toque atrás
     html += cycleCard(s, today);
     if (!s.workoutPlans.length) {
-      return html + readyCard() + ui.empty('dumbbell', 'Comece por um treino pronto ou monte sua ficha: escolha os exercícios, séries, repetições e carga. Depois é só iniciar e ir marcando por toque.', { label: 'Montar minha primeira ficha', attrs: 'data-action="plan-new"' });
+      return html + readyCard() + ui.empty('dumbbell', 'Comece por um treino pronto ou monte sua ficha: escolha os exercícios, séries, repetições e carga. Depois é só iniciar e ir marcando por toque.', { label: 'Montar minha primeira ficha', attrs: 'data-action="plan-new"' }) + doneCards(s, today) + recordsCard(s, today);
     }
     var p = T.planForDate(s, today);
     var done = s.workoutSessions.filter(function (x) { return x.date === today && x.status === 'done'; });
@@ -95,10 +105,7 @@
       '<button type="button" class="link small-link" data-action="workout-day" data-date="' + today + '">Trocar</button></div>' + inner +
       '<button type="button" class="btn soft full quick-btn-open" data-action="quick-open">' + ui.icon('sparkle', 18) + 'Registro rápido de uma série</button></section>';
 
-    done.forEach(function (x) {
-      html += '<section class="card ok-card"><div class="card-head"><h2>' + ui.icon('check', 18) + 'Feito hoje: ' + esc(x.planName) + '</h2></div>' +
-        summaryHtml(T.sessionSummary(s, x)) + '<button type="button" class="link" data-action="session-view" data-id="' + esc(x.id) + '">Ver séries' + ui.icon('right', 16) + '</button></section>';
-    });
+    html += doneCards(s, today);
 
     // Próximos dias
     var next = [];
@@ -113,8 +120,29 @@
     html += '<div class="summary"><div class="stat"><span class="stat-label">Nesta semana</span><strong>' + wk.count + (wk.count === 1 ? ' treino' : ' treinos') + '</strong>' +
       '<span class="stat-sub">' + duration(wk.minutes) + '</span></div><div class="stat"><span class="stat-label">Volume da semana</span><strong>' +
       JS.graf.fmtNum(wk.volume, 0) + ' kg</strong><span class="stat-sub">carga × repetições</span></div></div>';
+    html += recordsCard(s, today);
     html += muscleCard(s, today);
     return html;
+  }
+
+  // Treinos feitos hoje (com os recordes batidos). Aparecem mesmo sem ficha montada (treino livre).
+  function doneCards(s, today) {
+    return s.workoutSessions.filter(function (x) { return x.date === today && x.status === 'done'; }).map(function (x) {
+      return '<section class="card ok-card"><div class="card-head"><h2>' + ui.icon('check', 18) + 'Feito hoje: ' + esc(x.planName) + '</h2></div>' +
+        summaryHtml(T.sessionSummary(s, x)) + '<button type="button" class="link" data-action="session-view" data-id="' + esc(x.id) + '">Ver séries' + ui.icon('right', 16) + '</button></section>';
+    }).join('');
+  }
+
+  /* ---------------- Recordes pessoais ---------------- */
+
+  function recordsCard(s, today) {
+    var r = T.recentRecords(s, today, 30, 5);
+    if (!r.list.length) return '';
+    return '<section class="card records-card"><div class="card-head"><h2>' + ui.icon('trophy', 18) + 'Recordes pessoais</h2><span class="count">' + r.total + (r.total === 1 ? ' recorde' : ' recordes') + ' em 30 dias</span></div>' +
+      r.list.map(function (e) {
+        return '<button type="button" class="pr-row" data-action="pr-open" data-id="' + esc(e.exerciseId) + '"><span class="pr-ic">' + ui.icon('trophy', 16) + '</span>' +
+          '<span class="pr-main"><strong>' + esc(e.name) + '</strong><small>' + esc(prText(e)) + '</small></span><span class="pr-date">' + esc(C.formatDayLabel(e.date, today)) + '</span></button>';
+      }).join('') + '</section>';
   }
 
   /* ---------------- Séries por grupo muscular (semana) ---------------- */
@@ -224,10 +252,11 @@
     if (!list.length) return ui.empty('chart', 'Conclua um treino para ver aqui se a carga de cada aparelho está aumentando ou diminuindo.');
     if (!view.evoEx || !list.some(function (x) { return x.id === view.evoEx; })) view.evoEx = list[0].id;
     var cur = list.filter(function (x) { return x.id === view.evoEx; })[0], tr = cur.trend;
-    var hist = T.exerciseHistory(s, cur.id);
-    var html = ui.select({ label: 'Exercício', name: 'evo', options: list.map(function (x) { return [x.id, x.name]; }), value: cur.id, attrs: 'data-change="evo-ex"' }) +
+    var hist = T.exerciseHistory(s, cur.id), rc = T.exerciseRecords(s, cur.id), recSet = {};
+    rc.events.forEach(function (e) { recSet[e.sessionId + '|' + e.setIndex] = e; });
+    var html = recordsCard(s, C.toDateKey(new Date())) + ui.select({ label: 'Exercício', name: 'evo', options: list.map(function (x) { return [x.id, x.name]; }), value: cur.id, attrs: 'data-change="evo-ex"' }) +
       '<div class="summary"><div class="stat"><span class="stat-label">Última carga</span><strong>' + kg(tr.last.maxLoad) + '</strong><span class="stat-sub">' + esc(C.formatDateBR(tr.last.date)) + ' • ' + tr.last.reps + ' rep.</span></div>' +
-      '<div class="stat"><span class="stat-label">Melhor carga</span><strong>' + kg(tr.best) + '</strong><span class="stat-sub">' + tr.count + (tr.count === 1 ? ' treino' : ' treinos') + '</span></div>' +
+      '<div class="stat pr-stat"><span class="stat-label">' + ui.icon('trophy', 12) + ' Melhor carga</span><strong>' + kg(tr.best) + '</strong><span class="stat-sub">' + (rc.best ? rc.best.reps + ' rep. • ' + esc(C.formatDayMonth(rc.best.date)) : tr.count + (tr.count === 1 ? ' treino' : ' treinos')) + '</span></div>' +
       '<div class="stat"><span class="stat-label">Vs. treino anterior</span><strong>' + trendTag(tr) + '</strong></div>' +
       '<div class="stat"><span class="stat-label">Desde o 1º treino</span><strong class="' + (tr.sinceFirst > 0 ? 'up' : tr.sinceFirst < 0 ? 'down' : '') + '">' + (tr.sinceFirst > 0 ? '+' : '') + kg(tr.sinceFirst) + '</strong></div></div>' +
       '<section class="card"><div class="card-head"><h2>Carga máxima por treino</h2></div>' +
@@ -240,7 +269,7 @@
     if (ls) html += '<p class="muted small evo-last">Última série: <strong>' + kg(ls.load) + ' × ' + ls.reps + '</strong> (' + esc(C.formatDateBR(ls.date)) + ')</p>';
     html += ui.section('Histórico de séries', hs.map(function (h) {
       return '<div class="item"><div class="item-main static"><span class="item-row"><span class="item-title">' + esc(C.formatDateBR(h.date)) + (h.active ? ' ' + ui.tag('em andamento', 'soft') : '') + '</span><span class="muted small">' + esc(h.planName) + '</span></span>' +
-        '<span class="item-meta hist-sets">' + h.sets.map(function (st2, k) { return '<span class="hs">S' + (k + 1) + ' ' + JS.graf.fmtNum(st2.load, 1) + '×' + st2.reps + (st2.via === 'atalho' ? ' ⌁' : st2.via === 'toque-atras' ? ' ·' : '') + '</span>'; }).join('') + '</span></div></div>';
+        '<span class="item-meta hist-sets">' + h.sets.map(function (st2, k) { var pr = recSet[h.sessionId + '|' + k]; return '<span class="hs' + (pr ? ' pr' : '') + '"' + (pr ? ' title="Recorde pessoal"' : '') + '>' + (pr ? ui.icon('trophy', 11) : '') + 'S' + (k + 1) + ' ' + JS.graf.fmtNum(st2.load, 1) + '×' + st2.reps + (st2.via === 'atalho' ? ' ⌁' : st2.via === 'toque-atras' ? ' ·' : '') + '</span>'; }).join('') + '</span></div></div>';
     }).join('') + '<p class="hint">⌁ = registrada pelo atalho do iPhone • · = pelo toque atrás</p>', '<span class="count">' + hs.length + '</span>');
     html += ui.section('Todos os aparelhos', list.map(function (x) {
       return '<div class="item"><button type="button" class="item-main" data-action="evo-pick" data-id="' + esc(x.id) + '"><span class="item-row"><span class="item-title">' + esc(x.name) + '</span>' + trendTag(x.trend) + '</span>' +
@@ -300,7 +329,7 @@
     var perm = bt.enabled && window.JSToque && JSToque.needsPermission() ? JSToque.requestPermission() : Promise.resolve('granted');
     window.JSToque && JSToque.unlockAudio();
     perm.then(function (r) {
-      JS.sessaoPerm = r;
+      if (JS.backTap && JS.backTap.setPerm) JS.backTap.setPerm(r); else JS.sessaoPerm = r;
       JS.anim.countdown(function () {
         JS.store.silentUpdate(function (st, n) { T.startSession(st, C.toDateKey(new Date()), planId, n); });
         JS.app.go('sessao');
@@ -312,10 +341,12 @@
   function sessionView(id) {
     var s = JS.store.state, x = R.byId(s.workoutSessions, id);
     if (!x) return;
-    var sm = T.sessionSummary(s, x);
+    var sm = T.sessionSummary(s, x), isPr = {};
+    x.items.forEach(function (it) { T.exerciseRecords(s, it.exerciseId).events.forEach(function (e) { if (e.sessionId === x.id) isPr[e.key] = e; }); });
     var body = summaryHtml(sm) + x.items.map(function (it) {
-      return '<div class="sv-ex"><strong>' + esc(it.name) + '</strong>' + (it.sets.length ? '<ol>' + it.sets.map(function (st) {
-        return '<li>' + kg(st.load) + ' × ' + st.reps + (st.via === 'toque-atras' ? ' <span class="via" title="Registrada pelo toque atrás">' + ui.icon('phone', 12) + '</span>' : '') + '</li>';
+      return '<div class="sv-ex"><strong>' + esc(it.name) + '</strong>' + (it.sets.length ? '<ol>' + it.sets.map(function (st, k) {
+        var pr = isPr[x.id + '|' + it.id + '|' + k];
+        return '<li' + (pr ? ' class="pr" title="Recorde pessoal"' : '') + '>' + (pr ? ui.icon('trophy', 12) + ' ' : '') + kg(st.load) + ' × ' + st.reps + (st.via === 'toque-atras' ? ' <span class="via" title="Registrada pelo toque atrás">' + ui.icon('phone', 12) + '</span>' : '') + '</li>';
       }).join('') + '</ol>' : '<p class="muted small">Não feito</p>') + '</div>';
     }).join('');
     ui.openSheet({ title: x.planName, subtitle: C.formatDateLong(x.date), body: body + '<button type="button" class="btn danger full" data-del-session>Excluir este registro</button>',
@@ -739,6 +770,11 @@
   JS.actions['plan-new'] = function () { openPlanEditor(null); };
   JS.actions['quick-open'] = function () { JS.openQuickRegister({ source: 'botao' }); };
   JS.actions['plan-menu'] = function (d) { planMenu(d.id); };
+  JS.actions['pr-open'] = function (d) {
+    view.mode = 'evolucao'; view.evoEx = d.id;
+    JS.app.render({ enter: 'view:r' });
+    window.scrollTo({ top: 0, behavior: JS.anim.reduced() ? 'auto' : 'smooth' });
+  };
   JS.actions['cycle-energy'] = function (d, el) {
     var today = C.toDateKey(new Date()), v = Number(d.v), cur = (window.JSCiclo.dayLog(JS.store.state, today) || {}).energy;
     JS.anim.mark('[data-action="cycle-energy"][data-v="' + v + '"]', 'pop', { ms: 600 });

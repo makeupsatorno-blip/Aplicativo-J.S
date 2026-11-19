@@ -285,23 +285,107 @@
   function discardSession(state, sessionId) { R.removeById(state.workoutSessions, sessionId); }
   function deleteSession(state, sessionId) { R.removeById(state.workoutSessions, sessionId); }
 
-  // Resumo: duração, séries, volume (carga × repetições) e recordes de carga.
-  function sessionSummary(state, s, nowISO) {
+  // Números do treino (sem recordes: barato, usado nas estatísticas da semana).
+  function sessionNumbers(s, nowISO) {
     var end = new Date(s.finishedAt || nowISO || new Date().toISOString()).getTime();
     var minutes = Math.max(0, Math.round((end - new Date(s.startedAt).getTime()) / 60000));
-    var sets = 0, volume = 0, done = 0, prs = [];
-    var before = doneSessions(state).filter(function (x) { return x.id !== s.id && (x.date < s.date || (x.date === s.date && x.startedAt < s.startedAt)); });
+    var sets = 0, volume = 0, done = 0;
     s.items.forEach(function (it) {
       if (!it.sets.length) return;
       done++;
       sets += it.sets.length;
       it.sets.forEach(function (st) { volume += (st.load || 0) * (st.reps || 0); });
-      var max = Math.max.apply(null, it.sets.map(function (st) { return st.load || 0; }));
-      var prev = null;
-      before.forEach(function (x) { x.items.forEach(function (y) { if (y.exerciseId === it.exerciseId) y.sets.forEach(function (st) { if (prev == null || st.load > prev) prev = st.load; }); }); });
-      if (max > 0 && prev != null && max > prev) prs.push({ name: it.name, load: max, prev: prev });
     });
-    return { minutes: minutes, sets: sets, volume: Math.round(volume), exercises: done, total: s.items.length, prs: prs };
+    return { minutes: minutes, sets: sets, volume: Math.round(volume), exercises: done, total: s.items.length };
+  }
+
+  // Resumo: duração, séries, volume (carga × repetições) e os recordes batidos neste treino.
+  function sessionSummary(state, s, nowISO) {
+    var out = sessionNumbers(s, nowISO);
+    out.prs = sessionRecords(state, s.id);
+    return out;
+  }
+
+  /* ---------------- Recordes pessoais ---------------- */
+
+  // Percorre todas as séries do exercício, em ordem (data, início do treino, ordem das séries), e marca
+  // as que bateram recorde:
+  //  - "carga": mais pesada do que qualquer série anterior do exercício;
+  //  - "reps": mais repetições do que qualquer série anterior com a MESMA carga.
+  // A primeira vez que o exercício é feito não conta (não havia o que superar). Treinos em andamento
+  // entram na conta, então bater o recorde na 1ª série faz a 2ª ter que superar o novo.
+  function exerciseRecords(state, exerciseId) {
+    var sessions = state.workoutSessions.filter(function (x) { return x.status === 'done' || x.status === 'active'; })
+      .sort(function (a, b) { return cmp(a.date, b.date) || cmp(a.startedAt || '', b.startedAt || ''); });
+    var prior = [], events = [], maxLoad = 0, best = null;
+    sessions.forEach(function (sess) {
+      sess.items.forEach(function (it) {
+        if (it.exerciseId !== exerciseId) return;
+        it.sets.forEach(function (st, k) {
+          var load = Number(st.load) || 0, reps = Number(st.reps) || 0;
+          if (reps <= 0) return; // série sem repetição não vale
+          var kind = null, prevLoad = null, prevReps = null;
+          if (prior.length) {
+            if (load > maxLoad) { kind = 'carga'; prevLoad = maxLoad; }
+            else {
+              var same = null;
+              prior.forEach(function (p) { if (p.load === load && (same == null || p.reps > same)) same = p.reps; });
+              if (same != null && reps > same) { kind = 'reps'; prevLoad = load; prevReps = same; }
+            }
+          }
+          if (kind) events.push({ key: sess.id + '|' + it.id + '|' + k, sessionId: sess.id, itemId: it.id, setIndex: k, date: sess.date, at: st.at || sess.startedAt || '',
+            name: it.name || exerciseName(state, exerciseId), exerciseId: exerciseId, kind: kind, load: load, reps: reps, prevLoad: prevLoad, prevReps: prevReps });
+          prior.push({ load: load, reps: reps });
+          if (load > maxLoad) maxLoad = load;
+          if (!best || load > best.load || (load === best.load && reps > best.reps)) best = { load: load, reps: reps, date: sess.date };
+        });
+      });
+    });
+    return { events: events, best: best };
+  }
+
+  // O que bater: a maior carga já feita no exercício (com as repetições e o dia).
+  function exerciseBest(state, exerciseId) { return exerciseRecords(state, exerciseId).best; }
+
+  // A série (número k, a partir de 0) bateu recorde? Devolve o recorde ou null.
+  function recordOf(state, sessionId, itemId, setIndex) {
+    var s = R.byId(state.workoutSessions, sessionId), it = s && R.byId(s.items, itemId);
+    if (!it) return null;
+    var key = sessionId + '|' + itemId + '|' + setIndex, ev = exerciseRecords(state, it.exerciseId).events;
+    for (var i = 0; i < ev.length; i++) if (ev[i].key === key) return ev[i];
+    return null;
+  }
+
+  // Recordes de um treino, um por exercício: o de carga vale mais que o de repetições.
+  function sessionRecords(state, sessionId) {
+    var s = R.byId(state.workoutSessions, sessionId);
+    if (!s) return [];
+    var seen = {}, out = [];
+    s.items.forEach(function (it) {
+      if (seen[it.exerciseId] || !it.sets.length) return;
+      seen[it.exerciseId] = true;
+      var mine = exerciseRecords(state, it.exerciseId).events.filter(function (e) { return e.sessionId === sessionId; });
+      if (!mine.length) return;
+      var top = mine.filter(function (e) { return e.kind === 'carga'; }).sort(function (a, b) { return b.load - a.load; })[0] ||
+        mine.sort(function (a, b) { return b.reps - a.reps; })[0];
+      out.push({ name: top.name, exerciseId: top.exerciseId, kind: top.kind, load: top.load, reps: top.reps, prevLoad: top.prevLoad, prevReps: top.prevReps,
+        prev: top.prevLoad, count: mine.length });
+    });
+    return out;
+  }
+
+  // Todos os exercícios que já tiveram algum recorde, do mais recente para o mais antigo.
+  function recentRecords(state, today, days, limit) {
+    var from = C.addDays(today, -(days || 30)), ids = {}, all = [];
+    state.workoutSessions.forEach(function (x) { if (x.status === 'done' || x.status === 'active') x.items.forEach(function (it) { if (it.sets.length) ids[it.exerciseId] = 1; }); });
+    Object.keys(ids).forEach(function (id) {
+      exerciseRecords(state, id).events.forEach(function (e) { if (e.date >= from && e.date <= today) all.push(e); });
+    });
+    // um por exercício (o mais recente), para a lista não repetir o mesmo aparelho
+    all.sort(function (a, b) { return cmp(b.date, a.date) || cmp(b.at, a.at) || (b.kind === 'carga' ? 1 : 0) - (a.kind === 'carga' ? 1 : 0); });
+    var seen = {}, out = [], total = all.length;
+    all.forEach(function (e) { if (!seen[e.exerciseId]) { seen[e.exerciseId] = true; out.push(e); } });
+    return { list: out.slice(0, limit || 5), exercises: out.length, total: total };
   }
 
   /* ---------------- Registro rápido ---------------- */
@@ -423,7 +507,7 @@
     doneSessions(state).forEach(function (s) {
       var idx = Math.floor(C.diffDays(start, s.date) / 7);
       if (idx < 0 || idx >= weeks) return;
-      var sum = sessionSummary(state, s);
+      var sum = sessionNumbers(s);
       out[idx].count++; out[idx].volume += sum.volume; out[idx].minutes += sum.minutes;
     });
     return out;
@@ -520,6 +604,7 @@
     finishSession: finishSession, discardSession: discardSession, deleteSession: deleteSession, sessionSummary: sessionSummary,
     lastSet: lastSet, quickSet: quickSet, quickContext: quickContext, exerciseSets: exerciseSets,
     exerciseHistory: exerciseHistory, exerciseTrend: exerciseTrend, trainedExercises: trainedExercises,
-    weeklyStats: weeklyStats, monthCalendar: monthCalendar, weeklyMuscleSets: weeklyMuscleSets
+    weeklyStats: weeklyStats, monthCalendar: monthCalendar, weeklyMuscleSets: weeklyMuscleSets,
+    exerciseRecords: exerciseRecords, exerciseBest: exerciseBest, recordOf: recordOf, sessionRecords: sessionRecords, recentRecords: recentRecords
   };
 });

@@ -3,7 +3,7 @@
   'use strict';
   var JS = window.JS, C = window.JSCore, R = window.JSRegras, N = window.JSNutri, ui = JS.ui, esc = ui.esc;
   var view = { mode: 'hoje', date: null, variants: {}, query: '' };
-  var MODES = [['hoje', 'Diário'], ['cardapio', 'Cardápio'], ['horarios', 'Horários'], ['tabela', 'Tabela']];
+  var MODES = [['hoje', 'Diário'], ['cardapio', 'Cardápio'], ['salvas', 'Salvas'], ['horarios', 'Horários'], ['tabela', 'Tabela']];
   var MACROS = [['prot', 'Proteínas', 'var(--mac-prot, #A0526D)'], ['carb', 'Carboidratos', 'var(--mac-carb, #4F6F9A)'], ['lip', 'Gorduras', 'var(--mac-lip, #A85E3C)']];
   var GRAM_CHIPS = [30, 50, 100, 150, 200];
 
@@ -156,6 +156,8 @@
       macroBar(t) +
       (dl.count ? '<button type="button" class="link" data-action="food-day-table">Tabela nutricional completa do dia' + ui.icon('right', 16) + '</button>' : '') + '</section>';
 
+    var mealList = mealsOfDay(s, date, dl);
+    html += proteinCard(s, date, mealList);
     html += waterCard(s, date, today);
     // Dia ainda vazio: oferece repetir o último dia com alimentos (até 14 dias atrás).
     var prevDay = !dl.count ? N.lastMealDay(s, date, null) : null;
@@ -168,7 +170,7 @@
 
     var groups = {};
     dl.meals.forEach(function (m) { groups[m.meal] = m; });
-    mealsOfDay(s, date, dl).forEach(function (m) {
+    mealList.forEach(function (m) {
       var g = groups[m.type];
       var rows = g ? g.items.map(function (x) {
         return '<button type="button" class="food-row" data-action="food-log" data-id="' + esc(x.log.id) + '">' + foodIcon(x.food || { name: x.log.name }) + '<span class="fr-main"><span class="fr-name">' + foodName(x.log.name) + '</span>' +
@@ -182,8 +184,15 @@
           '<span>Repetir de ' + esc(dayName(lastD, today)) + '<small>' + src.items.map(function (x) { return esc(String(x.log.name).split(',')[0]); }).slice(0, 3).join(', ') +
           (src.items.length > 3 ? '…' : '') + ' • ' + f0(src.total.kcal) + ' kcal</small></span></button>';
       }
+      // Macros desta refeição (proteínas, carboidratos, gorduras) e atalho para salvá-la.
+      var macros = g ? '<div class="meal-macros" aria-label="Macronutrientes desta refeição">' + [['prot', 'P', 'Proteínas'], ['carb', 'C', 'Carboidratos'], ['lip', 'G', 'Gorduras']].map(function (k) {
+        return '<span class="mm mm-' + k[0] + '" title="' + k[2] + '"><i></i>' + k[1] + ' ' + f1(g.total[k[0]]) + ' g</span>';
+      }).join('') + '</div>' : '';
+      var tools = (g ? '<span class="count">' + f0(g.total.kcal) + ' kcal</span>' : '') +
+        (g ? '<button type="button" class="icon-btn sm save-meal-btn" data-action="saved-from" data-meal="' + m.type + '" aria-label="Salvar esta refeição como minha refeição" title="Salvar como minha refeição">' + ui.icon('bookmark', 16) + '</button>' : '');
+      var quick = g ? '' : savedQuick(s, m.type);
       html += '<section class="card meal-card"><div class="card-head"><h2>' + esc(m.name) + (m.time ? ' <span class="muted small">' + esc(m.time) + '</span>' : '') + '</h2>' +
-        (g ? '<span class="count">' + f0(g.total.kcal) + ' kcal</span>' : '') + '</div>' + rows + copy +
+        (tools ? '<span class="head-tools">' + tools + '</span>' : '') + '</div>' + macros + rows + quick + copy +
         '<button type="button" class="add-food" data-action="food-add" data-meal="' + m.type + '">' + ui.icon('plus', 18) + 'Adicionar alimento</button></section>';
     });
     html += '<p class="note">Valores da Tabela Brasileira de Composição de Alimentos (TACO — NEPA/UNICAMP), por quantidade registrada.</p>';
@@ -282,6 +291,235 @@
   }
   JS.waterSettings = waterSettings;
 
+  /* ---------------- Meta de proteína ---------------- */
+
+  function proteinCard(s, date, mealList) {
+    var pr = N.proteinReport(s, date), t = pr.target, names = {};
+    mealList.forEach(function (m) { names[m.type] = m.name; });
+    var ic = ui.icon('dumbbell', 18);
+    if (!t) {
+      return '<section class="card prot-card"><div class="card-head"><h2>' + ic + 'Proteína</h2><button type="button" class="link small-link" data-action="nutri-settings">Definir meta</button></div>' +
+        '<p class="hero-num">' + f0(pr.eaten) + ' <small>g hoje</small></p>' +
+        '<p class="muted small">Registre seu peso em Corpo para o app calcular a meta sozinho, ou defina a sua em "Definir meta".</p></section>';
+    }
+    var rows = pr.meals.map(function (m) {
+      return '<div class="pm-row"><span class="pm-name">' + esc(names[m.meal] || C.MEAL_TYPES[m.meal]) + '</span><span class="pm-bar" aria-hidden="true"><i style="width:' + Math.min(100, Math.round(m.prot / t.value * 100)) + '%"></i></span><strong>' + f0(m.prot) + ' g</strong></div>';
+    }).join('');
+    return '<section class="card prot-card"><div class="card-head"><h2>' + ic + 'Proteína</h2><button type="button" class="link small-link" data-action="nutri-settings">Meta</button></div>' +
+      '<p class="hero-num">' + f0(pr.eaten) + ' <small>g de ' + t.value + ' g</small></p>' +
+      '<p class="muted small">' + (pr.reached ? 'Meta de proteína batida! 💪' : 'Faltam ' + pr.left + ' g') + '</p>' +
+      '<div class="progress prot-bar" role="progressbar" aria-valuenow="' + pr.pct + '" aria-valuemin="0" aria-valuemax="100" aria-label="Proteína da meta"><span style="width:' + pr.pct + '%"></span></div>' +
+      (rows ? '<div class="prot-meals" aria-label="Proteína por refeição">' + rows + '</div>' : '') +
+      '<p class="hint">' + (t.source === 'peso' ? 'Meta automática: ' + JS.graf.fmtNum(t.perKg, 1) + ' g por kg × ' + f1(t.kg) + ' kg. ' : 'Meta definida por você. ') + 'Dividir a proteína em 3 a 5 refeições costuma ajudar. Se uma nutricionista passou outra meta, use a dela.</p></section>';
+  }
+
+  /* ---------------- Refeições salvas ---------------- */
+
+  function savedMeta(s, m) {
+    var t = N.savedMealTotals(s, m);
+    return f0(t.kcal) + ' kcal • P ' + f1(t.prot) + ' g • C ' + f1(t.carb) + ' g • G ' + f1(t.lip) + ' g' + (t.missing ? ' • ' + t.missing + (t.missing === 1 ? ' alimento removido' : ' alimentos removidos') : '');
+  }
+  function savedPlate(s, m) {
+    return '<span class="saved-plate" aria-hidden="true">' + m.items.slice(0, 4).map(function (i) { return foodIcon(N.foodById(s, i.foodId) || { name: '' }); }).join('') + '</span>';
+  }
+  // Na refeição vazia do Diário: um toque para adicionar a refeição salva daquele tipo.
+  function savedQuick(s, type) {
+    var all = s.savedMeals || [];
+    if (!all.length) return '';
+    var mine = all.filter(function (m) { return m.meal === type; }), list = N.savedMealsFor(s, type).filter(function (m) { return m.meal === type; }).slice(0, 2), out = '';
+    list.forEach(function (m) {
+      var t = N.savedMealTotals(s, m);
+      out += '<button type="button" class="saved-quick" data-action="saved-use" data-id="' + esc(m.id) + '" data-meal="' + type + '">' + ui.icon('bookmark', 16) +
+        '<span>' + esc(m.name) + '<small>' + f0(t.kcal) + ' kcal • P ' + f1(t.prot) + ' g • ' + m.items.length + (m.items.length === 1 ? ' alimento' : ' alimentos') + '</small></span><em>+</em></button>';
+    });
+    if (all.length > list.length || !mine.length) out += '<button type="button" class="link saved-more" data-action="saved-pick" data-meal="' + type + '">' + ui.icon('bookmark', 14) + 'Minhas refeições (' + all.length + ')' + ui.icon('right', 14) + '</button>';
+    return out;
+  }
+  // Linha de refeição salva no seletor (adicionar alimento / minhas refeições).
+  function savedRow(s, m) {
+    return '<button type="button" class="saved-row" data-saved="' + esc(m.id) + '">' + savedPlate(s, m) + '<span class="sr-main"><strong>' + esc(m.name) + '</strong><small>' + esc(savedMeta(s, m)) + '</small></span><em>+</em></button>';
+  }
+  function savedSection(meal, limit) {
+    var s = JS.store.state, list = N.savedMealsFor(s, meal);
+    if (!list.length) return '';
+    return '<p class="stat-label">' + ui.icon('bookmark', 14) + ' Minhas refeições</p>' + list.slice(0, limit || 6).map(function (m) { return savedRow(s, m); }).join('') +
+      (list.length > (limit || 6) ? '<button type="button" class="link" data-saved-all>Ver todas (' + list.length + ')' + ui.icon('right', 14) + '</button>' : '');
+  }
+
+  // Adiciona a refeição salva no diário (num toque), com desfazer.
+  function useSaved(id, meal, date) {
+    date = date || curDate();
+    var res = null;
+    JS.store.update(function (st, n) { res = N.applySavedMeal(st, id, date, meal, n); });
+    if (!res || !res.logs.length) { ui.toast('Não achei os alimentos desta refeição. Edite-a e adicione de novo.', { error: true }); return; }
+    var kcal = res.logs.reduce(function (a, l) { return a + (N.logNutrients(JS.store.state, l).kcal || 0); }, 0);
+    ui.toast('Adicionei ' + res.logs.length + (res.logs.length === 1 ? ' alimento' : ' alimentos') + ' de "' + res.saved.name + '" em ' + C.MEAL_TYPES[res.meal].toLowerCase() + ' (' + f0(kcal) + ' kcal).' + (res.missing ? ' ' + res.missing + (res.missing === 1 ? ' alimento não existe mais.' : ' alimentos não existem mais.') : ''), {
+      actionLabel: 'Desfazer', timeout: 6000,
+      onAction: function () { JS.store.update(function (st) { res.logs.forEach(function (l) { N.deleteFoodLog(st, l.id); }); var m = R.byId(st.savedMeals, id); if (m && m.uses) m.uses--; }); }
+    });
+  }
+
+  function renderSalvas(s, now) {
+    var list = (s.savedMeals || []).slice().sort(function (a, b) {
+      return N.MEAL_ORDER.indexOf(a.meal) - N.MEAL_ORDER.indexOf(b.meal) || a.name.localeCompare(b.name);
+    });
+    if (!list.length) {
+      return ui.empty('bookmark', 'Monte uma vez as refeições que você repete (ex.: "Meu café da manhã") e adicione com um toque. Também dá para salvar um prato do Diário: toque no marcador da refeição.', { label: 'Criar minha primeira refeição', attrs: 'data-action="saved-new"' });
+    }
+    var today = C.toDateKey(now), when = C.formatDayLabel(curDate(), today).toLowerCase();
+    var html = '<p class="muted small">Toque em <strong>Adicionar</strong> para colocar a refeição inteira em <strong>' + esc(when) + '</strong> (no Diário você escolhe o dia).</p>';
+    list.forEach(function (m) {
+      html += '<section class="card saved-card"><div class="card-head"><h2>' + esc(m.name) + '</h2><span class="tag soft">' + esc(C.MEAL_TYPES[m.meal] || '') + '</span></div>' +
+        '<div class="sug-plate" aria-hidden="true">' + m.items.slice(0, 6).map(function (i) { return foodIcon(N.foodById(s, i.foodId) || { name: '' }); }).join('') + '</div>' +
+        '<ul class="saved-items">' + m.items.map(function (i) {
+          var f = N.foodById(s, i.foodId);
+          return '<li>' + (f ? '<span>' + f1(i.grams) + ' g</span><span class="fr-name">' + foodName(f.name) + '</span><em>' + f0(N.scale(f.per100, i.grams).kcal) + ' kcal</em>'
+            : '<span>' + f1(i.grams) + ' g</span><span class="muted">Alimento removido</span><em></em>') + '</li>';
+        }).join('') + '</ul>' +
+        '<p class="fr-meta">' + esc(savedMeta(s, m)) + '</p>' +
+        '<div class="btn-row tight"><button type="button" class="btn small primary" data-action="saved-use" data-id="' + esc(m.id) + '">' + ui.icon('plus', 16) + 'Adicionar ' + esc(when) + '</button>' +
+        '<button type="button" class="btn small soft" data-action="saved-edit" data-id="' + esc(m.id) + '">' + ui.icon('edit', 16) + 'Editar</button></div></section>';
+    });
+    return html + '<p class="note">' + ui.icon('info', 14) + ' Os valores vêm da Tabela TACO, na quantidade de cada alimento. Dá para editar quantidades e trocar alimentos quando quiser.</p>';
+  }
+
+  // Seletor com todas as refeições salvas (quando há mais do que cabem na tela).
+  function pickSaved(meal) {
+    var s = JS.store.state;
+    ui.openSheet({
+      title: 'Minhas refeições', subtitle: 'Toque para adicionar em ' + C.formatDayLabel(curDate(), C.toDateKey(new Date())).toLowerCase(),
+      body: (N.savedMealsFor(s, meal).map(function (m) { return savedRow(s, m); }).join('') || '<p class="muted small">Você ainda não salvou nenhuma refeição.</p>') +
+        '<button type="button" class="btn soft full" data-new>' + ui.icon('plus', 18) + 'Montar uma refeição nova</button>',
+      onOpen: function (form) {
+        form.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-saved]');
+          if (b) { e.preventDefault(); ui.closeSheet(); useSaved(b.dataset.saved, meal, curDate()); return; }
+          if (e.target.closest('[data-new]')) { e.preventDefault(); openSavedEditor(null, { name: '', meal: meal || guessMeal(), items: [] }); }
+        });
+      }
+    });
+  }
+
+  // Salva os alimentos de uma refeição do Diário como "minha refeição".
+  function saveFromMeal(type) {
+    var s = JS.store.state, date = curDate(), items = N.savedItemsFromDay(s, date, type).filter(function (i) { return N.foodById(s, i.foodId); });
+    if (!items.length) return;
+    var def = 'Meu ' + C.MEAL_TYPES[type].toLowerCase();
+    var tot = N.sum(items.map(function (i) { return N.scale(N.foodById(s, i.foodId).per100, i.grams); }));
+    var body = ui.input({ label: 'Nome da refeição', name: 'name', value: def, attrs: 'maxlength="40"' }) +
+      '<p class="stat-label">' + items.length + (items.length === 1 ? ' alimento' : ' alimentos') + '</p><ul class="saved-items">' + items.map(function (i) {
+        var f = N.foodById(s, i.foodId);
+        return '<li><span>' + f1(i.grams) + ' g</span><span class="fr-name">' + foodName(f.name) + '</span><em>' + f0(N.scale(f.per100, i.grams).kcal) + ' kcal</em></li>';
+      }).join('') + '</ul><p class="fr-meta">' + f0(tot.kcal) + ' kcal • P ' + f1(tot.prot) + ' g • C ' + f1(tot.carb) + ' g • G ' + f1(tot.lip) + ' g</p>' +
+      '<p class="hint">Depois é só tocar nela ao adicionar alimento (ou na aba Salvas) para colocar tudo de uma vez.</p>';
+    ui.openSheet({
+      title: 'Salvar como minha refeição', body: body, submitLabel: 'Salvar',
+      onSubmit: function (v) {
+        var r = N.validateSavedMeal({ name: v.name, meal: type, items: items });
+        if (!r.ok) return { errors: r.errors.name ? { name: r.errors.name } : { name: r.errors.items } };
+        var saved = null;
+        JS.store.update(function (st, n) { saved = N.createSavedMeal(st, r.value, n); });
+        if (!saved) return { errors: { name: 'Você já tem ' + N.SAVED_MAX + ' refeições salvas. Exclua alguma na aba Salvas.' } };
+        ui.toast('"' + saved.name + '" salva! Agora é só tocar para adicionar.', { actionLabel: 'Ver salvas', onAction: function () { view.mode = 'salvas'; JS.app.render({ enter: 'view:r' }); } });
+      }
+    });
+  }
+
+  // Editor: nome, refeição e alimentos (com quantidade). "draft" guarda o que já foi digitado
+  // enquanto a usuária escolhe um alimento em outra janela.
+  function openSavedEditor(sm, draft) {
+    var s = JS.store.state;
+    draft = draft || { name: sm ? sm.name : '', meal: sm ? sm.meal : guessMeal(), items: sm ? JSON.parse(JSON.stringify(sm.items)) : [] };
+    var rows = draft.items.map(function (it, i) {
+      var f = N.foodById(s, it.foodId);
+      return '<div class="se-item">' + foodIcon(f || { name: '' }) + '<span class="se-name">' + (f ? foodName(f.name) : '<em>Alimento removido</em>') + '</span>' +
+        '<label class="se-g"><input name="g_' + i + '" type="text" inputmode="decimal" autocomplete="off" value="' + esc(String(it.grams).replace('.', ',')) + '" aria-label="Quantidade em gramas"><span>g</span></label>' +
+        '<button type="button" class="icon-btn sm danger" data-remove="' + i + '" aria-label="Remover alimento">' + ui.icon('x', 16) + '</button></div>';
+    }).join('');
+    var body = ui.input({ label: 'Nome', name: 'name', value: draft.name, attrs: 'maxlength="40"', placeholder: 'Ex.: Meu café da manhã' }) +
+      ui.select({ label: 'Refeição', name: 'meal', options: ui.entries(C.MEAL_TYPES), value: draft.meal }) +
+      '<div class="field" data-field="items"><span class="label">Alimentos</span><div class="se-list">' + (rows || '<p class="muted small">Nenhum alimento ainda.</p>') + '</div><p class="err" role="alert"></p></div>' +
+      '<button type="button" class="btn soft full" data-add-food>' + ui.icon('plus', 18) + 'Adicionar alimento</button>' +
+      '<p class="se-total muted small" data-total aria-live="polite"></p>' +
+      (sm ? '<button type="button" class="btn ghost danger-text full" data-del>' + ui.icon('trash', 18) + 'Excluir esta refeição</button>' : '');
+    function sync(form) {
+      draft.name = form.elements.name.value; draft.meal = form.elements.meal.value;
+      draft.items.forEach(function (it, i) { var el = form.elements['g_' + i]; if (el) it.grams = el.value; });
+    }
+    ui.openSheet({
+      title: sm ? 'Editar refeição' : 'Nova refeição salva', body: body, submitLabel: sm ? 'Salvar' : 'Criar',
+      onOpen: function (form) {
+        function total() {
+          sync(form);
+          var rowsN = draft.items.map(function (it) { var f = N.foodById(s, it.foodId), g = Number(String(it.grams).replace(',', '.')); return f && g > 0 ? N.scale(f.per100, g) : null; }).filter(Boolean);
+          var t = N.sum(rowsN);
+          form.querySelector('[data-total]').textContent = rowsN.length ? 'Total: ' + f0(t.kcal) + ' kcal • P ' + f1(t.prot) + ' g • C ' + f1(t.carb) + ' g • G ' + f1(t.lip) + ' g' : '';
+        }
+        form.addEventListener('input', total);
+        total();
+        form.querySelectorAll('[data-remove]').forEach(function (b) { b.addEventListener('click', function () { sync(form); draft.items.splice(Number(b.dataset.remove), 1); openSavedEditor(sm, draft); }); });
+        form.querySelector('[data-add-food]').addEventListener('click', function () { sync(form); pickFoodFor(sm, draft); });
+        var del = form.querySelector('[data-del]');
+        if (del) del.addEventListener('click', function () {
+          ui.confirm({ title: 'Excluir esta refeição?', message: '"' + sm.name + '" sai da lista. O que você já registrou no Diário continua.', confirmLabel: 'Excluir', danger: true }).then(function (ok) {
+            if (!ok) return;
+            JS.store.update(function (st) { N.deleteSavedMeal(st, sm.id); });
+            ui.closeSheet(); ui.toast('Refeição excluída.');
+          });
+        });
+      },
+      onSubmit: function (v, form) {
+        sync(form);
+        var r = N.validateSavedMeal(draft);
+        if (!r.ok) return { errors: r.errors };
+        var saved = null;
+        JS.store.update(function (st, n) { saved = sm ? N.updateSavedMeal(st, sm.id, r.value, n) : N.createSavedMeal(st, r.value, n); });
+        if (!saved) return { errors: { name: 'Você já tem ' + N.SAVED_MAX + ' refeições salvas. Exclua alguma para criar outra.' } };
+        ui.toast(sm ? 'Refeição atualizada.' : '"' + saved.name + '" criada! Agora é só tocar para adicionar.');
+      }
+    });
+  }
+
+  // Escolher um alimento para a refeição que está sendo montada.
+  function pickFoodFor(sm, draft) {
+    var s = JS.store.state;
+    function rows(list, kind) {
+      return list.map(function (x) { var f = x.food || x; return '<button type="button" class="food-row" data-pick="' + esc(f.id) + '">' + foodIcon(f) + '<span class="fr-main"><span class="fr-name">' + foodName(f.name) + '</span><span class="fr-meta">' +
+        (x.grams ? (kind === 'recente' ? 'última vez ' : '') + f1(x.grams) + ' g' : esc(f.group)) + '</span></span><strong>' + f0(N.scale(f.per100, x.grams || 100).kcal) + '<small> kcal</small></strong></button>'; }).join('');
+    }
+    function start() {
+      var fav = N.favorites(s), favIds = fav.map(function (x) { return x.food.id; }), rec = N.recentFoods(s, 10).filter(function (x) { return favIds.indexOf(x.food.id) < 0; }).slice(0, 8);
+      return (fav.length ? '<p class="stat-label">' + ui.icon('star', 14) + ' Favoritos</p>' + rows(fav, 'favorito') : '') + (rec.length ? '<p class="stat-label">Usados recentemente</p>' + rows(rec, 'recente') : '') ||
+        '<p class="muted small">Digite para buscar na tabela TACO.</p>';
+    }
+    var body = '<div class="field search-field">' + ui.icon('search', 18) + '<input type="search" name="q" placeholder="Buscar alimento" autocomplete="off" aria-label="Buscar alimento"></div>' +
+      '<div class="food-results" data-results>' + start() + '</div><button type="button" class="btn ghost full" data-back>Voltar sem adicionar</button>';
+    ui.openSheet({
+      title: 'Adicionar à refeição', subtitle: draft.name || 'Nova refeição', body: body,
+      onOpen: function (form) {
+        var q = form.elements.q, box = form.querySelector('[data-results]'), t = null;
+        q.addEventListener('input', function () {
+          clearTimeout(t);
+          t = setTimeout(function () {
+            box.innerHTML = q.value.trim() ? (rows(N.search(s, q.value, 30)) || '<p class="muted small">Nada encontrado. Tente outra palavra.</p>') : start();
+          }, 120);
+        });
+        form.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-pick]');
+          if (b) {
+            e.preventDefault();
+            if (draft.items.length >= N.SAVED_ITEMS_MAX) { ui.toast('Uma refeição salva tem até ' + N.SAVED_ITEMS_MAX + ' alimentos.', { error: true }); return; }
+            draft.items.push({ foodId: b.dataset.pick, grams: N.lastGrams(s, b.dataset.pick) || 100 });
+            openSavedEditor(sm, draft);
+            return;
+          }
+          if (e.target.closest('[data-back]')) { e.preventDefault(); openSavedEditor(sm, draft); }
+        });
+        setTimeout(function () { q.focus(); }, 250);
+      }
+    });
+  }
+
   /* ---------------- Cardápio sugerido ---------------- */
 
   function targetText(target) {
@@ -344,9 +582,10 @@
 
   function render(now) {
     var s = JS.store.state;
-    var html = '<h1 class="page-title">Alimentação</h1>' + ui.segmented(MODES, view.mode, 'food-mode');
+    var html = '<h1 class="page-title">Alimentação</h1>' + ui.segmented(MODES, view.mode, 'food-mode').replace('class="segmented"', 'class="segmented seg5"');
     if (view.mode === 'hoje') html += renderDiario(s, now);
     else if (view.mode === 'cardapio') html += renderCardapio(s, now);
+    else if (view.mode === 'salvas') html += renderSalvas(s, now);
     else if (view.mode === 'horarios') html += renderHorarios(s, now);
     else html += renderTabela();
     return html;
@@ -453,7 +692,7 @@
   function addFood(meal) {
     var date = curDate();
     var body = '<div class="field search-field">' + ui.icon('search', 18) + '<input type="search" name="q" placeholder="Buscar alimento" autocomplete="off" aria-label="Buscar alimento"></div>' +
-      '<div class="food-results" data-results>' + recentHtml() + '</div>' +
+      '<div class="food-results" data-results>' + recentHtml(meal) + '</div>' +
       '<button type="button" class="btn soft full" data-custom>' + ui.icon('plus', 18) + 'Cadastrar alimento</button>';
     ui.openSheet({
       title: 'Adicionar em ' + C.MEAL_TYPES[meal].toLowerCase(), subtitle: C.formatDayLabel(date, C.toDateKey(new Date())), body: body,
@@ -461,9 +700,12 @@
         var q = form.elements.q, box = form.querySelector('[data-results]'), t = null;
         q.addEventListener('input', function () {
           clearTimeout(t);
-          t = setTimeout(function () { box.innerHTML = q.value.trim() ? resultsHtml(q.value) : recentHtml(); }, 120);
+          t = setTimeout(function () { box.innerHTML = q.value.trim() ? resultsHtml(q.value) : recentHtml(meal); }, 120);
         });
         box.addEventListener('click', function (e) {
+          var sv = e.target.closest('[data-saved]');
+          if (sv) { e.preventDefault(); e.stopPropagation(); ui.closeSheet(); useSaved(sv.dataset.saved, meal, date); return; }
+          if (e.target.closest('[data-saved-all]')) { e.preventDefault(); e.stopPropagation(); pickSaved(meal); return; }
           var b = e.target.closest('[data-id]');
           if (!b) return;
           e.preventDefault(); e.stopPropagation();
@@ -482,11 +724,12 @@
       f0(N.scale(f.per100, grams).kcal) + '<small> kcal</small></strong></button>';
   }
   // Atalhos antes de digitar: favoritos e usados recentemente.
-  function recentHtml() {
+  function recentHtml(meal) {
     var s = JS.store.state, fav = N.favorites(s), favIds = fav.map(function (x) { return x.food.id; });
     var rec = N.recentFoods(s, 10).filter(function (x) { return favIds.indexOf(x.food.id) < 0; }).slice(0, 8);
-    if (!fav.length && !rec.length) return '<p class="muted small">Digite para buscar na tabela TACO (' + N.count + ' alimentos).</p>';
-    return (fav.length ? '<p class="stat-label">' + ui.icon('star', 14) + ' Favoritos</p>' + fav.map(function (x) { return foodRow(x.food, x.grams, 'favorito'); }).join('') : '') +
+    var saved = meal ? savedSection(meal, 4) : '';
+    if (!fav.length && !rec.length && !saved) return '<p class="muted small">Digite para buscar na tabela TACO (' + N.count + ' alimentos).</p>';
+    return saved + (fav.length ? '<p class="stat-label">' + ui.icon('star', 14) + ' Favoritos</p>' + fav.map(function (x) { return foodRow(x.food, x.grams, 'favorito'); }).join('') : '') +
       (rec.length ? '<p class="stat-label">Usados recentemente</p>' + rec.map(function (x) { return foodRow(x.food, x.grams, 'recente'); }).join('') : '') +
       (!fav.length ? '<p class="hint">Dica: toque na estrela ☆ de um alimento para ele ficar sempre aqui em cima.</p>' : '');
   }
@@ -534,17 +777,24 @@
   function nutriSettings() {
     var n = JS.store.state.settings.nutrition || {};
     var auto = N.kcalTarget(Object.assign({}, JS.store.state, { settings: Object.assign({}, JS.store.state.settings, { nutrition: Object.assign({}, n, { kcalTarget: null }) }) }));
+    var autoP = N.proteinTarget(Object.assign({}, JS.store.state, { settings: Object.assign({}, JS.store.state.settings, { nutrition: Object.assign({}, n, { proteinTarget: null }) }) }));
     var body = ui.input({ label: 'Meta de calorias por dia (kcal)', name: 'kcal', type: 'number', value: n.kcalTarget || '', attrs: 'inputmode="numeric" min="800" max="6000" step="10"',
       placeholder: auto ? 'Automática: ' + auto.value : 'Ex.: 1800', hint: 'Deixe em branco para usar a estimativa automática' + (auto ? ' (' + f0(auto.value) + ' kcal).' : ' (precisa do metabolismo basal em Corpo, ou de peso + altura + ano de nascimento).') }) +
       ui.select({ label: 'Nível de atividade (para a estimativa)', name: 'activity', options: Object.keys(N.ACTIVITY).map(function (k) { return [k, N.ACTIVITY[k][0]]; }), value: n.activity || 'moderada' }) +
-      '<p class="hint">Se uma nutricionista passou uma meta, use a dela.</p>';
+      ui.input({ label: 'Meta de proteína por dia (g)', name: 'proteinTarget', type: 'number', value: n.proteinTarget || '', attrs: 'inputmode="numeric" min="20" max="400" step="5"',
+        placeholder: autoP ? 'Automática: ' + autoP.value : 'Ex.: 100',
+        hint: 'Em branco = automática' + (autoP ? ': ' + JS.graf.fmtNum(autoP.perKg, 1) + ' g por kg × ' + f1(autoP.kg) + ' kg = ' + autoP.value + ' g.' : ' (precisa do seu peso em Corpo).') }) +
+      ui.select({ label: 'Proteína por kg (para a meta automática)', name: 'proteinPerKg', options: N.PROTEIN_PER_KG.map(function (p) { return [p, JS.graf.fmtNum(p, 1) + ' g por kg' + (p === 1.6 ? ' (padrão)' : '')]; }), value: n.proteinPerKg || 1.6 }) +
+      '<p class="hint">Referência comum para quem treina: 1,2 a 2,0 g de proteína por kg. Se uma nutricionista passou metas, use as dela.</p>';
     ui.openSheet({
-      title: 'Meta de calorias', body: body, submitLabel: 'Salvar',
+      title: 'Metas de calorias e proteína', body: body, submitLabel: 'Salvar',
       onSubmit: function (v) {
         var k = v.kcal ? Number(v.kcal) : null;
         if (k != null && !(k >= 800 && k <= 6000)) return { errors: { kcal: 'Entre 800 e 6000 kcal.' } };
-        JS.store.update(function (s) { s.settings.nutrition = { kcalTarget: k, activity: N.ACTIVITY[v.activity] ? v.activity : 'moderada' }; });
-        ui.toast('Meta salva.');
+        var p = N.validateProtein(v);
+        if (!p.ok) return { errors: p.errors };
+        JS.store.update(function (s) { s.settings.nutrition = Object.assign({}, s.settings.nutrition, { kcalTarget: k, activity: N.ACTIVITY[v.activity] ? v.activity : 'moderada', proteinTarget: p.value.proteinTarget, proteinPerKg: p.value.proteinPerKg }); });
+        ui.toast('Metas salvas.');
       }
     });
   }
@@ -693,6 +943,11 @@
     JS.app.render({ enter: 'view:' + (Number(d.delta) > 0 ? 'r' : 'l') });
   };
   JS.actions['food-add'] = function (d) { addFood(d.meal); };
+  JS.actions['saved-new'] = function () { openSavedEditor(null, { name: '', meal: guessMeal(), items: [] }); };
+  JS.actions['saved-edit'] = function (d) { var m = R.byId(JS.store.state.savedMeals || [], d.id); if (m) openSavedEditor(m); };
+  JS.actions['saved-use'] = function (d) { useSaved(d.id, d.meal || null, curDate()); };
+  JS.actions['saved-pick'] = function (d) { pickSaved(d.meal || null); };
+  JS.actions['saved-from'] = function (d) { saveFromMeal(d.meal); };
   JS.actions['food-copy'] = function (d) {
     var date = curDate(), added = [];
     JS.store.update(function (st, n) { added = N.copyMeal(st, d.from, date, d.meal || null, n); });
@@ -745,7 +1000,10 @@
   JS.alimView = view;
   JS.telas.alimentacao = {
     title: 'Alimentação', render: render, after: after,
-    get fab() { return view.mode === 'horarios' ? { label: 'Novo horário de refeição', action: 'meal-new' } : { label: 'Adicionar alimento', action: 'food-fab' }; }
+    get fab() {
+      return view.mode === 'horarios' ? { label: 'Novo horário de refeição', action: 'meal-new' }
+        : view.mode === 'salvas' ? { label: 'Nova refeição salva', action: 'saved-new' } : { label: 'Adicionar alimento', action: 'food-fab' };
+    }
   };
   JS.actions['food-fab'] = function () { addFood(guessMeal()); };
 })();

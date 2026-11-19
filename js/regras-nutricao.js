@@ -284,6 +284,98 @@
     return { value: Math.round(bmr * f / 10) * 10, source: source, bmr: bmr, factor: f };
   }
 
+  /* ---------------- Meta de proteína ---------------- */
+
+  var PROTEIN_PER_KG = [1.2, 1.4, 1.6, 1.8, 2.0];
+  // Meta do dia (g): a definida pela usuária; sem ela, gramas por kg do último peso (padrão 1,6 g/kg,
+  // dentro da faixa de 1,2 a 2,0 g/kg usada como referência para quem treina). Sem peso, não há meta.
+  function proteinTarget(state) {
+    var n = (state.settings && state.settings.nutrition) || {};
+    var manual = Math.round(Number(n.proteinTarget));
+    if (manual >= 20 && manual <= 400) return { value: manual, source: 'manual' };
+    var kg = R.latestWeight(state);
+    if (!kg) return null;
+    var per = PROTEIN_PER_KG.indexOf(Number(n.proteinPerKg)) >= 0 ? Number(n.proteinPerKg) : 1.6;
+    return { value: Math.min(250, Math.max(40, Math.round(kg * per / 5) * 5)), source: 'peso', kg: kg, perKg: per };
+  }
+  function validateProtein(input) {
+    var e = {}, raw = input.proteinTarget == null ? '' : String(input.proteinTarget).trim();
+    var target = raw === '' ? null : Math.round(Number(raw.replace(',', '.')));
+    var per = Number(String(input.proteinPerKg == null ? '1.6' : input.proteinPerKg).replace(',', '.'));
+    if (target != null && !(target >= 20 && target <= 400)) e.proteinTarget = 'Entre 20 e 400 g (ou deixe em branco para a automática).';
+    return { ok: !Object.keys(e).length, errors: e, value: { proteinTarget: target, proteinPerKg: PROTEIN_PER_KG.indexOf(per) >= 0 ? per : 1.6 } };
+  }
+  // Proteína do dia: total, meta, quanto falta e quanto veio de cada refeição.
+  function proteinReport(state, date) {
+    var dl = dayLog(state, date), t = proteinTarget(state), eaten = dl.total.prot || 0;
+    var meals = dl.meals.map(function (m) { return { meal: m.meal, prot: m.total.prot || 0 }; }).filter(function (m) { return m.prot > 0; });
+    return {
+      target: t, eaten: eaten, meals: meals,
+      pct: t ? Math.min(100, Math.round(eaten / t.value * 100)) : 0,
+      left: t ? Math.max(0, Math.round(t.value - eaten)) : null,
+      reached: !!(t && eaten >= t.value)
+    };
+  }
+
+  /* ---------------- Refeições salvas ---------------- */
+
+  var SAVED_MAX = 40, SAVED_ITEMS_MAX = 30;
+  function validateSavedMeal(input) {
+    var e = {};
+    var items = (Array.isArray(input.items) ? input.items : []).slice(0, SAVED_ITEMS_MAX).map(function (i) {
+      return { foodId: String(i.foodId || ''), grams: Math.round(Number(String(i.grams == null ? '' : i.grams).replace(',', '.')) * 10) / 10 };
+    }).filter(function (i) { return i.foodId && i.grams > 0 && i.grams <= 3000; });
+    var v = { name: String(input.name == null ? '' : input.name).trim().slice(0, 40), meal: C.MEAL_TYPES[input.meal] ? input.meal : 'other', items: items };
+    if (!v.name) e.name = 'Dê um nome à refeição (ex.: Meu café da manhã).';
+    if (!items.length) e.items = 'Adicione pelo menos um alimento.';
+    return { ok: !Object.keys(e).length, errors: e, value: v };
+  }
+  function createSavedMeal(state, v, nowISO) {
+    if (!state.savedMeals) state.savedMeals = [];
+    if (state.savedMeals.length >= SAVED_MAX) return null;
+    var m = { id: C.uuid(), name: v.name, meal: v.meal, items: v.items, uses: 0, lastUsedAt: null, createdAt: nowISO, updatedAt: nowISO };
+    state.savedMeals.push(m);
+    return m;
+  }
+  function updateSavedMeal(state, id, v, nowISO) {
+    var m = R.byId(state.savedMeals || [], id);
+    if (!m) return null;
+    m.name = v.name; m.meal = v.meal; m.items = v.items; m.updatedAt = nowISO;
+    return m;
+  }
+  function deleteSavedMeal(state, id) { R.removeById(state.savedMeals || [], id); }
+  // Nutrientes da refeição salva (alimentos que não existem mais são pulados e contados em "missing").
+  function savedMealTotals(state, m) {
+    var rows = [], missing = 0;
+    m.items.forEach(function (i) {
+      var f = foodById(state, i.foodId);
+      if (f) rows.push(scale(f.per100, i.grams)); else missing++;
+    });
+    var t = sum(rows);
+    t.missing = missing; t.count = rows.length;
+    return t;
+  }
+  // Refeições salvas para sugerir: as do tipo da refeição primeiro, depois as mais usadas.
+  function savedMealsFor(state, mealType) {
+    return (state.savedMeals || []).slice().sort(function (a, b) {
+      var am = a.meal === mealType ? 0 : 1, bm = b.meal === mealType ? 0 : 1;
+      return am - bm || (b.uses || 0) - (a.uses || 0) || String(b.lastUsedAt || '').localeCompare(String(a.lastUsedAt || '')) || a.name.localeCompare(b.name);
+    });
+  }
+  // Adiciona todos os alimentos da refeição salva no diário (num dia e numa refeição).
+  function applySavedMeal(state, id, date, meal, nowISO) {
+    var m = R.byId(state.savedMeals || [], id);
+    if (!m) return null;
+    var target = C.MEAL_TYPES[meal] ? meal : (C.MEAL_TYPES[m.meal] ? m.meal : 'other');
+    var logs = m.items.map(function (i) { return addFoodLog(state, { date: date, meal: target, foodId: i.foodId, grams: i.grams }, nowISO); }).filter(Boolean);
+    if (logs.length) { m.uses = (m.uses || 0) + 1; m.lastUsedAt = nowISO; }
+    return { saved: m, logs: logs, missing: m.items.length - logs.length, meal: target };
+  }
+  // Alimentos de uma refeição do diário, prontos para virar refeição salva.
+  function savedItemsFromDay(state, date, meal) {
+    return state.foodLogs.filter(function (l) { return l.date === date && l.meal === meal; }).map(function (l) { return { foodId: l.foodId, grams: l.grams }; });
+  }
+
   /* ---------------- Sugestões de cardápio ---------------- */
 
   function hash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
@@ -344,6 +436,10 @@
     validateCustomFood: validateCustomFood, createCustomFood: createCustomFood,
     portions: portions, addPortion: addPortion, removePortion: removePortion,
     validateFoodLog: validateFoodLog, addFoodLog: addFoodLog, updateFoodLog: updateFoodLog, deleteFoodLog: deleteFoodLog,
+    PROTEIN_PER_KG: PROTEIN_PER_KG, proteinTarget: proteinTarget, validateProtein: validateProtein, proteinReport: proteinReport,
+    SAVED_MAX: SAVED_MAX, SAVED_ITEMS_MAX: SAVED_ITEMS_MAX, validateSavedMeal: validateSavedMeal, createSavedMeal: createSavedMeal,
+    updateSavedMeal: updateSavedMeal, deleteSavedMeal: deleteSavedMeal, savedMealTotals: savedMealTotals, savedMealsFor: savedMealsFor,
+    applySavedMeal: applySavedMeal, savedItemsFromDay: savedItemsFromDay,
     isFavorite: isFavorite, toggleFavorite: toggleFavorite, lastGrams: lastGrams, favorites: favorites, recentFoods: recentFoods,
     frequentFoods: frequentFoods, lastMealDay: lastMealDay, copyMeal: copyMeal,
     logNutrients: logNutrients, dayLog: dayLog, dailyTotals: dailyTotals,

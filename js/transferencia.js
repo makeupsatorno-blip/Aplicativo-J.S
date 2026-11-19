@@ -13,7 +13,7 @@
   var ALPHA = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; // sem I, L, O, U (não confunde)
   var CODE_LEN = 12, PART = 1000000, ITER = 150000;
 
-  function available() { return !!(api() && window.crypto && crypto.subtle && window.fetch); }
+  function available() { return !!((window.JS_CONFIG || {}).transfer === true && api() && window.crypto && crypto.subtle && window.fetch); }
 
   function newCode() {
     var b = new Uint8Array(CODE_LEN), s = '';

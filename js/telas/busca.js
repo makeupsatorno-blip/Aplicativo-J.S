@@ -22,6 +22,9 @@
     ['Alimentação — diário', 'alimentacao comida diario calorias kcal refeicao dieta', 'utensils', { route: 'alimentacao', food: 'hoje' }],
     ['Água', 'agua beber hidratacao copo garrafa', 'drop', { route: 'alimentacao', food: 'hoje', scroll: '.water-card' }],
     ['Meta e lembretes de água', 'agua meta lembrete beber', 'drop', { action: 'water-settings' }],
+    ['Minhas refeições salvas', 'refeicoes salvas minhas meu cafe da manha almoco lanche jantar montar salvar', 'bookmark', { route: 'alimentacao', food: 'salvas' }],
+    ['Meta de proteína e calorias', 'meta proteina calorias macros kcal', 'flame', { action: 'nutri-settings' }],
+    ['Recordes pessoais', 'recordes recorde pr carga maxima troféu trofeu', 'trophy', { route: 'treino', treino: 'evolucao' }],
     ['Cardápio sugerido', 'cardapio sugestao menu', 'leaf', { route: 'alimentacao', food: 'cardapio' }],
     ['Tabela nutricional', 'tabela taco nutrientes alimento', 'search', { route: 'alimentacao', food: 'tabela' }],
     ['Ciclo menstrual', 'ciclo menstruacao periodo fase tpm fertil ovulacao colica', 'moon', { route: 'ciclo' }],
@@ -95,6 +98,13 @@
     group('Exercícios', T.exercises(s).map(function (x) {
       var sc = Math.max(score(x.name, words, fq) * 2, score((T.GRUPOS[x.group] || '') + ' ' + (x.equipment || ''), words, fq));
       return sc ? { sc: sc, icon: 'dumbbell', title: x.name, meta: (T.GRUPOS[x.group] || '') + (x.equipment ? ' • ' + x.equipment : ''), exercise: x.id } : null;
+    }).filter(Boolean));
+
+    group('Minhas refeições', (s.savedMeals || []).map(function (m) {
+      var names = m.items.map(function (i) { var f = N.foodById(s, i.foodId); return f ? f.name : ''; }).join(' ');
+      var sc = Math.max(score(m.name, words, fq) * 2, score(names, words, fq));
+      return sc ? { sc: sc, icon: 'bookmark', title: m.name, meta: m.items.length + (m.items.length === 1 ? ' alimento' : ' alimentos') + ' • ' + C.MEAL_TYPES[m.meal],
+        go: { route: 'alimentacao', food: 'salvas', action: 'saved-edit', data: { id: m.id } } } : null;
     }).filter(Boolean));
 
     var foods = N.search(s, q, LIMIT).map(function (f, i) {

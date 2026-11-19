@@ -4,7 +4,7 @@
  * sem internet (ou rede muito lenta), usa a cópia guardada.
  * Ao publicar uma versão nova, aumente o número em VERSION.
  */
-var VERSION = 'js-v2.6.2';
+var VERSION = 'js-v2.7.0';
 var ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/style.css', './css/v2.css', './css/v26.css', './icons/favicon.svg',
   './fonts/nunito-latin.woff2', './fonts/cormorant-garamond-italic-latin.woff2',

@@ -36,6 +36,7 @@
         '<p>Sem lembrete, você não é avisada.</p></div>' +
         '<button type="button" class="btn primary small" data-action="reminders-fix">Ligar todos</button></div>';
     }
+    if (JS.backTap && JS.backTap.banner) html += JS.backTap.banner(); // iPhone: liberar o sensor do toque atrás
     // App vazio (ex.: acabou de instalar em outro celular): oferece trazer os dados do aparelho antigo.
     if (!dismissedTransfer && !R.hasAnyData(s) && JS.transfer && JS.transfer.available()) {
       html += '<div class="banner transfer-banner"><span class="banner-ic">' + ui.icon('phone', 20) + '</span><div><strong>Já usa o J.S. em outro aparelho?</strong>' +
@@ -85,8 +86,10 @@
         : wp.rest ? '<strong>Descanso</strong><span>Recupere as energias</span>'
           : s.workoutPlans.length ? '<strong>Sem ficha hoje</strong><span>Escolha uma ficha</span>' : '<strong>Monte sua ficha</strong><span>Exercícios, séries e carga</span>';
     var dl = N.dayLog(s, today), target = N.kcalTarget(s, today);
+    var pt = N.proteinTarget(s);
     var kTxt = '<strong>' + JS.graf.fmtNum(dl.total.kcal || 0, 0) + (target ? ' / ' + JS.graf.fmtNum(target.value, 0) : '') + ' kcal</strong><span>' +
-      (dl.count ? dl.count + (dl.count === 1 ? ' alimento registrado' : ' alimentos registrados') : 'Registre o que comeu') + '</span>';
+      (dl.count ? dl.count + (dl.count === 1 ? ' alimento registrado' : ' alimentos registrados') : 'Registre o que comeu') +
+      (pt && dl.count ? ' • Proteína ' + JS.graf.fmtNum(dl.total.prot || 0, 0) + '/' + pt.value + ' g' : '') + '</span>';
     var hair = d.hairToday[0] || d.nextHair;
     var hairTxt = hair
       ? '<strong>' + esc(R.hairName(hair)) + '</strong><span>' + esc(hair.date === today ? 'Hoje' + (hair.time ? ' às ' + hair.time : '') : C.formatDayLabel(hair.date, today) + (hair.time ? ' • ' + hair.time : '')) + '</span>'

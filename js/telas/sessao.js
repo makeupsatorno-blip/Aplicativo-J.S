@@ -50,11 +50,13 @@
       var ex = T.exerciseById(s, it.exerciseId) || {};
       var nextNo = it.sets.length + 1, complete = it.sets.length >= it.targetSets;
       var dots = '';
+      var rc = T.exerciseRecords(s, it.exerciseId), recSet = {};
+      rc.events.forEach(function (e) { if (e.itemId === it.id) recSet[e.setIndex] = e; });
       var totalDots = Math.max(it.targetSets, it.sets.length);
       for (var i = 0; i < totalDots; i++) {
         var st = it.sets[i];
         var planned = it.plannedLoads && !T.samePerSet(it.plannedLoads) ? it.plannedLoads[i] : null;
-        dots += st ? '<li class="on" title="' + esc(JS.kg(st.load) + ' × ' + st.reps) + '"><span>' + JS.graf.fmtNum(st.load, 1) + '×' + st.reps + '</span></li>'
+        dots += st ? '<li class="on' + (recSet[i] ? ' pr' : '') + '" title="' + esc((recSet[i] ? 'Recorde pessoal! ' : '') + JS.kg(st.load) + ' × ' + st.reps) + '"><span>' + (recSet[i] ? ui.icon('trophy', 11) : '') + JS.graf.fmtNum(st.load, 1) + '×' + st.reps + '</span></li>'
           : planned != null ? '<li class="plan" title="Série ' + (i + 1) + ': ' + esc(JS.kg(planned)) + ' planejado"><span>' + JS.graf.fmtNum(planned, 1) + ' kg</span></li>'
             : '<li><span>' + (i + 1) + '</span></li>';
       }
@@ -64,6 +66,7 @@
         '<p class="ses-group">' + esc((T.GRUPOS[ex.group] || '') + (ex.equipment ? ' • ' + ex.equipment : '')) + '</p>' +
         '<h2 class="ses-ex">' + esc(it.name) + '</h2>' +
         '<p class="ses-target">' + (complete ? 'Séries planejadas feitas ✓' : 'Série ' + nextNo + ' de ' + it.targetSets) + ' • meta ' + esc(it.targetReps) + ' repetições</p>' +
+        (rc.best && rc.best.load > 0 ? '<p class="ses-record" title="A maior carga que você já fez neste exercício">' + ui.icon('trophy', 14) + 'Seu recorde: <strong>' + JS.kg(rc.best.load) + ' × ' + rc.best.reps + '</strong> • ' + esc(C.formatDayMonth(rc.best.date)) + '</p>' : '') +
         '<ol class="set-dots" aria-label="Séries">' + dots + '</ol>' +
         '<div class="steppers">' +
         stepper('Carga', 'load', JS.graf.fmtNum(it.load, 1), 'kg', step) +
@@ -221,20 +224,78 @@
     if (wakeLock) { try { wakeLock.release(); } catch (e) { /* já liberado */ } wakeLock = null; }
     document.removeEventListener('visibilitychange', onVisible);
   }
+  /* ---------------- iPhone: liberar o sensor de movimento ---------------- */
+  // O iPhone só libera o sensor dentro de um toque da usuária. Na 1ª vez, o botão "Ativar" pede a
+  // permissão; depois, o primeiro toque em qualquer lugar do app (a cada vez que ele abre) religa o
+  // toque atrás sozinho, sem perguntar de novo.
+  var MOTION_OK = 'js-motion-ok', MOTION_LATER = 'js-motion-depois', gestureTries = 0;
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* sem armazenamento */ } }
+  function everGranted() { return lsGet(MOTION_OK) === '1'; }
+  function needsActivation() {
+    var bt = JS.store.state.settings.backTap || {}, Tq = window.JSToque;
+    return !!(bt.enabled && Tq && Tq.supported() && Tq.needsPermission() && JS.sessaoPerm !== 'granted');
+  }
+  function setPerm(r) {
+    JS.sessaoPerm = r;
+    if (r === 'granted') { lsSet(MOTION_OK, '1'); startSensor(); refreshChip(); }
+  }
+  // Botões "Ativar": precisa ser chamado dentro do toque.
+  function enable() {
+    var Tq = window.JSToque;
+    if (!Tq || !Tq.supported()) return Promise.resolve('unsupported');
+    Tq.unlockAudio();
+    if (!(JS.store.state.settings.backTap || {}).enabled) JS.store.silentUpdate(function (st) { st.settings.backTap.enabled = true; });
+    return Tq.requestPermission().then(function (r) { setPerm(r); return r; });
+  }
+  function onGesture() {
+    if (gestureTries >= 3 || !everGranted() || !needsActivation()) return;
+    gestureTries++;
+    window.JSToque.requestPermission().then(function (r) { if (r === 'granted') { setPerm(r); JS.app.render(); } });
+  }
+  document.addEventListener('touchend', onGesture, true);
+  document.addEventListener('click', onGesture, true);
+  // Aviso no Início e no Treino (só no iPhone, enquanto o sensor nunca foi liberado neste aparelho).
+  function activationBanner() {
+    if (!needsActivation() || everGranted()) return '';
+    var later = Number(lsGet(MOTION_LATER) || 0);
+    if (later && Date.now() - later < 3 * 86400000) return '';
+    return '<div class="banner bt-banner"><span class="banner-ic">' + ui.icon('phone', 20) + '</span><div><strong>Ative o toque atrás neste iPhone</strong>' +
+      '<p>Com o J.S. aberto, 2 batidas atrás do celular registram a série do treino. O iPhone pede para liberar o sensor de movimento só uma vez.</p></div>' +
+      '<div class="banner-actions"><button type="button" class="btn primary small" data-action="bt-enable">Ativar agora</button>' +
+      '<button type="button" class="btn ghost small" data-action="bt-later">Agora não</button></div></div>';
+  }
+  JS.actions['bt-enable'] = function () {
+    enable().then(function (r) {
+      JS.app.render();
+      if (r === 'granted') ui.toast('Pronto! Toque atrás ligado neste iPhone. Bata 2 vezes atrás do celular.', { actionLabel: 'Testar', timeout: 8000, onAction: function () { JS.actions['bt-calibrate'](); } });
+      else if (r === 'unsupported') ui.toast('Este aparelho não tem sensor de movimento.', { error: true });
+      else ui.toast('O iPhone não liberou o sensor. Feche o J.S. (tire dos apps abertos), abra de novo e toque em Ativar. Se continuar, veja em Ajustes → Apps → Safari se "Movimento e Orientação" está permitido.', { error: true, timeout: 10000 });
+    });
+  };
+  JS.actions['bt-later'] = function (d, el) {
+    lsSet(MOTION_LATER, String(Date.now()));
+    JS.anim.removeThen(el, '.banner', function () { JS.app.render(); ui.toast('Tudo bem. Dá para ativar em Configurações → Treino: toque atrás.'); });
+  };
+
   // Chamado quando o app abre (depois da intro) e quando a configuração muda.
-  JS.backTap = { start: startSensor, stop: function () { stopSensor(); sensor = 'off'; }, state: function () { return sensor; } };
+  JS.backTap = {
+    start: startSensor, stop: function () { stopSensor(); sensor = 'off'; }, state: function () { return sensor; },
+    enable: enable, setPerm: setPerm, needsActivation: needsActivation, everGranted: everGranted, banner: activationBanner
+  };
 
   /* ---------------- Séries ---------------- */
 
-  function flash(text, sub) {
+  function flash(text, sub, pr) {
     var el = document.getElementById('ses-flash');
     if (!el) { el = document.createElement('div'); el.id = 'ses-flash'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
-    el.innerHTML = '<span class="sf-ic">' + ui.icon('check', 34) + '</span><strong></strong><small></small>';
+    el.classList.toggle('pr', !!pr);
+    el.innerHTML = '<span class="sf-ic">' + ui.icon(pr ? 'trophy' : 'check', 34) + '</span><strong></strong><small></small>';
     el.querySelector('strong').textContent = text;
     el.querySelector('small').textContent = sub || '';
     JS.anim.restartClass(el, 'show');
     clearTimeout(el._t);
-    el._t = setTimeout(function () { el.classList.remove('show'); }, 1300);
+    el._t = setTimeout(function () { el.classList.remove('show'); }, pr ? 2200 : 1300);
   }
 
   // via: 'toque' (botão) | 'toque-atras' (sensor) | 'atalho' (iPhone com o app fechado)
@@ -249,7 +310,12 @@
     JS.anim.mark('.set-dots li:nth-child(' + no + ')', 'pop', { ms: 700 });
     JS.store.update(function (st, n) { T.logSet(st, x.id, it.id, n, via); });
     if (window.JSToque) JSToque.confirmSet();
-    flash('Série ' + no + ' registrada', JS.kg(doneLoad) + ' × ' + doneReps + (via === 'toque-atras' ? ' • pelo toque atrás' : ''));
+    var rec = T.recordOf(JS.store.state, x.id, it.id, no - 1);
+    if (rec) {
+      flash('Novo recorde! 🏆', it.name + ': ' + JS.prText(rec), true);
+      if (window.JSToque) JSToque.vibrate([40, 60, 40, 60, 90]);
+      setTimeout(function () { JS.anim.sparks(document.querySelector('.btn-set')); }, 80);
+    } else flash('Série ' + no + ' registrada', JS.kg(doneLoad) + ' × ' + doneReps + (via === 'toque-atras' ? ' • pelo toque atrás' : ''));
     var nx = session();
     var allDone = nx && nx.items.length && nx.items.every(function (i) { return i.sets.length >= i.targetSets; });
     if (allDone && !wasComplete) {
@@ -358,7 +424,7 @@
   JS.actions['ses-sensor'] = function () {
     JSToque.unlockAudio();
     JSToque.requestPermission().then(function (r) {
-      JS.sessaoPerm = r;
+      setPerm(r);
       startSensor();
       refreshChip();
       if (r === 'granted') ui.toast('Toque atrás ligado. Bata 2 vezes atrás do celular.');

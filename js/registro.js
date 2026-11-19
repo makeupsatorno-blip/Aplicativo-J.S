@@ -211,7 +211,11 @@
     JS.store.update(function (st, n) { res = T.quickSet(st, { exerciseId: exId, load: load, reps: reps, serie: serie, via: via, planId: inPlan ? p.id : null, date: today() }, n); });
     if (!res) return;
     if (window.JSToque) JSToque.confirmSet();
-    ui.toast((res.corrected ? '✓ Série ' + res.serie + ' corrigida: ' : '✓ Série ' + res.serie + ' salva: ') + JS.kg(load) + ' × ' + reps + (res.started ? ' • treino começou' : ''));
+    var rec = res.corrected ? null : T.recordOf(JS.store.state, res.session.id, res.item.id, res.serie - 1);
+    if (rec) {
+      ui.toast('🏆 Novo recorde! ' + res.item.name + ': ' + JS.prText(rec), { timeout: 5500 });
+      if (window.JSToque) JSToque.vibrate([40, 60, 40, 60, 90]);
+    } else ui.toast((res.corrected ? '✓ Série ' + res.serie + ' corrigida: ' : '✓ Série ' + res.serie + ' salva: ') + JS.kg(load) + ' × ' + reps + (res.started ? ' • treino começou' : ''));
     if (res.started && JS.app.route() !== 'sessao') setTimeout(function () { JS.app.go('sessao'); }, 250);
   }
 

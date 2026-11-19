@@ -110,6 +110,7 @@
     html += '<section class="card" id="cfg-backtap"><div class="card-head"><h2>' + ui.icon('dumbbell', 18) + 'Treino: toque atrás</h2>' + ui.tag(bt.enabled ? 'Ligado' : 'Desligado', bt.enabled ? 'success' : 'muted') + '</div>' +
       '<p class="hint top">Com o J.S. aberto, bata 2 vezes na parte de trás do celular: no treino em andamento registra a série (o descanso começa sozinho); em qualquer outra tela leva ao treino, e em Treino → Hoje inicia o treino do dia. Funciona no Android e no iPhone.</p>' +
       sw('backTap', 'Toque atrás (2 batidas)', !!bt.enabled, Tq && !Tq.supported() ? 'Este aparelho/navegador não tem sensor de movimento.' : 'Usa o sensor de movimento enquanto o app está aberto.', 'cfg-backtap') +
+      iphoneSensor(bt) +
       '<div class="field"><label for="cfg-open">Ao abrir o app</label><select id="cfg-open" data-change="cfg-open">' +
       [['auto', 'Início, com a intro (recomendado)'], ['dias', 'Treino, nos dias de treino'], ['sempre', 'Sempre no Treino']].map(function (o) {
         var cur = st.openWorkout === 'dias' || st.openWorkout === 'sempre' ? st.openWorkout : 'auto';
@@ -127,6 +128,8 @@
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('utensils', 18) + 'Alimentação</h2></div>' +
       '<button type="button" class="week-row plain" data-action="nutri-settings"><span class="wd-name">Meta de calorias</span><span class="week-plan">' +
       (st.nutrition && st.nutrition.kcalTarget ? JS.graf.fmtNum(st.nutrition.kcalTarget, 0) + ' kcal' : 'Automática') + '</span>' + ui.icon('right', 16) + '</button>' +
+      '<button type="button" class="week-row plain" data-action="nutri-settings"><span class="wd-name">Meta de proteína</span><span class="week-plan">' +
+      (st.nutrition && st.nutrition.proteinTarget ? JS.graf.fmtNum(st.nutrition.proteinTarget, 0) + ' g' : (window.JSNutri.proteinTarget(s) ? 'Automática: ' + window.JSNutri.proteinTarget(s).value + ' g' : 'Defina ou registre o peso')) + '</span>' + ui.icon('right', 16) + '</button>' +
       sw('mealHistory', 'Registrar refeições feitas', st.mealHistory !== false, 'Mostra o botão de marcar como feita e um histórico simples.', 'cfg-mealhistory') + '</section>';
 
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('shield', 18) + 'Backup</h2></div>' +
@@ -156,6 +159,18 @@
   }
 
   // Registro rápido: atalho do iPhone (Tocar Atrás), Android e abrir ao voltar para o app.
+  // iPhone: o sensor de movimento precisa ser liberado com um toque (Android libera sozinho).
+  function iphoneSensor(bt) {
+    var Tq = window.JSToque;
+    if (!bt.enabled || !Tq || !Tq.supported() || !Tq.needsPermission()) return '';
+    if (JS.sessaoPerm === 'granted') return '<p class="ok-line">' + ui.icon('check', 16) + ' Sensor liberado neste iPhone: as 2 batidas atrás já funcionam com o app aberto.</p>';
+    var again = JS.backTap && JS.backTap.everGranted();
+    return '<div class="bt-activate"><p class="hint">' + (again
+      ? 'Já foi liberado neste iPhone: ele religa sozinho no seu primeiro toque na tela, toda vez que o app abre. Se não religar, toque abaixo.'
+      : 'No iPhone, o sensor de movimento precisa ser liberado uma vez, com um toque. Depois disso ele religa sozinho sempre que você abrir o app.') + '</p>' +
+      '<button type="button" class="btn primary full" data-action="bt-enable">' + ui.icon('phone', 18) + 'Ativar o toque atrás neste iPhone</button></div>';
+  }
+
   function quickBlock(st) {
     var q = st.quick, on = !!(q && q.enabled), lk = on && JS.registro ? JS.registro.link() : '';
     var html = '<section class="card" id="cfg-quick"><div class="card-head"><h2>' + ui.icon('dumbbell', 18) + 'Registro rápido do treino</h2></div>' +
@@ -404,7 +419,7 @@
   JS.changes['cfg-backtap'] = function (el) {
     var on = el.checked;
     // No iPhone, pede a permissão do sensor já neste toque.
-    if (on && window.JSToque && JSToque.needsPermission()) JSToque.requestPermission().then(function (r) { JS.sessaoPerm = r; });
+    if (on && window.JSToque && JSToque.needsPermission()) JSToque.requestPermission().then(function (r) { if (JS.backTap) JS.backTap.setPerm(r); else JS.sessaoPerm = r; JS.app.render(); });
     JS.store.update(function (s) { s.settings.backTap.enabled = on; }); if (JS.backTap) { if (on) JS.backTap.start(); else JS.backTap.stop(); }
     ui.toast(on ? 'Toque atrás ligado para os treinos.' : 'Toque atrás desligado.');
   };
@@ -441,7 +456,7 @@
     if (!Tq || !Tq.supported()) { ui.toast('Este aparelho não tem sensor de movimento.', { error: true }); return; }
     Tq.unlockAudio();
     Tq.requestPermission().then(function (perm) {
-      JS.sessaoPerm = perm;
+      if (JS.backTap) JS.backTap.setPerm(perm); else JS.sessaoPerm = perm;
       if (perm !== 'granted') { ui.toast('Sem permissão para o sensor de movimento.', { error: true }); return; }
       if (JS.backTap) JS.backTap.stop(); // pausa o toque atrás do app durante o teste
       var phase = 'rest', rest = [], samples = [], t0 = performance.now(), lis = null, timer = null, hits = 0;
