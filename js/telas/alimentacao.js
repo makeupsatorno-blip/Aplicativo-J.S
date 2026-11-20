@@ -367,7 +367,8 @@
       return ui.empty('bookmark', 'Monte uma vez as refeições que você repete (ex.: "Meu café da manhã") e adicione com um toque. Também dá para salvar um prato do Diário: toque no marcador da refeição.', { label: 'Criar minha primeira refeição', attrs: 'data-action="saved-new"' });
     }
     var today = C.toDateKey(now), when = C.formatDayLabel(curDate(), today).toLowerCase();
-    var html = '<p class="muted small">Toque em <strong>Adicionar</strong> para colocar a refeição inteira em <strong>' + esc(when) + '</strong> (no Diário você escolhe o dia).</p>';
+    var html = '<p class="muted small">Toque em <strong>Adicionar</strong> para colocar a refeição inteira em <strong>' + esc(when) + '</strong> (no Diário você escolhe o dia).</p>' +
+      '<button type="button" class="btn soft full plan-link" data-action="go" data-route="planejador">' + ui.icon('calendar', 18) + 'Planejar a semana e gerar a lista de compras</button>';
     list.forEach(function (m) {
       html += '<section class="card saved-card"><div class="card-head"><h2>' + esc(m.name) + '</h2><span class="tag soft">' + esc(C.MEAL_TYPES[m.meal] || '') + '</span></div>' +
         '<div class="sug-plate" aria-hidden="true">' + m.items.slice(0, 6).map(function (i) { return foodIcon(N.foodById(s, i.foodId) || { name: '' }); }).join('') + '</div>' +
@@ -563,6 +564,7 @@
     return '<div class="field search-field">' + ui.icon('search', 18) + '<input type="search" name="foodq" value="' + esc(view.query) + '" placeholder="Buscar alimento (ex.: ovo, banana, arroz)" autocomplete="off" aria-label="Buscar alimento" data-food-search></div>' +
       '<div class="quick-chips">' + ['ovo', 'banana', 'arroz', 'feijão', 'frango', 'pão', 'iogurte', 'aveia'].map(function (q) { return '<button type="button" class="chip" data-action="food-q" data-q="' + q + '">' + q + '</button>'; }).join('') + '</div>' +
       '<div class="food-results" data-food-results>' + resultsHtml(view.query) + '</div>' +
+      '<button type="button" class="btn soft full" data-action="food-barcode">' + ui.icon('barcode', 18) + 'Ler código de barras de um produto</button>' +
       '<button type="button" class="btn soft full" data-action="food-custom">' + ui.icon('plus', 18) + 'Cadastrar alimento que não está na tabela</button>' +
       '<p class="note">' + N.count + ' alimentos da ' + esc(N.source) + '. Valores por 100 g.</p>';
   }
@@ -693,6 +695,7 @@
     var date = curDate();
     var body = '<div class="field search-field">' + ui.icon('search', 18) + '<input type="search" name="q" placeholder="Buscar alimento" autocomplete="off" aria-label="Buscar alimento"></div>' +
       '<div class="food-results" data-results>' + recentHtml(meal) + '</div>' +
+      '<button type="button" class="btn soft full" data-barcode>' + ui.icon('barcode', 18) + 'Ler código de barras</button>' +
       '<button type="button" class="btn soft full" data-custom>' + ui.icon('plus', 18) + 'Cadastrar alimento</button>';
     ui.openSheet({
       title: 'Adicionar em ' + C.MEAL_TYPES[meal].toLowerCase(), subtitle: C.formatDayLabel(date, C.toDateKey(new Date())), body: body,
@@ -712,6 +715,9 @@
           foodInfo(b.dataset.id, { meal: meal, date: date, grams: b.dataset.grams });
         });
         form.querySelector('[data-custom]').addEventListener('click', function () { customFoodForm(meal); });
+        form.querySelector('[data-barcode]').addEventListener('click', function () {
+          if (JS.barras) JS.barras.open({ meal: meal, date: date }); else ui.toast('Leitor de código de barras indisponível.', { error: true });
+        });
         setTimeout(function () { q.focus(); }, 250);
       }
     });
@@ -734,26 +740,35 @@
       (!fav.length ? '<p class="hint">Dica: toque na estrela ☆ de um alimento para ele ficar sempre aqui em cima.</p>' : '');
   }
 
-  function customFoodForm(meal) {
-    var main = ['kcal', 'carb', 'prot', 'lip', 'fibra', 'sodio'];
-    var body = ui.input({ label: 'Nome', name: 'name', attrs: 'maxlength="80"', placeholder: 'Ex.: Pão de queijo da padaria' }) +
+  // prefill (opcional, vem do código de barras): { name, barcode, per100: {kcal,...}, servingGrams, notice }
+  function customFoodForm(meal, prefill) {
+    prefill = prefill || {};
+    var pf = prefill.per100 || {}, main = ['kcal', 'carb', 'prot', 'lip', 'fibra', 'sodio'];
+    var body = (prefill.notice ? '<p class="hint top warn-text">' + ui.icon('info', 14) + ' ' + esc(prefill.notice) + '</p>' : '') +
+      ui.input({ label: 'Nome', name: 'name', value: prefill.name || '', attrs: 'maxlength="80"', placeholder: 'Ex.: Pão de queijo da padaria' }) +
       '<p class="hint top">Valores por 100 g (veja no rótulo: divida pelo tamanho da porção e multiplique por 100).</p>' +
       '<div class="row2">' + main.map(function (k) {
         var n = N.NUTRIENTS.filter(function (x) { return x.key === k; })[0];
-        return ui.input({ label: n.label + ' (' + n.unit + ')', name: k, type: 'text', attrs: 'inputmode="decimal" autocomplete="off"' });
-      }).join('') + '</div>';
+        return ui.input({ label: n.label + ' (' + n.unit + ')', name: k, type: 'text', value: pf[k] == null ? '' : String(pf[k]).replace('.', ','), attrs: 'inputmode="decimal" autocomplete="off"' });
+      }).join('') + '</div>' +
+      (prefill.barcode ? '<input type="hidden" name="barcode" value="' + esc(prefill.barcode) + '"><p class="hint">' + ui.icon('barcode', 14) + ' Código de barras ' + esc(prefill.barcode) + ' (guardado com o alimento, para não precisar buscar de novo).</p>' : '') +
+      (prefill.servingGrams ? '<input type="hidden" name="servingGrams" value="' + esc(prefill.servingGrams) + '">' : '');
     ui.openSheet({
       title: 'Cadastrar alimento', body: body, submitLabel: 'Salvar alimento',
       onSubmit: function (input) {
         var r = N.validateCustomFood(input);
         if (!r.ok) return { errors: r.errors };
-        var f = null;
-        JS.store.silentUpdate(function (st, n) { f = N.createCustomFood(st, r.value, n); });
-        return { f: f };
+        var f = null, sg = Number(String(input.servingGrams || '').replace(',', '.'));
+        JS.store.silentUpdate(function (st, n) {
+          f = N.createCustomFood(st, r.value, n);
+          if (sg > 0) N.addPortion(st, f.id, '1 porção (' + String(sg).replace('.', ',') + ' g)', sg);
+        });
+        return { f: f, grams: sg > 0 ? sg : null };
       },
-      afterClose: function (res) { if (res && res.f) foodInfo(res.f.id, { meal: meal || guessMeal(), date: curDate() }); }
+      afterClose: function (res) { if (res && res.f) foodInfo(res.f.id, { meal: meal || guessMeal(), date: curDate(), grams: res.grams || undefined }); }
     });
   }
+  JS.customFoodForm = customFoodForm;
 
   function logMenu(id) {
     var s = JS.store.state, l = R.byId(s.foodLogs, id);
@@ -970,6 +985,9 @@
   JS.actions['food-info'] = function (d) { foodInfo(d.id, { grams: d.grams, date: curDate(), fromSearch: true }); };
   JS.actions['food-q'] = function (d) { view.query = d.q; JS.app.render(); };
   JS.actions['food-custom'] = function () { customFoodForm(null); };
+  JS.actions['food-barcode'] = function () {
+    if (JS.barras) JS.barras.open({ date: curDate() }); else ui.toast('Leitor de código de barras indisponível.', { error: true });
+  };
   JS.actions['food-day-table'] = function () {
     var s = JS.store.state, dl = N.dayLog(s, curDate()), rows = [];
     dl.meals.forEach(function (m) { m.items.forEach(function (x) { rows.push(x.nutr); }); });

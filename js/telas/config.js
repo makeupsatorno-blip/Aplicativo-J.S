@@ -101,6 +101,7 @@
       sw('workout', 'Treino', n.workout !== false, 'No horário escolhido em Treino → Semana', 'cfg-notif') +
       sw('water', 'Água', n.water !== false, (st.water && st.water.remind ? 'Lembretes ligados' : 'Ligue os lembretes em Alimentação → Água') + ' • param ao bater a meta', 'cfg-notif') +
       sw('cycle', 'Ciclo', n.cycle !== false, '2 dias antes da menstruação prevista', 'cfg-notif') +
+      sw('skincare', 'Skincare', n.skincare !== false, 'Nos horários que você escolher no cartão de Skincare', 'cfg-notif') +
       sw('showAmounts', 'Mostrar valor das contas', !!st.showAmountsInNotifications, 'Por privacidade, vem desligado: o valor não aparece na tela bloqueada.', 'cfg-amounts') +
       pushBlock() +
       '</section>';
@@ -131,6 +132,8 @@
       '<button type="button" class="week-row plain" data-action="nutri-settings"><span class="wd-name">Meta de proteína</span><span class="week-plan">' +
       (st.nutrition && st.nutrition.proteinTarget ? JS.graf.fmtNum(st.nutrition.proteinTarget, 0) + ' g' : (window.JSNutri.proteinTarget(s) ? 'Automática: ' + window.JSNutri.proteinTarget(s).value + ' g' : 'Defina ou registre o peso')) + '</span>' + ui.icon('right', 16) + '</button>' +
       sw('mealHistory', 'Registrar refeições feitas', st.mealHistory !== false, 'Mostra o botão de marcar como feita e um histórico simples.', 'cfg-mealhistory') + '</section>';
+
+    html += JS.slots.html('config.secoes', s);
 
     html += '<section class="card"><div class="card-head"><h2>' + ui.icon('shield', 18) + 'Backup</h2></div>' +
       '<p class="muted small">' + (st.lastBackupAt ? 'Último backup: ' + esc(C.formatTimestamp(st.lastBackupAt)) : 'Nenhum backup feito ainda.') + '</p>' +

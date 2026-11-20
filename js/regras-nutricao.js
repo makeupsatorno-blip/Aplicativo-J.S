@@ -64,7 +64,7 @@
   function foodById(state, id) {
     if (byTaco[id]) return byTaco[id];
     var c = R.byId((state && state.customFoods) || [], id);
-    return c ? { id: c.id, name: c.name, group: 'Meus alimentos', per100: c.per100, source: 'custom', key: fold(c.name) } : null;
+    return c ? { id: c.id, name: c.name, group: 'Meus alimentos', per100: c.per100, source: 'custom', key: fold(c.name), barcode: c.barcode || null } : null;
   }
   function foodByName(name) {
     var k = fold(name);
@@ -140,12 +140,22 @@
       else per100[n.key] = v;
     });
     if (per100.kcal == null && !e.kcal) e.kcal = 'Informe pelo menos as calorias (por 100 g).';
-    return { ok: !Object.keys(e).length, errors: e, value: { name: name, per100: per100 } };
+    // Código de barras (só números), quando o alimento veio de uma embalagem.
+    var barcode = String(input.barcode == null ? '' : input.barcode).replace(/D/g, '').slice(0, 14) || null;
+    return { ok: !Object.keys(e).length, errors: e, value: { name: name, per100: per100, barcode: barcode } };
   }
   function createCustomFood(state, v, nowISO) {
     var f = { id: 'c:' + C.uuid(), name: v.name, per100: v.per100, createdAt: nowISO, updatedAt: nowISO };
+    if (v.barcode) f.barcode = v.barcode;
     state.customFoods.push(f);
     return f;
+  }
+  // Alimento próprio já cadastrado com este código de barras (evita consultar a internet de novo).
+  function findByBarcode(state, code) {
+    code = String(code == null ? '' : code).replace(/D/g, '');
+    if (!code) return null;
+    var c = (state.customFoods || []).filter(function (x) { return x.barcode === code; })[0];
+    return c ? foodById(state, c.id) : null;
   }
   function portions(state, foodId) { return (state.foodPortions && state.foodPortions[foodId]) || []; }
   function addPortion(state, foodId, label, grams) {
@@ -433,7 +443,7 @@
     NUTRIENTS: NUTRIENTS, MAIN: MAIN, ACTIVITY: ACTIVITY, MEAL_ORDER: MEAL_ORDER, source: A ? A.fonte : '',
     count: list.length, fold: fold,
     foodById: foodById, foodByName: foodByName, search: search, scale: scale, sum: sum, fmt: fmt, macroSplit: macroSplit,
-    validateCustomFood: validateCustomFood, createCustomFood: createCustomFood,
+    validateCustomFood: validateCustomFood, createCustomFood: createCustomFood, findByBarcode: findByBarcode,
     portions: portions, addPortion: addPortion, removePortion: removePortion,
     validateFoodLog: validateFoodLog, addFoodLog: addFoodLog, updateFoodLog: updateFoodLog, deleteFoodLog: deleteFoodLog,
     PROTEIN_PER_KG: PROTEIN_PER_KG, proteinTarget: proteinTarget, validateProtein: validateProtein, proteinReport: proteinReport,

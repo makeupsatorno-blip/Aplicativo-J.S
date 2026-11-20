@@ -38,6 +38,7 @@
     var html = '<h1 class="page-title">Cronograma capilar</h1><p class="page-sub">Hidratação, nutrição e reconstrução, do seu jeito.</p>' +
       '<div class="btn-row"><button type="button" class="btn soft" data-action="hair-new">' + ui.icon('plus', 18) + 'Tratamento</button>' +
       '<button type="button" class="btn soft" data-action="hair-plan">' + ui.icon('sparkle', 18) + 'Gerar cronograma</button></div>';
+    html += JS.slots.html('autocuidado.topo', s, now);
     html += ui.section('Próximos',
       up.length ? shown.map(function (e) { return hairItem(e, now); }).join('') +
         (up.length > shown.length ? '<button type="button" class="btn ghost full" data-action="hair-all">Ver todos (' + up.length + ')</button>' : '')

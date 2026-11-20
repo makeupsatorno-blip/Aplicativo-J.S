@@ -1,0 +1,123 @@
+/* J.S. — Jardim da Julia, Resumo semanal e cartões para compartilhar.
+   Só tokens do tema (claro/escuro/paletas) e medidas em rem. */
+
+/* ---------- Flores (SVG compartilhado pelo Início, pelo jardim e pelo resumo) ---------- */
+.jd-f { display: block; width: 100%; height: auto; overflow: visible; }
+.jd-caule, .jd-sepala { fill: none; stroke: var(--ph-fol, #3D7254); stroke-width: 2; stroke-linecap: round; }
+.jd-sepala { stroke-width: 1.6; }
+.jd-folha { fill: var(--ph-fol, #3D7254); opacity: .8; }
+.jd-terra { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; opacity: .45; }
+.jd-semente { fill: var(--muted); opacity: .55; }
+.jd-ponto { fill: var(--muted); opacity: .3; }
+.jd-botao { fill: var(--rose400); }
+.jd-petala { fill: var(--jd-p, var(--rose400)); }
+.jd-petala.fundo { opacity: .55; }
+.jd-v1 { --jd-p: var(--lav-soft, #C9B3DE); }
+.jd-v2 { --jd-p: var(--m-kcal-soft, #E3A383); }
+.jd-v1 .jd-botao { fill: var(--lav-soft, #C9B3DE); }
+.jd-v2 .jd-botao { fill: var(--m-kcal-soft, #E3A383); }
+.jd-miolo { fill: var(--flower-center, #FFF1A8); stroke: var(--ph-ovu, #8C5820); stroke-width: .8; }
+.jd-brilho { fill: var(--ph-ovu, #8C5820); }
+
+/* ---------- Grades de flores ---------- */
+.jd-cab, .jd-cab-g { display: grid; grid-template-columns: repeat(7, 1fr); gap: .25rem; margin: .25rem 0 .125rem; }
+.jd-cab span { text-align: center; font-size: .6875rem; font-weight: 700; color: var(--muted); }
+.jd-cab-g { grid-template-columns: 2.5rem repeat(7, 1fr); gap: .125rem; }
+.jd-grade.jd-mini { display: grid; grid-template-columns: repeat(7, 1fr); gap: .25rem; }
+.jd-grande { display: grid; gap: .125rem; margin-bottom: .75rem; }
+.jd-linha { display: grid; grid-template-columns: 2.5rem repeat(7, 1fr); gap: .125rem; align-items: center; }
+.jd-sem { font-size: .6875rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.jd-sem.flor { color: var(--ph-men, var(--accent)); font-weight: 800; }
+.jd-cel {
+  position: relative; display: block; aspect-ratio: 1; min-width: 0; padding: .125rem; border: 0; border-radius: .75rem;
+  background: var(--surface-2); color: inherit;
+}
+button.jd-cel { cursor: pointer; }
+button.jd-cel:active { transform: scale(.94); }
+.jd-cel.futuro { opacity: .45; }
+.jd-cel.hoje { box-shadow: inset 0 0 0 .125rem var(--accent); }
+.jd-cel.sel { background: var(--rose100); box-shadow: inset 0 0 0 .125rem var(--rose400); }
+.jd-abrir { display: block; width: 100%; padding: 0; border: 0; background: none; text-align: left; color: inherit; margin-bottom: .25rem; }
+
+/* ---------- Cartão do Início ---------- */
+.jd-card .card-head { margin-bottom: .375rem; }
+.jd-seq { white-space: nowrap; }
+.jd-hoje { margin: .625rem 0 .125rem; }
+.jd-chips { list-style: none; display: flex; flex-wrap: wrap; gap: .375rem; padding: 0; margin: .5rem 0; }
+.jd-chip {
+  display: inline-flex; align-items: center; gap: .3125rem; padding: .25rem .625rem; border-radius: 6rem; border: .0625rem solid var(--border);
+  background: var(--surface-2); color: var(--muted); font-size: .8125rem; font-weight: 700;
+}
+.jd-chip.on { background: var(--rose100); color: var(--rose800); border-color: var(--rose200); }
+.jd-bola { width: .5rem; height: .5rem; border-radius: 50%; border: .125rem solid var(--rose300); }
+.jd-frase { color: var(--muted); font-size: .875rem; margin: .25rem 0 .625rem; }
+.jd-nova {
+  display: flex; align-items: center; gap: .375rem; width: 100%; text-align: left; margin: 0 0 .625rem; padding: .5rem .75rem;
+  border: .0625rem solid color-mix(in srgb, var(--pr, var(--accent)) 40%, transparent); border-radius: var(--radius-sm, .75rem);
+  background: var(--pr-bg, var(--rose50)); color: var(--pr, var(--accent)); font-size: .8125rem;
+}
+.jd-btn { width: 100%; }
+.jd-vazio-in { display: flex; align-items: center; gap: .75rem; }
+.jd-vazio-in p { color: var(--muted); font-size: .875rem; }
+.jd-semente-g { flex: none; width: 3rem; }
+
+/* ---------- Jardim completo (folha) ---------- */
+.jd-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: .5rem; }
+.jd-sum div { background: var(--rose50); border-radius: .75rem; padding: .625rem; display: flex; flex-direction: column; min-width: 0; }
+.jd-sum strong { font-size: 1.5rem; font-family: var(--font-display); font-style: italic; color: var(--rose800); line-height: 1.1; }
+.jd-sum span { font-size: .75rem; color: var(--muted); }
+.jd-leg { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem .75rem; padding: 0; margin: 0 0 .75rem; font-size: .6875rem; color: var(--muted); }
+.jd-leg li { display: inline-flex; align-items: center; gap: .125rem; }
+.jd-leg .jd-f { width: 1.375rem; }
+.jd-detalhe { background: var(--surface-2); border-radius: var(--radius-sm, .75rem); padding: .75rem; margin-bottom: .75rem; min-height: 4rem; }
+.jd-det-t { margin-bottom: .375rem; }
+.jd-det { list-style: none; margin: 0; padding: 0; display: grid; gap: .375rem; }
+.jd-det li { display: flex; align-items: flex-start; gap: .5rem; font-size: .875rem; }
+.jd-det li > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.jd-det small { color: var(--muted); font-size: .75rem; }
+.jd-det-ic { flex: none; width: 1.25rem; height: 1.25rem; border-radius: 50%; border: .125rem solid var(--rose300); display: grid; place-items: center; color: var(--on-accent, #fff); margin-top: .0625rem; }
+.jd-det li.ok .jd-det-ic { background: var(--accent); border-color: var(--accent); }
+.jd-h3 { display: flex; align-items: center; justify-content: space-between; margin-top: .25rem; }
+.jd-badges { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; gap: .375rem; }
+.jd-badge { display: flex; align-items: center; gap: .625rem; padding: .5rem .625rem; border-radius: .875rem; border: .0625rem dashed var(--border); opacity: .75; }
+.jd-badge.on { opacity: 1; border-style: solid; border-color: color-mix(in srgb, var(--pr, var(--accent)) 35%, transparent); background: var(--pr-bg, var(--rose50)); }
+.jd-bic { flex: none; width: 2.25rem; height: 2.25rem; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.jd-badge.on .jd-bic { background: var(--surface); color: var(--pr, var(--accent)); }
+.jd-btx { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.jd-btx strong { font-size: .9375rem; }
+.jd-btx small { color: var(--muted); font-size: .75rem; }
+.jd-novo { font-style: normal; font-size: .625rem; font-weight: 800; text-transform: uppercase; letter-spacing: .03rem; padding: .0625rem .375rem; border-radius: 6rem; background: var(--pr, var(--accent)); color: var(--pr-bg, var(--on-accent)); vertical-align: .0625rem; }
+
+/* ---------- Resumo semanal ---------- */
+.rs-nav .icon-btn[disabled] { opacity: .3; }
+.rs-hero { background: linear-gradient(180deg, var(--rose100), var(--surface) 85%); }
+.rs-texto { font-family: var(--font-display); font-style: italic; font-size: 1.375rem; line-height: 1.38; color: var(--rose800); margin: .25rem 0 .5rem; }
+.rs-dest { margin-top: .25rem; }
+.rs-tiles { margin-bottom: .25rem; }
+.rs-sub { margin: .625rem 0 .125rem; }
+.rs-bloco .pr-row { cursor: default; }
+.rs-jardim { max-width: 24rem; }
+.rs-nota { margin-top: .375rem; }
+.rs-card { border-left: .25rem solid var(--accent); }
+.rs-card .btn-row { margin-bottom: 0; }
+
+/* ---------- Cartões para compartilhar ---------- */
+.cd-prev { display: grid; place-items: center; min-height: 12rem; margin-bottom: .75rem; border-radius: var(--radius-sm, .75rem); background: var(--surface-2); overflow: hidden; }
+.cd-img { display: block; width: 100%; max-height: 58vh; object-fit: contain; }
+.cd-carrega { padding: 2rem 1rem; text-align: center; }
+.cd-fmt { margin-bottom: .5rem; }
+.cd-acoes { margin-top: .5rem; }
+
+/* ---------- Movimento (só quando permitido) ---------- */
+@keyframes jd-brota { from { opacity: 0; transform: translateY(.375rem) scale(.4); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.reduce-motion) .jd-entra .jd-cel .jd-f,
+  html:not(.reduce-motion) .jd-aparece .jd-cel .jd-f {
+    transform-origin: 50% 90%; animation: jd-brota .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 32ms);
+  }
+}
+
+@media (min-width: 700px) {
+  .jd-grade.jd-mini { max-width: 26rem; }
+  .jd-sum strong { font-size: 1.75rem; }
+}

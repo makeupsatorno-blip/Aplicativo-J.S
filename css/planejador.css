@@ -1,0 +1,80 @@
+/* J.S. — Cardápio da semana, lista de compras e código de barras. Só tokens do tema (claro/escuro/paletas) e rem. */
+
+/* ---------- Semana ---------- */
+.plan-nav { margin-bottom: .5rem; }
+.plan-today { margin: 0 0 .75rem; font-size: .8125rem; }
+.plan-today .ic { margin-right: .25rem; }
+.plan-sum { margin-bottom: .5rem; }
+.plan-sum p, .shop-sum p { margin-bottom: .375rem; }
+.plan-bar { display: block; height: .5rem; border-radius: 6.1875rem; background: var(--surface-2, var(--rose50)); overflow: hidden; }
+.plan-bar i { display: block; height: 100%; border-radius: 6.1875rem; background: var(--accent, var(--rose700)); transition: width .5s cubic-bezier(.2, .8, .2, 1); }
+.plan-bar.prot i { background: var(--mac-prot, var(--rose600)); }
+.plan-bar.over i { background: var(--warning, #956626); }
+.plan-actions { margin-bottom: .75rem; }
+
+.plan-day.is-today { border-color: color-mix(in srgb, var(--accent, var(--rose700)) 40%, var(--border)); }
+.plan-slots { display: grid; gap: .375rem; }
+.plan-slot {
+  display: flex; align-items: center; gap: .625rem; width: 100%; min-height: 2.75rem; text-align: left; min-width: 0;
+  padding: .5rem .625rem; border: .0625rem solid var(--border); border-radius: var(--radius-sm, .75rem); background: var(--surface); color: var(--text);
+}
+.plan-slot:active { transform: scale(.985); }
+.ps-name { flex: none; width: 6.25rem; display: flex; flex-direction: column; font-size: .75rem; font-weight: 700; color: var(--muted); line-height: 1.25; }
+.ps-name small { font-weight: 500; font-size: .6875rem; }
+.ps-meal { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ps-meal strong { font-size: .875rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ps-meal small { color: var(--muted); font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.ps-meal em { font-style: normal; display: inline-flex; align-items: center; gap: .25rem; color: var(--rose700); font-weight: 650; font-size: .8125rem; }
+.plan-slot > .ic:last-child { flex: none; color: var(--muted); }
+.plan-slot.filled { background: var(--surface-2, var(--rose50)); border-color: var(--rose200); }
+.plan-slot.empty { border-style: dashed; border-color: var(--rose200); }
+.plan-slot.gone { border-color: color-mix(in srgb, var(--warning, #956626) 55%, var(--border)); }
+.plan-slot.gone strong { color: var(--warn-ink, var(--warning, #956626)); }
+.plan-tot { margin-top: .75rem; padding-top: .625rem; border-top: .0625rem solid var(--border); display: grid; gap: .3125rem; }
+.pt-line { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; font-size: .8125rem; color: var(--muted); }
+.pt-line strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.pt-line small { color: var(--muted); font-weight: 500; }
+.plan-day-tools { margin: .75rem 0 0; }
+.plan-pick.on { border-color: var(--accent, var(--rose700)); box-shadow: 0 0 0 .125rem color-mix(in srgb, var(--accent, var(--rose700)) 22%, transparent); }
+.plan-link { margin: 0 0 .75rem; }
+
+/* ---------- Lista de compras ---------- */
+.plan-days { margin: 0 0 .75rem; flex-wrap: wrap; }
+.shop-sum { margin-bottom: .5rem; }
+.shop-group .card-head h2 { color: var(--rose800); font-size: .9375rem; }
+.shop-item {
+  display: flex; align-items: center; gap: .625rem; width: 100%; min-height: 2.75rem; min-width: 0; text-align: left;
+  padding: .375rem .125rem; border: 0; border-bottom: .0625rem solid var(--border); background: none; color: var(--text);
+}
+.shop-group .shop-item:last-child, .shop-item-row:last-of-type .shop-item { border-bottom: 0; }
+.shop-box { flex: none; width: 1.5rem; height: 1.5rem; border-radius: .5rem; border: .125rem solid var(--rose400); display: grid; place-items: center; color: var(--on-accent, #fff); }
+.shop-item.done .shop-box { background: var(--accent, var(--rose700)); border-color: var(--accent, var(--rose700)); }
+.shop-name { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: .9rem; }
+.shop-item.done .shop-name { text-decoration: line-through; color: var(--muted); }
+.shop-qty { flex: none; display: flex; flex-direction: column; align-items: flex-end; font-weight: 700; font-size: .875rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.shop-qty small { color: var(--muted); font-weight: 500; font-size: .6875rem; }
+.shop-item.done .shop-qty { color: var(--muted); }
+.shop-item-row { display: flex; align-items: center; gap: .25rem; border-bottom: .0625rem solid var(--border); }
+.shop-item-row .shop-item { border-bottom: 0; }
+.shop-item-row:last-of-type { border-bottom: 0; }
+.shop-extra { display: flex; gap: .5rem; margin-top: .625rem; }
+.shop-extra input { flex: 1; min-width: 0; min-height: 2.75rem; padding: .5rem .875rem; border-radius: 6.1875rem; border: .0625rem solid var(--rose200); background: var(--field-bg, var(--surface)); color: var(--text); }
+.shop-actions { margin-top: .25rem; }
+.shop-actions .btn[disabled] { opacity: .5; }
+
+/* ---------- Código de barras ---------- */
+.scan-cam { position: relative; aspect-ratio: 4 / 3; border-radius: var(--radius-sm, .75rem); overflow: hidden; background: #000; margin-bottom: .5rem; }
+.scan-cam video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.scan-frame { position: absolute; inset: 24% 9%; border: .1875rem solid #fff; border-radius: .75rem; box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .28); pointer-events: none; }
+.scan-cam-msg { text-align: center; margin: 0 0 .5rem; }
+.scan-privacy { display: flex; gap: .375rem; align-items: flex-start; }
+.scan-privacy .ic { flex: none; margin-top: .125rem; color: var(--rose700); }
+.scan-status { min-height: 1.5rem; margin: .25rem 0 .5rem; color: var(--muted); font-size: .875rem; }
+.scan-note { margin-bottom: .75rem; }
+
+@media (min-width: 700px) {
+  .ps-name { width: 8rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plan-bar i { transition: none; }
+}

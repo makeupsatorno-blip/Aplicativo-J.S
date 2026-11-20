@@ -116,10 +116,13 @@
 
   function resultsHtml(q) {
     if (!q.trim()) {
-      return '<p class="stat-label">Atalhos</p><div class="quick-chips">' + ['Água', 'Ciclo menstrual', 'Fotos de evolução', 'Treinos prontos', 'Backup dos dados', 'Aparência: tema, modo escuro e paleta'].map(function (n) {
-        var i = SHORTCUTS.map(function (x) { return x[0]; }).indexOf(n);
-        return '<button type="button" class="chip" data-g="s' + i + '">' + esc(n.split(':')[0]) + '</button>';
-      }).join('') + '</div><p class="hint">Busque tarefas, contas, tratamentos, refeições, fichas, exercícios, alimentos ou qualquer tela do app.</p>';
+      return '<p class="stat-label">' + ui.icon('sparkle', 14) + ' Escreva ou fale o que fez</p><div class="quick-chips nl-exemplos">' + EXEMPLOS.map(function (e, i) {
+        return '<button type="button" class="chip" data-ex="' + i + '">' + esc(e) + '</button>';
+      }).join('') + '</div><p class="hint">Eu entendo e mostro o que vou criar; só vale quando você toca em Criar.</p>' +
+        '<p class="stat-label">Atalhos</p><div class="quick-chips">' + ['Água', 'Ciclo menstrual', 'Fotos de evolução', 'Treinos prontos', 'Backup dos dados', 'Aparência: tema, modo escuro e paleta'].map(function (n) {
+          var i = SHORTCUTS.map(function (x) { return x[0]; }).indexOf(n);
+          return i < 0 ? '' : '<button type="button" class="chip" data-g="s' + i + '">' + esc(n.split(':')[0]) + '</button>';
+        }).join('') + '</div><p class="hint">Busque tarefas, contas, tratamentos, refeições, fichas, exercícios, alimentos ou qualquer tela do app.</p>';
     }
     var res = search(q);
     if (!res.length) return '<p class="muted small">Nada encontrado para "' + esc(q) + '". Tente outra palavra.</p>';
@@ -174,17 +177,125 @@
     });
   }
 
+  /* ---------------- Escrever ou falar (js/falar.js) ---------------- */
+
+  var EXEMPLOS = ['bebi 300 ml', 'tarefa ligar para a mãe amanhã às 15h', 'comi 2 ovos no café da manhã', 'peso 62,4', 'conta de luz 150 reais dia 10'];
+  var nlAtual = [];
+  ui.addIcons({ mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4M8 22h8"/>' });
+
+  function entendidos(q) {
+    if (!window.JSFalar || String(q).trim().length < 3) return [];
+    var lista = [];
+    try { lista = JSFalar.interpretar(q, new Date(), JS.store.state).filter(function (c) { return c.confianca >= 0.5; }); } catch (e) { lista = []; }
+    return lista;
+  }
+  function podeEditar(it) { return it.tipo === 'tarefa' || it.tipo === 'conta' || (it.tipo === 'alimento' && it.dados.itens.length === 1); }
+  function sem(res) { return res.replace(/^Entendi:\s*/, ''); }
+  function nomeAlt(a) { return a.nome.split(',')[0] + (a.nome.indexOf(',') > 0 ? ' (' + a.nome.slice(a.nome.indexOf(',') + 1).trim() + ')' : ''); }
+
+  // Cartão "Entendi: …" com a primeira intenção de nlAtual.
+  function nlHtmlDe() {
+    if (!nlAtual.length) return '';
+    var it = nlAtual[0], d = it.dados, alt = '';
+    if (it.tipo === 'alimento' && d.itens.length === 1 && d.itens[0].alternativas.length) {
+      alt = '<p class="nl-alt">Outro alimento? ' + d.itens[0].alternativas.map(function (a, k) { return '<button type="button" class="chip" data-nl-food="' + k + '">' + esc(nomeAlt(a)) + '</button>'; }).join('') + '</p>';
+    }
+    return '<div class="nl-card" role="group" aria-label="O que entendi"><p class="nl-eyebrow">' + ui.icon('sparkle', 14) + ' Entendi</p>' +
+      '<p class="nl-sum">' + esc(sem(it.resumo)) + '</p>' + (it.aviso ? '<p class="nl-aviso">' + ui.icon('info', 14) + ' ' + esc(it.aviso) + '</p>' : '') + alt +
+      '<div class="nl-acoes"><button type="button" class="btn small primary" data-nl="criar">' + ui.icon(it.tipo === 'treino' ? 'play' : 'plus', 16) + (it.tipo === 'treino' ? 'Começar treino' : 'Criar') + '</button>' +
+      (podeEditar(it) ? '<button type="button" class="btn small soft" data-nl="editar">' + ui.icon('edit', 16) + 'Editar</button>' : '') + '</div>' +
+      (nlAtual[1] ? '<p class="nl-outra">Ou: <button type="button" class="link" data-nl-i="1">' + esc(sem(nlAtual[1].resumo)) + '</button></p>' : '') + '</div>';
+  }
+  function nlHtml(q) { nlAtual = entendidos(q); return nlHtmlDe(); }
+
+  function criarEntendido(it) {
+    var res = null;
+    if (it.tipo === 'treino') { ui.closeSheet(); setTimeout(function () { JS.actions['quick-add']({ kind: 'workout' }); }, 120); return; }
+    JS.store.update(function (st, n) { res = JSFalar.aplicar(st, it, n); });
+    if (!res || !res.ok) { ui.toast((res && res.erro) || 'Não consegui criar.', { error: true }); return; }
+    ui.closeSheet();
+    ui.toast(res.mensagem, { actionLabel: 'Desfazer', timeout: 6500, onAction: function () { JS.store.update(function (st) { JSFalar.desfazer(st, res.desfazer); }); ui.toast('Desfeito.'); } });
+    if (res.lembrete && JS.notify) setTimeout(function () { JS.notify.askIfNeeded(); }, 700);
+  }
+  function editarEntendido(it) {
+    var d = it.dados;
+    ui.closeSheet();
+    setTimeout(function () {
+      if (it.tipo === 'tarefa' && JS.forms.task) JS.forms.task({ title: d.titulo, dueDate: d.data || '', dueTime: d.hora || '', recurrence: d.recorrencia, weekdays: d.diasSemana || [], reminderMinutes: d.lembrete });
+      else if (it.tipo === 'conta' && JS.forms.bill) JS.forms.bill({ title: d.titulo, amountCents: d.cents, dueDate: d.data, category: d.categoria, recurrence: d.recorrencia });
+      else if (it.tipo === 'alimento' && JS.foodInfo) JS.foodInfo(d.itens[0].foodId, { meal: d.refeicao, date: d.data, grams: d.itens[0].gramas });
+    }, 140);
+  }
+
+  // Microfone (Chrome/Android e Safari recentes). Sem suporte, o botão nem aparece.
+  function vozDisponivel() { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+  var voz = null;
+  function ouvir(form, q, atualizar) {
+    var btn = form.querySelector('[data-mic]'), info = form.querySelector('[data-listening]');
+    if (voz) { try { voz.stop(); } catch (e) { /* já parou */ } return; }
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = new SR(), ouviu = false, erro = false;
+    voz = rec;
+    function fim(msg) {
+      voz = null; btn.classList.remove('on'); btn.setAttribute('aria-pressed', 'false'); btn.setAttribute('aria-label', 'Falar');
+      info.textContent = msg || ''; info.hidden = !msg;
+    }
+    rec.lang = 'pt-BR'; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
+    rec.onstart = function () { btn.classList.add('on'); btn.setAttribute('aria-pressed', 'true'); btn.setAttribute('aria-label', 'Parar de ouvir'); info.hidden = false; info.textContent = 'Ouvindo… fale agora'; };
+    rec.onresult = function (e) {
+      var txt = '';
+      for (var i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+      if (txt.trim()) { ouviu = true; q.value = txt.trim(); info.textContent = 'Ouvi: “' + txt.trim() + '”'; atualizar(true); }
+    };
+    rec.onerror = function (e) {
+      erro = true;
+      var m = { 'not-allowed': 'O navegador não liberou o microfone. Libere nas permissões do site e tente de novo (ou use o microfone do teclado).', 'service-not-allowed': 'O navegador não liberou o reconhecimento de voz. Use o microfone do teclado.',
+        'no-speech': 'Não ouvi nada. Toque no microfone e fale de novo.', 'network': 'Sem conexão: o reconhecimento de voz precisa de internet neste aparelho.', 'audio-capture': 'Não achei um microfone neste aparelho.', 'aborted': '' };
+      fim(m[e.error] != null ? m[e.error] : 'Não consegui ouvir (' + e.error + '). Tente de novo ou use o teclado.');
+    };
+    rec.onend = function () { if (voz === rec) fim(ouviu ? info.textContent : erro ? '' : 'Não ouvi nada. Toque no microfone e fale de novo.'); };
+    try { rec.start(); } catch (e) { fim('Não consegui iniciar o microfone.'); }
+  }
+
   function open() {
-    var body = '<div class="field search-field">' + ui.icon('search', 18) + '<input type="search" name="q" placeholder="O que você procura?" autocomplete="off" aria-label="Buscar no J.S." enterkeyhint="search"></div>' +
-      '<div class="srch-results" data-results>' + resultsHtml('') + '</div>';
+    var mic = vozDisponivel();
+    var body = '<div class="field search-field srch-field">' + ui.icon('search', 18) + '<input type="search" name="q" placeholder="Buscar ou escrever o que fez…" autocomplete="off" aria-label="Buscar no J.S. ou escrever o que fez" enterkeyhint="search">' +
+      (mic ? '<button type="button" class="mic-btn" data-mic aria-label="Falar" aria-pressed="false" title="Falar">' + ui.icon('mic', 20) + '</button>' : '') + '</div>' +
+      '<p class="nl-ouvindo small" data-listening role="status" aria-live="polite" hidden></p>' +
+      '<div class="nl-slot" data-nl aria-live="polite"></div>' +
+      '<div class="srch-results" data-results>' + resultsHtml('') + '</div>' +
+      '<p class="hint nl-dica">' + ui.icon('info', 14) + ' Dá para escrever (ou ditar pelo microfone do teclado, no iPhone) coisas como “bebi 300 ml”, “comi 2 ovos” ou “tarefa pagar aluguel dia 5”.</p>';
     ui.openSheet({
       title: 'Buscar', body: body,
       onOpen: function (form) {
         form.classList.add('srch-form');
-        var q = form.elements.q, box = form.querySelector('[data-results]'), t = null;
-        q.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { box.innerHTML = resultsHtml(q.value); }, 110); });
+        var q = form.elements.q, box = form.querySelector('[data-results]'), nl = form.querySelector('[data-nl]'), t = null;
+        function atualizar(agora) {
+          clearTimeout(t);
+          var run = function () { nl.innerHTML = nlHtml(q.value); var rh = resultsHtml(q.value); if (nlAtual.length && rh.indexOf('Nada encontrado') >= 0) rh = ''; box.innerHTML = rh; };
+          if (agora) run(); else t = setTimeout(run, 110);
+        }
+        q.addEventListener('input', function () { atualizar(false); });
         form.addEventListener('submit', function (e) { e.preventDefault(); var first = box.querySelector('[data-g^="r"]'); if (first) first.click(); });
+        var mb = form.querySelector('[data-mic]');
+        if (mb) mb.addEventListener('click', function () { ouvir(form, q, atualizar); });
+        nl.addEventListener('click', function (e) {
+          var b = e.target.closest('[data-nl], [data-nl-food], [data-nl-i]');
+          if (!b || !nlAtual.length) return;
+          e.preventDefault();
+          if (b.dataset.nl === 'criar') criarEntendido(nlAtual[0]);
+          else if (b.dataset.nl === 'editar') editarEntendido(nlAtual[0]);
+          else if (b.dataset.nlFood != null) {
+            var it = nlAtual[0], alt = it.dados.itens[0].alternativas[Number(b.dataset.nlFood)];
+            if (alt) { JSFalar.trocarAlimento(it, 0, alt.foodId, JS.store.state); nl.innerHTML = nlHtmlDe(); }
+          } else if (b.dataset.nlI != null) {
+            var outra = nlAtual[Number(b.dataset.nlI)];
+            nlAtual = [outra].concat(nlAtual.filter(function (x) { return x !== outra; }));
+            nl.innerHTML = nlHtmlDe();
+          }
+        });
         box.addEventListener('click', function (e) {
+          var ex = e.target.closest('[data-ex]');
+          if (ex) { e.preventDefault(); q.value = EXEMPLOS[Number(ex.dataset.ex)]; atualizar(true); q.focus(); return; }
           var b = e.target.closest('[data-g]');
           if (!b) return;
           e.preventDefault();
@@ -198,5 +309,6 @@
   }
 
   JS.actions['search'] = open;
-  JS.search = { open: open, run: search };
+  // shortcuts: lista [título, palavras, ícone, destino]; outros recursos fazem JS.search.shortcuts.push([...]).
+  JS.search = { open: open, run: search, shortcuts: SHORTCUTS };
 })();

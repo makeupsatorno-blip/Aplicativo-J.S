@@ -308,6 +308,111 @@
     });
   }
 
+  /* ---------------- Treino pelo ciclo ---------------- */
+
+  // Dicas curtas por fase para o planejamento da semana (referência geral, sem promessa médica).
+  var PHASE_TIPS = {
+    men: 'Se estiver cansada, mantenha as cargas e foque na técnica.',
+    fol: 'Costuma ser uma boa fase para treinos mais puxados.',
+    ovu: 'Aqueça bem e capriche na técnica.',
+    lut: 'Mantenha a rotina; se bater cansaço, foque na técnica.'
+  };
+
+  function trainingApi() {
+    if (typeof self !== 'undefined' && self.JSTreino) return self.JSTreino;
+    if (typeof require === 'function') { try { return require('./regras-treino.js'); } catch (e) { return null; } }
+    return null;
+  }
+  function f1(n) { return String(Math.round(n * 10) / 10).replace('.', ','); }
+
+  // Fase de cada dia, do primeiro registro até hoje: { 'AAAA-MM-DD': 'men' | 'fol' | 'ovu' | 'lut' }.
+  function phaseByDate(state, today) {
+    var ps = periods(state), map = {};
+    if (!ps.length) return map;
+    var ctx = context(state, today);
+    for (var d = ps[0].start; d <= today; d = C.addDays(d, 1)) { var info = dayInfo(state, d, today, ctx); if (info) map[d] = info.phase; }
+    return map;
+  }
+
+  // O que os dados da usuária mostram sobre treino, energia e recordes em cada fase.
+  // Só gera frases quando há dados suficientes (energia: 6+ registros na fase e 10+ no total, diferença de 0,5 ponto
+  // ou mais; recordes: 3+ no total). Devolve { enabled, phases[], overall, sentences[], enough }.
+  function phaseTrainingInsights(state, today) {
+    var base = phaseStats(state, today);
+    if (!base) return { enabled: false, phases: [], overall: null, sentences: [], enough: { energy: false, records: false } };
+    var T = trainingApi(), map = phaseByDate(state, today), from = periods(state)[0].start;
+    var prs = {}, prsTotal = 0, sym = {}, energyAll = [];
+    PHASE_ORDER.forEach(function (k) { prs[k] = 0; sym[k] = {}; });
+    Object.keys(state.cycleDays || {}).forEach(function (d) {
+      var lg = state.cycleDays[d];
+      if (!lg || d < from || d > today || !map[d]) return;
+      if (lg.energy) energyAll.push(lg.energy);
+      (lg.symptoms || []).forEach(function (x) { sym[map[d]][x] = (sym[map[d]][x] || 0) + 1; });
+    });
+    if (T && T.exerciseRecords) {
+      var ids = {};
+      (state.workoutSessions || []).forEach(function (x) { if (x.status === 'done') (x.items || []).forEach(function (it) { if (it.sets && it.sets.length) ids[it.exerciseId] = 1; }); });
+      Object.keys(ids).forEach(function (id) {
+        T.exerciseRecords(state, id).events.forEach(function (e) { var p = map[e.date]; if (p) { prs[p]++; prsTotal++; } });
+      });
+    }
+    var totalDays = base.reduce(function (a, p) { return a + p.days; }, 0), totalWorkouts = base.reduce(function (a, p) { return a + p.workouts; }, 0);
+    var overall = {
+      energy: energyAll.length ? avg(energyAll) : null, energyCount: energyAll.length, days: totalDays, workouts: totalWorkouts, records: prsTotal,
+      perWeek: totalDays ? totalWorkouts / totalDays * 7 : null
+    };
+    var phases = base.map(function (p) {
+      var top = Object.keys(sym[p.phase]).filter(function (id) { return sym[p.phase][id] >= 3; })
+        .sort(function (a, b) { return sym[p.phase][b] - sym[p.phase][a]; }).slice(0, 3)
+        .map(function (id) { return { id: id, label: SYMPTOMS[SYMPTOM_IDS.indexOf(id)][1], count: sym[p.phase][id] }; });
+      return { phase: p.phase, name: p.name, days: p.days, energy: p.energy, energyCount: p.energyCount, workouts: p.workouts, perWeek: p.perWeek,
+        avgVolume: p.avgVolume, records: prs[p.phase], symptoms: top };
+    });
+    var enough = { energy: overall.energyCount >= 10, records: prsTotal >= 3 };
+    var sentences = [];
+
+    if (enough.energy) {
+      var cand = phases.filter(function (p) { return p.energyCount >= 6 && p.energy != null; }).map(function (p) { return { p: p, diff: p.energy - overall.energy }; });
+      var low = cand.filter(function (x) { return x.diff <= -0.5; }).sort(function (a, b) { return a.diff - b.diff; })[0];
+      var high = cand.filter(function (x) { return x.diff >= 0.5; }).sort(function (a, b) { return b.diff - a.diff; })[0];
+      if (low) sentences.push({ key: 'energia-baixa', phase: low.p.phase, text: 'Sua energia costuma ser mais baixa na fase ' + low.p.name.toLowerCase() + ' (média ' + f1(low.p.energy) + ' contra ' + f1(overall.energy) + ' no geral). Nessa fase, se estiver cansada, mantenha as cargas e foque na técnica.' });
+      if (high) sentences.push({ key: 'energia-alta', phase: high.p.phase, text: 'Sua energia costuma ser mais alta na fase ' + high.p.name.toLowerCase() + ' (média ' + f1(high.p.energy) + ' contra ' + f1(overall.energy) + ' no geral). Boa hora para os treinos mais puxados da semana, se estiver com vontade.' });
+    }
+    if (enough.records) {
+      var best = null;
+      phases.forEach(function (p) {
+        var share = p.records / prsTotal, dayShare = totalDays ? p.days / totalDays : 0, lead = share - dayShare;
+        if (p.records >= 2 && lead >= 0.15 && (!best || lead > best.lead)) best = { p: p, lead: lead, dayShare: dayShare };
+      });
+      if (best) sentences.push({ key: 'recordes', phase: best.p.phase, text: 'Seus recordes costumam vir na fase ' + best.p.name.toLowerCase() + ': ' + best.p.records + ' de ' + prsTotal + ' recordes, em ' + Math.round(best.dayShare * 100) + '% dos dias do ciclo.' });
+    }
+    if (totalWorkouts >= 4 && overall.perWeek >= 1) {
+      var less = phases.filter(function (p) { return p.days >= 7 && p.perWeek != null && p.perWeek < overall.perWeek * 0.6; }).sort(function (a, b) { return a.perWeek - b.perWeek; })[0];
+      if (less) sentences.push({ key: 'frequencia', phase: less.phase, text: 'Você treina menos na fase ' + less.name.toLowerCase() + ' (' + f1(less.perWeek) + ' por semana contra ' + f1(overall.perWeek) + ' no geral). É normal: ouça o corpo e ajuste a rotina.' });
+    }
+    phases.filter(function (p) { return p.symptoms.length; }).sort(function (a, b) { return b.symptoms[0].count - a.symptoms[0].count; }).slice(0, 2).forEach(function (p) {
+      sentences.push({ key: 'sintomas', phase: p.phase, text: 'Na fase ' + p.name.toLowerCase() + ' você costuma anotar: ' + p.symptoms.map(function (x) { return x.label.toLowerCase(); }).join(', ') + '.' });
+    });
+    return { enabled: true, phases: phases, overall: overall, sentences: sentences, enough: enough };
+  }
+
+  // Próximos 7 dias (a partir de hoje): fase, ficha planejada e uma dica curta. Vazio sem ciclo registrado.
+  function weekAhead(state, today) {
+    if (!enabled(state)) return [];
+    var T = trainingApi(), ctx = context(state, today), out = [];
+    for (var i = 0; i < 7; i++) {
+      var d = C.addDays(today, i), info = dayInfo(state, d, today, ctx);
+      var pl = T && T.planForDate ? T.planForDate(state, d) : null;
+      out.push({
+        date: d, phase: info ? info.phase : null, phaseName: info ? PHASES[info.phase].name : '', emoji: info ? PHASES[info.phase].emoji : '',
+        day: info ? info.day : null, period: !!(info && info.period), predicted: !!(info && info.predicted), fertile: !!(info && info.fertile),
+        plan: pl && pl.plan ? { id: pl.plan.id, name: pl.plan.name } : null, rest: !!(pl && pl.rest), changed: !!(pl && pl.changed),
+        tip: info ? PHASE_TIPS[info.phase] : ''
+      });
+    }
+    return out;
+  }
+
   // Histórico de ciclos (mais recente primeiro), com a duração de cada um.
   function history(state) {
     var S = stats(state), ps = periods(state);
@@ -324,6 +429,7 @@
     predictions: predictions, predictedStarts: predictedStarts, dayInfo: dayInfo, current: current, monthDays: monthDays,
     realPeriodOn: realPeriodOn, startPeriod: startPeriod, endPeriod: endPeriod, validatePeriod: validatePeriod,
     savePeriod: savePeriod, deletePeriod: deletePeriod, setDay: setDay, toggleSymptom: toggleSymptom,
-    phaseStats: phaseStats, history: history
+    phaseStats: phaseStats, history: history,
+    PHASE_TIPS: PHASE_TIPS, phaseByDate: phaseByDate, phaseTrainingInsights: phaseTrainingInsights, weekAhead: weekAhead
   };
 });

@@ -17,7 +17,7 @@
     var s = JS.store.state, today = C.toDateKey(now), body = s.settings.body || {};
     var html = '<h1 class="page-title">Corpo</h1><p class="page-sub">Bioimpedância, massa muscular e medidas.</p>';
     if (!s.bodyRecords.length) {
-      return html + ui.empty('body', 'Registre os dados da sua balança de bioimpedância (peso, % de gordura, massa muscular...) e acompanhe a evolução.', { label: 'Registrar medição', attrs: 'data-action="body-new"' }) + photosCard() + profileCard(body);
+      return html + ui.empty('body', 'Registre os dados da sua balança de bioimpedância (peso, % de gordura, massa muscular...) e acompanhe a evolução.', { label: 'Registrar medição', attrs: 'data-action="body-new"' }) + JS.slots.html('corpo.secoes', s, now) + photosCard() + profileCard(body);
     }
     var L = B.latest(s);
     var lastDate = Object.keys(L).reduce(function (m, k) { return L[k].date > m ? L[k].date : m; }, '');
@@ -27,6 +27,7 @@
     }).join('');
     html += '<section class="card full"><div class="card-head"><h2>' + ui.icon('body', 18) + 'Última medição</h2><span class="muted small">' + esc(C.formatDayLabel(lastDate, today)) + ' • ' + esc(C.formatDateBR(lastDate)) + '</span></div>' +
       '<div class="tiles">' + tiles + '</div><p class="hint">Setas comparam com a medição anterior. Verde = no sentido que costuma ser desejado.</p></section>';
+    html += JS.slots.html('corpo.secoes', s, now);
     html += photosCard();
 
     // Indicação de massa muscular

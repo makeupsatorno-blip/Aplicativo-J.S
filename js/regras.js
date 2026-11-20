@@ -25,7 +25,7 @@
       schemaVersion: SCHEMA_VERSION,
       settings: {
         name: 'Julia',
-        notifications: { task: true, hair: true, meal: true, bill: true, water: true, cycle: true },
+        notifications: { task: true, hair: true, meal: true, bill: true, water: true, cycle: true, sono: true, skincare: true },
         showAmountsInNotifications: false,
         mealHistory: true,
         lastBackupAt: null,
@@ -57,6 +57,7 @@
       customFoods: [],      // alimentos cadastrados pela usuária, valores por 100 g
       foodPortions: {},     // idAlimento -> [{ label, grams }]
       foodFavorites: [],    // ids de alimentos marcados com estrela
+      extras: {},           // espaço de cada recurso novo: extras.jardim, extras.planejador, extras.sono, extras.skincare...
       savedMeals: [],       // refeições salvas: { id, name, meal, items: [{ foodId, grams }], uses, lastUsedAt }
       // Água (versão 2.6)
       waterLogs: [],        // { id, date, ml, at }
@@ -89,6 +90,7 @@
       out[k] = Array.isArray(out[k]) ? out[k].filter(hasId) : [];
     });
     ['taskOcc', 'mealExceptions', 'firedReminders', 'foodPortions', 'cycleDays'].forEach(function (k) { if (!isObj(out[k])) out[k] = {}; });
+    if (!isObj(out.extras)) out.extras = {};
     out.savedMeals = (Array.isArray(out.savedMeals) ? out.savedMeals : []).filter(hasId).map(function (m) {
       return Object.assign({}, m, { name: String(m.name || 'Minha refeição').slice(0, 40), items: (Array.isArray(m.items) ? m.items : []).filter(function (i) { return i && typeof i.foodId === 'string' && i.foodId && Number(i.grams) > 0; }) });
     });
@@ -866,6 +868,13 @@
     return result(e, v);
   }
 
+  // Sono e skincare (js/regras-bemestar.js), carregado depois deste arquivo no navegador.
+  function bemestarApi() {
+    if (typeof self !== 'undefined' && self.JSBemestar) return self.JSBemestar;
+    if (typeof require === 'function') { try { return require('./regras-bemestar.js'); } catch (e) { return null; } }
+    return null;
+  }
+
   // Ciclo menstrual (js/regras-ciclo.js), carregado depois deste arquivo no navegador.
   function cycleApi() {
     if (typeof self !== 'undefined' && self.JSCiclo) return self.JSCiclo;
@@ -1010,6 +1019,22 @@
         var at = C.combine(C.addDays(d, -2), '09:00'), k = C.toDateKey(at);
         if (k < from || k > to) return;
         push('cycle', 'menstruacao', at, 'Sua menstruação deve vir em 2 dias 🌸', 'Previsão pela média dos seus ciclos • ' + C.formatDayMonth(d), 'ciclo');
+      });
+    }
+    // Skincare: lembrete diário nos horários escolhidos (manhã e/ou noite). O período que já foi feito
+    // naquele dia não avisa. Como o da água, olha só alguns dias à frente (opts.waterUntil) para o servidor.
+    var Bm = bemestarApi();
+    if (mods.skincare !== false && !singleOnly && Bm) {
+      var skc = Bm.skincareConfig(state);
+      var kEnd = opts && opts.waterUntil && opts.waterUntil < to ? opts.waterUntil : to;
+      Bm.PERIODS.forEach(function (kper) {
+        var ktime = skc.reminders[kper], ksteps = skc.steps[kper];
+        if (!ktime || !C.isTimeKey(ktime) || !ksteps.length) return;
+        for (var kd = from; kd <= kEnd; kd = C.addDays(kd, 1)) {
+          if (Bm.periodComplete(state, kd, kper)) continue;
+          push('skincare', kper, C.combine(kd, ktime), 'Hora do skincare da ' + (kper === 'manha' ? 'manhã' : 'noite') + ' 🌿',
+            ksteps.length + (ksteps.length === 1 ? ' passo' : ' passos') + ': ' + ksteps.map(function (x) { return x.name; }).join(', '), 'autocuidado');
+        }
       });
     }
     return list.sort(function (a, b) { return a.at - b.at; });

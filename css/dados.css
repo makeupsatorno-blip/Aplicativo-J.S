@@ -1,0 +1,49 @@
+/* J.S. — backup automático (Configurações, Início) e versões/lixeira.
+   Só tokens do tema (claro, escuro e paletas); medidas em rem. */
+
+/* ---------- Backup automático ---------- */
+.bk-points { list-style: none; margin: .25rem 0 .875rem; padding: 0; display: grid; gap: .5rem; }
+.bk-points li { display: flex; align-items: flex-start; gap: .625rem; font-size: .875rem; line-height: 1.4; }
+.bk-points li > .ic { flex: none; margin-top: .1875rem; color: var(--rose600); }
+.bk-status { margin: 0 0 .5rem; font-size: .9375rem; }
+.bk-status strong { color: var(--rose800); }
+.bk-card .switch-row { margin-bottom: .5rem; }
+.bk-card .btn-col { margin-top: .5rem; }
+.bk-label { text-align: center; font-size: .75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .0625rem; margin: .25rem 0 0; }
+.bk-code {
+  text-align: center; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 1.5rem; font-weight: 700; letter-spacing: .0625rem;
+  color: var(--rose800); background: var(--surface-2, var(--rose50)); border: .0625rem dashed var(--rose400); border-radius: var(--radius-sm, .75rem);
+  padding: .875rem .5rem; margin: .375rem 0 .75rem; user-select: all; overflow-wrap: anywhere;
+}
+.bk-vers { display: grid; gap: .5rem; margin-bottom: .5rem; }
+.bk-ver {
+  display: flex; align-items: center; gap: .625rem; width: 100%; text-align: left; min-height: 3.25rem; padding: .625rem .875rem;
+  border: .0625rem solid var(--rose200); border-radius: var(--radius-sm, .75rem); background: var(--surface); color: var(--text);
+}
+.bk-ver:active { background: var(--surface-2, var(--rose50)); transform: scale(.99); }
+.bk-ver[disabled] { opacity: .55; }
+.bk-ver-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.bk-ver-main strong { color: var(--rose800); }
+.bk-ver-main small { color: var(--muted); font-size: .8125rem; }
+.bk-ver > .ic:last-child { flex: none; color: var(--muted); }
+
+/* ---------- Versões e lixeira ---------- */
+.vs-card .btn-col { margin-top: .5rem; }
+.vs-group { margin: .875rem 0 .25rem; }
+.vs-item, .vs-ver {
+  display: flex; align-items: center; gap: .625rem; padding: .5rem 0; border-bottom: .0625rem solid var(--border); min-width: 0;
+}
+.vs-item:last-child, .vs-ver:last-of-type { border-bottom: 0; }
+.vs-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.vs-main strong { font-size: .9375rem; overflow-wrap: anywhere; }
+.vs-main small { color: var(--muted); font-size: .8125rem; overflow-wrap: anywhere; }
+.vs-ver { flex-wrap: wrap; padding: .75rem 0; }
+.vs-btns { display: flex; flex-wrap: wrap; gap: .375rem; }
+.vs-item .btn { flex: none; }
+.vs-empty { margin: .5rem 0 1rem; }
+[data-vs-body] .btn.full { margin: .5rem 0 .25rem; }
+
+@media (max-width: 350px) {
+  .vs-ver { align-items: flex-start; }
+  .vs-btns { width: 100%; }
+}

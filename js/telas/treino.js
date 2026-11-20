@@ -55,8 +55,10 @@
 
   function exerciseLine(s, it) {
     var ex = T.exerciseById(s, it.exerciseId), best = T.exerciseBest(s, it.exerciseId);
+    var sg = T.suggestionsEnabled(s) ? T.suggestLoad(s, it.exerciseId, { targetReps: it.reps, targetSets: it.sets }) : null;
+    var up = sg && sg.action === 'subir' ? ' <span class="ex-sug" title="Sugestão de hoje: ' + esc(sg.headline) + '">' + ui.icon('up', 12) + (sg.load > 0 ? kg(sg.load) : sg.reps + ' rep.') + '</span>' : '';
     return '<div class="ex-row"><span class="ex-name">' + esc(ex ? ex.name : 'Exercício removido') +
-      (best && best.load > 0 ? ' <span class="ex-pr" title="Seu recorde de carga neste exercício">' + ui.icon('trophy', 12) + kg(best.load) + '</span>' : '') + '</span>' +
+      (best && best.load > 0 ? ' <span class="ex-pr" title="Seu recorde de carga neste exercício">' + ui.icon('trophy', 12) + kg(best.load) + '</span>' : '') + up + '</span>' +
       '<span class="ex-meta">' + it.sets + ' × ' + esc(it.reps) + loadsText(it) + '</span></div>';
   }
 
@@ -68,9 +70,40 @@
       '<div><strong>' + sum.sets + '</strong><span>séries</span></div>' +
       '<div><strong>' + JS.graf.fmtNum(sum.volume, 0) + ' kg</strong><span>volume</span></div></div>' +
       (sum.prs.length ? '<div class="pr-box" role="status"><p class="pr-head">' + ui.icon('trophy', 18) + (sum.prs.length === 1 ? 'Novo recorde pessoal!' : sum.prs.length + ' novos recordes pessoais!') + '</p><ul>' +
-        sum.prs.map(function (p) { return '<li><strong>' + esc(p.name) + '</strong><span>' + esc(prText(p)) + '</span></li>'; }).join('') + '</ul></div>' : '');
+        sum.prs.map(function (p) {
+          var share = canShare() ? shareBtn(p) : '';
+          return '<li' + (share ? ' class="has-share"' : '') + '><div class="pr-li-main"><strong>' + esc(p.name) + '</strong><span>' + esc(prText(p)) + '</span></div>' + share + '</li>';
+        }).join('') + '</ul></div>' : '');
   }
   JS.workoutSummaryHtml = summaryHtml;
+
+  /* ---------------- Compartilhar recorde (cartão gerado por js/cartoes.js) ---------------- */
+
+  function canShare() { return !!(window.JS && JS.cartoes && typeof JS.cartoes.share === 'function'); }
+  function prAttrs(p) {
+    return ' data-name="' + esc(p.name) + '" data-kind="' + esc(p.kind || 'carga') + '" data-load="' + esc(p.load) + '" data-reps="' + esc(p.reps) +
+      '" data-prevload="' + (p.prevLoad == null ? '' : esc(p.prevLoad)) + '" data-prevreps="' + (p.prevReps == null ? '' : esc(p.prevReps)) + '"';
+  }
+  // Na tela normal o toque vai por data-action; dentro de janelas (dialog) o app não repassa as ações, então
+  // quem abre a janela liga JS.bindPrShare(form) e o botão é achado por data-pr-share.
+  function shareBtn(p) {
+    return '<button type="button" class="pr-share" data-action="pr-share" data-pr-share' + prAttrs(p) + ' aria-label="Compartilhar o recorde de ' + esc(p.name) + '">' + ui.icon('share', 14) + '<span>Compartilhar</span></button>';
+  }
+  function sharePr(ds) {
+    var num = function (v) { return v === '' || v == null ? null : Number(v); };
+    if (!canShare()) { ui.toast('Compartilhar ainda não está disponível neste aparelho.'); return; }
+    var r = JS.cartoes.share('recorde', { name: ds.name, kind: ds.kind, load: num(ds.load), reps: num(ds.reps), prevLoad: num(ds.prevload), prevReps: num(ds.prevreps) });
+    if (r && typeof r.catch === 'function') r.catch(function () { ui.toast('Não foi possível compartilhar agora.', { error: true }); });
+  }
+  JS.bindPrShare = function (root) {
+    root.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-pr-share]');
+      if (!b) return;
+      e.preventDefault();
+      sharePr(b.dataset);
+    });
+  };
+  JS.actions['pr-share'] = function (d) { sharePr(d); };
 
   function renderHoje(s, now) {
     var today = C.toDateKey(now), html = '';
@@ -122,6 +155,7 @@
       JS.graf.fmtNum(wk.volume, 0) + ' kg</strong><span class="stat-sub">carga × repetições</span></div></div>';
     html += recordsCard(s, today);
     html += muscleCard(s, today);
+    html += JS.slots.html('treino.hoje', s, now);
     return html;
   }
 
@@ -140,8 +174,9 @@
     if (!r.list.length) return '';
     return '<section class="card records-card"><div class="card-head"><h2>' + ui.icon('trophy', 18) + 'Recordes pessoais</h2><span class="count">' + r.total + (r.total === 1 ? ' recorde' : ' recordes') + ' em 30 dias</span></div>' +
       r.list.map(function (e) {
-        return '<button type="button" class="pr-row" data-action="pr-open" data-id="' + esc(e.exerciseId) + '"><span class="pr-ic">' + ui.icon('trophy', 16) + '</span>' +
-          '<span class="pr-main"><strong>' + esc(e.name) + '</strong><small>' + esc(prText(e)) + '</small></span><span class="pr-date">' + esc(C.formatDayLabel(e.date, today)) + '</span></button>';
+        return '<div class="pr-line"><button type="button" class="pr-row" data-action="pr-open" data-id="' + esc(e.exerciseId) + '"><span class="pr-ic">' + ui.icon('trophy', 16) + '</span>' +
+          '<span class="pr-main"><strong>' + esc(e.name) + '</strong><small>' + esc(prText(e)) + '</small></span><span class="pr-date">' + esc(C.formatDayLabel(e.date, today)) + '</span></button>' +
+          (canShare() ? shareBtn(e) : '') + '</div>';
       }).join('') + '</section>';
   }
 
@@ -172,8 +207,18 @@
     var energy = Cy.ENERGY.map(function (e) {
       return '<button type="button" class="emo' + (log.energy === e[0] ? ' on' : '') + '" data-action="cycle-energy" data-v="' + e[0] + '" aria-pressed="' + (log.energy === e[0]) + '" title="' + esc(e[2]) + '"><span aria-hidden="true">' + e[1] + '</span><small>' + esc(e[2]) + '</small></button>';
     }).join('');
+    var ins = Cy.phaseTrainingInsights ? Cy.phaseTrainingInsights(s, today) : null, lines = '';
+    if (ins && ins.enabled) {
+      var mine = ins.phases.filter(function (p) { return p.phase === ph.key; })[0];
+      if (mine && mine.energy != null && mine.energyCount >= 6 && ins.overall.energyCount >= 6) {
+        lines += '<p class="cyc-insight"><span aria-hidden="true">' + ph.emoji + '</span><span class="cyc-txt">Nesta fase sua energia costuma ser <strong>' + JS.graf.fmtNum(mine.energy, 1) + '</strong> (média geral ' + JS.graf.fmtNum(ins.overall.energy, 1) + ').</span></p>';
+      }
+      if (ins.sentences.some(function (x) { return x.key === 'recordes' && x.phase === ph.key; })) {
+        lines += '<p class="cyc-insight">' + ui.icon('trophy', 14) + '<span class="cyc-txt">Seus recordes costumam vir nesta fase.</span></p>';
+      }
+    }
     return '<section class="card cycle-today ph-' + ph.key + '"><button type="button" class="cycle-line" data-action="go" data-route="ciclo"><span class="ph-dot" aria-hidden="true"></span>' +
-      '<span class="cl-txt"><strong>Fase ' + esc(ph.name.toLowerCase()) + ' • dia ' + cur.info.day + '</strong><small>' + esc(ph.treino) + '</small></span>' + ui.icon('right', 16) + '</button>' +
+      '<span class="cl-txt"><strong>Fase ' + esc(ph.name.toLowerCase()) + ' • dia ' + cur.info.day + '</strong><small>' + esc(ph.treino) + '</small></span>' + ui.icon('right', 16) + '</button>' + lines +
       '<p class="emo-q">Como está sua energia hoje?</p><div class="emo-row">' + energy + '</div></section>';
   }
 
@@ -351,6 +396,7 @@
     }).join('');
     ui.openSheet({ title: x.planName, subtitle: C.formatDateLong(x.date), body: body + '<button type="button" class="btn danger full" data-del-session>Excluir este registro</button>',
       onOpen: function (form) {
+        JS.bindPrShare(form);
         form.querySelector('[data-del-session]').addEventListener('click', function () {
           ui.closeSheet();
           ui.confirm({ title: 'Excluir treino?', message: 'O registro de ' + C.formatDateBR(x.date) + ' será apagado da evolução.', confirmLabel: 'Excluir', danger: true })
@@ -770,6 +816,27 @@
   JS.actions['plan-new'] = function () { openPlanEditor(null); };
   JS.actions['quick-open'] = function () { JS.openQuickRegister({ source: 'botao' }); };
   JS.actions['plan-menu'] = function (d) { planMenu(d.id); };
+
+  /* ---------------- Sugestões de carga: ajuste em Configurações e atalhos da busca ---------------- */
+
+  JS.slots.add('config.secoes', function (s) {
+    return '<section class="card" id="cfg-treino-sug"><div class="card-head"><h2>' + ui.icon('up', 18) + 'Sugestões de carga</h2></div>' +
+      '<label class="switch-row"><span class="switch-text"><strong>Sugerir a carga do dia</strong><small>Se você fez todas as repetições na última vez, o app sugere subir um pouco. Nada muda sozinho: você decide.</small></span>' +
+      '<input type="checkbox" class="switch" data-change="treino-sug" name="treinoSug"' + (T.suggestionsEnabled(s) ? ' checked' : '') + '></label></section>';
+  }, 40);
+  JS.changes['treino-sug'] = function (el) {
+    var on = el.checked;
+    JS.store.update(function (st) { st.extras.treino = Object.assign({}, st.extras.treino, { hideSuggestions: !on }); });
+    ui.toast(on ? 'Sugestões de carga ligadas.' : 'Sugestões de carga desligadas.');
+  };
+  function addShortcuts() {
+    if (!JS.search || !JS.search.shortcuts) return;
+    JS.search.shortcuts.push(['Sugestões de carga', 'sugestao sugestoes carga peso subir progressao aumentar', 'up', { route: 'config', scroll: '#cfg-treino-sug' }]);
+    JS.search.shortcuts.push(['Treino pelo ciclo', 'treino ciclo fase energia semana recordes planejar', 'moon', { route: 'ciclo', scroll: '.cycle-train' }]);
+  }
+  // A busca (js/telas/busca.js) carrega depois deste arquivo: espera todos os scripts (que são 'defer': o readyState já é
+  // 'interactive' enquanto eles rodam, então só vale rodar direto quando a página já terminou de carregar).
+  if (document.readyState === 'complete') addShortcuts(); else document.addEventListener('DOMContentLoaded', addShortcuts);
   JS.actions['pr-open'] = function (d) {
     view.mode = 'evolucao'; view.evoEx = d.id;
     JS.app.render({ enter: 'view:r' });

@@ -1,0 +1,43 @@
+/* J.S. 2.8 — adicionar escrevendo/falando, relatório em PDF e exportar para calendário.
+   Só tokens do tema (claro, escuro e paletas); medidas em rem. */
+
+/* ---------- Busca: campo com microfone ---------- */
+.srch-field input { padding-right: 3.5rem !important; }
+.mic-btn {
+  position: absolute; right: .25rem; top: .25rem; width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 0;
+  display: grid; place-items: center; background: var(--surface-2, var(--rose50)); color: var(--rose700); z-index: 2;
+}
+.mic-btn:active { background: var(--rose100); }
+.mic-btn.on { background: var(--accent, var(--rose700)); color: var(--on-accent, #fff); animation: ferr-pulse 1.4s ease-in-out infinite; }
+.nl-ouvindo { margin: .5rem .25rem 0; color: var(--rose800); font-weight: 600; }
+
+/* ---------- Cartão "Entendi" ---------- */
+.nl-slot:empty { display: none; }
+.nl-card {
+  margin: .75rem 0 .25rem; padding: .875rem; border-radius: var(--radius-sm, .75rem);
+  border: .0625rem solid color-mix(in srgb, var(--rose600) 40%, var(--border)); background: linear-gradient(180deg, var(--surface-2, var(--rose50)), var(--surface));
+}
+.nl-eyebrow { display: flex; align-items: center; gap: .375rem; font-size: .75rem; font-weight: 800; letter-spacing: .0625rem; text-transform: uppercase; color: var(--rose700); margin-bottom: .25rem; }
+.nl-sum { font-size: 1rem; font-weight: 650; color: var(--text); overflow-wrap: anywhere; }
+.nl-aviso { display: flex; gap: .375rem; align-items: flex-start; margin-top: .375rem; font-size: .8125rem; color: var(--warn-ink, var(--muted)); }
+.nl-aviso .ic { margin-top: .125rem; flex: none; }
+.nl-alt { margin-top: .5rem; font-size: .8125rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .375rem; align-items: center; }
+.nl-alt .chip { font-size: .75rem; max-width: 100%; text-align: left; }
+.nl-acoes { display: flex; gap: .5rem; margin-top: .75rem; flex-wrap: wrap; }
+.nl-outra { margin-top: .625rem; font-size: .8125rem; color: var(--muted); }
+.nl-outra .link { display: inline; padding: 0; font-size: .8125rem; text-align: left; }
+.nl-exemplos .chip { text-align: left; }
+.nl-dica { margin-top: 1rem; }
+.nl-dica .ic { vertical-align: -.125rem; }
+
+/* ---------- Relatório em PDF ---------- */
+.rel-secoes { margin: .25rem 0; }
+.rel-previa { min-height: 2.5rem; margin: .5rem 0; padding: .5rem .75rem; border-radius: var(--radius-sm, .75rem); background: var(--surface-2, var(--rose50)); }
+.rel-status { color: var(--rose800); font-weight: 600; min-height: 1.25rem; }
+#cfg-relatorio .btn { margin-top: .25rem; }
+
+/* ---------- Agenda: exportar ---------- */
+.agenda-export { margin-top: 1rem; }
+
+@keyframes ferr-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, var(--rose700)) 45%, transparent); } 50% { box-shadow: 0 0 0 .5rem transparent; } }
+@media (prefers-reduced-motion: reduce) { .mic-btn.on { animation: none; } }

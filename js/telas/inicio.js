@@ -25,6 +25,7 @@
       '<h1>' + esc(greeting(now)) + (name ? ', ' + esc(name) : '') + ' <span class="wave" aria-hidden="true">🌷</span></h1>' +
       '<p class="muted">' + esc(C.formatDateLong(today)) + '</p></section>';
 
+    html += JS.slots.html('inicio.topo', s, now, d);
     if (JS.app.canInstall()) {
       html += '<div class="banner"><span class="banner-ic">' + ui.icon('phone', 20) + '</span><div><strong>Instale o J.S.</strong><p>Abra direto da tela inicial, como um aplicativo.</p></div>' +
         '<button type="button" class="btn primary small" data-action="install">Instalar</button></div>';
@@ -107,6 +108,8 @@
       waterMini(s, today) + cycleMini(s, today) +
       '</div>';
 
+    html += JS.slots.html('inicio.meio', s, now, d);
+
     // Contas próximas
     html += card('Contas nos próximos 7 dias',
       (d.billsSoon.length ? d.billsSoon.slice(0, 5).map(function (b) { return JS.render.billItem(b, now, { compact: true }); }).join('')
@@ -117,6 +120,8 @@
     if (d.upcomingTasks.length) {
       html += card('Próximos dias', d.upcomingTasks.map(function (o) { return JS.render.taskItem(o, now, { showDate: true }); }).join('') + link('Ver agenda', 'agenda'), { icon: 'calendar' });
     }
+
+    html += JS.slots.html('inicio.fim', s, now, d);
 
     // Adicionar rápido
     html += '<section class="quick"><h2>Adicionar</h2><div class="quick-grid six eight">' +

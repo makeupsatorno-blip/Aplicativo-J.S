@@ -1,0 +1,116 @@
+/* J.S. — sono e skincare (cartões em Corpo, Cronograma capilar e Início).
+   Só tokens do tema (claro, escuro e paletas); o valor depois da vírgula em var() é reserva. Medidas em rem. */
+
+/* ---------- Sono ---------- */
+.sl-hero { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.sl-hero .hero-num { font-size: 2.25rem; }
+.sl-qb { display: flex; flex-direction: column; align-items: center; flex: none; min-width: 3.75rem; padding: .375rem .625rem; border-radius: var(--radius-sm, .75rem); background: var(--ph-lut-bg, #F0EAF8); color: var(--ph-lut, #6D56A6); }
+.sl-qb span { font-size: 1.5rem; line-height: 1.15; }
+.sl-qb small { font-size: .6875rem; font-weight: 700; }
+.sl-prog { margin: .5rem 0 .375rem; }
+.sl-prog span { background: var(--ph-lut, #6D56A6) !important; }
+.sl-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: .375rem; margin: .875rem 0 .625rem; padding-top: .75rem; border-top: .0625rem solid var(--border); }
+.sl-day { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-height: 2.75rem; padding: .125rem 0 0; border: 0; border-radius: .625rem; background: none; color: var(--muted); }
+.sl-day:active { background: var(--surface-2, var(--rose50)); }
+.sl-val { min-height: .875rem; font-size: .6875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sl-bar { position: relative; display: flex; align-items: flex-end; width: 100%; max-width: 1.875rem; height: 4.5rem; overflow: hidden; border-radius: .5rem; background: var(--surface-2, var(--rose50)); }
+.sl-bar i { display: block; width: 100%; border-radius: .5rem; background: var(--c, var(--ph-lut, #6D56A6)); transition: height .5s cubic-bezier(.2, .8, .2, 1); }
+.sl-bar::after { content: ''; position: absolute; left: 0; right: 0; bottom: var(--gp, 70%); border-top: .125rem dashed color-mix(in srgb, var(--text) 35%, transparent); pointer-events: none; }
+.sl-day.met { --c: var(--ph-fol, #3D7254); }
+.sl-day.low { --c: var(--ph-lut, #6D56A6); }
+.sl-day.none .sl-bar i { height: 0 !important; }
+.sl-day em { font-style: normal; font-size: .6875rem; font-weight: 700; }
+.sl-day.today em { color: var(--accent, var(--rose700)); }
+.sl-day.today .sl-bar { box-shadow: 0 0 0 .125rem color-mix(in srgb, var(--accent, var(--rose700)) 45%, transparent); }
+.sl-debt { margin: .25rem 0 .5rem; padding: .5rem .75rem; border-radius: .75rem; background: var(--ph-lut-bg, #F0EAF8); color: var(--ph-lut, #6D56A6); font-size: .875rem; font-weight: 600; }
+.sl-debt.ok { background: var(--ph-fol-bg, #E6F2EA); color: var(--ph-fol, #3D7254); }
+.sl-insight { margin: .5rem 0 .125rem; font-size: .875rem; }
+.sleep-card .btn-row { flex-wrap: wrap; }
+
+/* folha de registro */
+.sl-mode .chip.on { background: var(--accent, var(--rose700)); color: var(--on-accent, #fff); border-color: var(--accent, var(--rose700)); }
+.sl-stepper { display: flex; align-items: center; justify-content: center; gap: .625rem; margin: .25rem 0; }
+.sl-stepper .icon-btn { border: .0625rem solid var(--rose200); background: var(--surface); font-size: 1.5rem; line-height: 1; }
+.sl-stepper input { width: 6rem; text-align: center; font-size: 1.75rem; font-weight: 800; padding: .375rem; border-radius: .875rem; border: .0625rem solid var(--rose200); background: var(--field-bg, var(--surface)); }
+.sl-stepper span { color: var(--muted); font-weight: 700; }
+.sl-qs { display: grid; grid-template-columns: repeat(5, 1fr); gap: .375rem; margin: .25rem 0; }
+.sl-q { display: flex; flex-direction: column; align-items: center; gap: .125rem; min-width: 0; min-height: 3.5rem; padding: .5rem .125rem; border: .0625rem solid var(--border); border-radius: .875rem; background: var(--surface); color: var(--text); }
+.sl-q span { font-size: 1.5rem; line-height: 1.1; }
+.sl-q small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .625rem; color: var(--muted); }
+.sl-q.on { border-color: var(--ph-lut, #6D56A6); background: var(--ph-lut-bg, #F0EAF8); box-shadow: 0 0 0 .125rem color-mix(in srgb, var(--ph-lut, #6D56A6) 28%, transparent); }
+.sl-q.on small { color: var(--ph-lut, #6D56A6); font-weight: 700; }
+
+/* ---------- Skincare ---------- */
+.skin-card .card-head { flex-wrap: wrap; }
+.sk-head-right { display: flex; align-items: center; gap: .5rem; }
+.sk-streak { padding: .1875rem .625rem; border-radius: 6rem; background: var(--ph-fol-bg, #E6F2EA); color: var(--ph-fol, #3D7254); font-size: .75rem; font-weight: 800; white-space: nowrap; }
+.sk-tabs { display: flex; gap: .375rem; margin-bottom: .75rem; }
+.sk-tab { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .375rem; min-height: 2.75rem; border: .0625rem solid var(--border); border-radius: 6rem; background: var(--surface); color: var(--muted); font-weight: 700; }
+.sk-tab small { font-size: .75rem; font-variant-numeric: tabular-nums; }
+.sk-tab.on { background: var(--ph-fol-bg, #E6F2EA); color: var(--ph-fol, #3D7254); border-color: color-mix(in srgb, var(--ph-fol, #3D7254) 40%, transparent); }
+.sk-body { display: flex; align-items: flex-start; gap: .875rem; }
+.sk-ring { position: relative; flex: none; display: grid; place-items: center; width: 3.75rem; height: 3.75rem; }
+.sk-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.sk-ring-bg, .sk-ring-fg { fill: none; stroke-width: 3.4; }
+.sk-ring-bg { stroke: var(--surface-2, var(--rose100)); }
+.sk-ring-fg { stroke: var(--ph-fol, #3D7254); stroke-linecap: round; transition: stroke-dasharray .5s cubic-bezier(.2, .8, .2, 1); }
+.sk-ring strong { position: relative; font-size: .8125rem; font-variant-numeric: tabular-nums; }
+.sk-steps { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .375rem; min-width: 0; }
+.sk-step { display: flex; align-items: center; gap: .625rem; min-height: 2.75rem; padding: .375rem .625rem; border: .0625rem solid var(--border); border-radius: .875rem; background: var(--surface); color: var(--text); font-weight: 600; text-align: left; }
+.sk-step:active { transform: scale(.98); }
+.sk-check { flex: none; display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border: .125rem solid var(--rose400); border-radius: 50%; color: transparent; transition: background .2s ease, border-color .2s ease; }
+.sk-check .ic path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.sk-name { min-width: 0; overflow-wrap: anywhere; }
+.sk-step.on { background: var(--ph-fol-bg, #E6F2EA); border-color: color-mix(in srgb, var(--ph-fol, #3D7254) 40%, transparent); }
+.sk-step.on .sk-check { background: var(--ph-fol, #3D7254); border-color: var(--ph-fol, #3D7254); color: var(--surface, #fff); }
+.sk-step.on .sk-check .ic path { stroke-dashoffset: 0; }
+.sk-step.just .sk-check { animation: bw-pop .5s ease; }
+.sk-step.just .sk-check .ic path { animation: bw-draw .4s ease-out .05s both; }
+.sk-done { margin: .625rem 0 0; padding: .5rem .75rem; border-radius: .75rem; background: var(--ph-fol-bg, #E6F2EA); color: var(--ph-fol, #3D7254); font-size: .875rem; font-weight: 700; }
+.sk-week { display: flex; justify-content: space-between; gap: .375rem; margin: .875rem 0 .5rem; padding-top: .75rem; border-top: .0625rem solid var(--border); }
+.sk-dot { display: flex; flex: 1; flex-direction: column; align-items: center; gap: .25rem; }
+.sk-dot i { width: 1rem; height: 1rem; border: .125rem solid var(--rose400); border-radius: 50%; }
+.sk-dot.full i { background: var(--ph-fol, #3D7254); border-color: var(--ph-fol, #3D7254); }
+.sk-dot.part i { border-color: var(--ph-fol, #3D7254); background: linear-gradient(90deg, var(--ph-fol, #3D7254) 50%, transparent 50%); }
+.sk-dot em { font-style: normal; font-size: .6875rem; font-weight: 700; color: var(--muted); }
+.sk-dot.today em { color: var(--accent, var(--rose700)); }
+.sk-dot.today i { box-shadow: 0 0 0 .1875rem color-mix(in srgb, var(--accent, var(--rose700)) 30%, transparent); }
+.sk-foot { display: flex; align-items: center; gap: .375rem; margin: 0; }
+.sk-foot .ic { flex: none; }
+/* edição dos passos */
+.sk-edit-block { margin-bottom: 1rem; }
+.sk-edit-list { display: grid; gap: .375rem; margin-bottom: .5rem; }
+.sk-edit-row { display: flex; align-items: center; gap: .25rem; }
+.sk-edit-row input { flex: 1; min-width: 0; padding: .5rem .75rem; border: .0625rem solid var(--rose200); border-radius: .75rem; background: var(--field-bg, var(--surface)); }
+.sk-edit-row .icon-btn[disabled] { opacity: .3; }
+.sk-add { display: flex; gap: .5rem; margin-bottom: .5rem; }
+.sk-add input { flex: 1; min-width: 0; padding: .5rem .75rem; border: .0625rem solid var(--rose200); border-radius: .75rem; background: var(--field-bg, var(--surface)); }
+
+/* ---------- Início: bem-estar ---------- */
+.wb-rows { display: grid; gap: .75rem; }
+.wb-row { display: flex; flex-wrap: wrap; align-items: center; gap: .625rem; }
+.wb-ic { flex: none; display: grid; place-items: center; width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--surface-2, var(--rose50)); color: var(--rose700); }
+.wb-txt { flex: 1; min-width: 8rem; display: flex; flex-direction: column; }
+.wb-txt small { color: var(--muted); font-size: .75rem; }
+.wb-chips { display: flex; flex-wrap: wrap; gap: .375rem; }
+.wb-chip { display: inline-flex; align-items: center; gap: .375rem; min-height: 2.75rem; padding: 0 .875rem; border: .0625rem solid var(--border); border-radius: 6rem; background: var(--surface); color: var(--text); font-weight: 700; font-size: .875rem; }
+.wb-chip small { font-size: .75rem; font-variant-numeric: tabular-nums; }
+.wb-chip.part { background: var(--ph-ovu-bg, #FBEEDD); color: var(--ph-ovu, #8C5820); border-color: color-mix(in srgb, var(--ph-ovu, #8C5820) 35%, transparent); }
+.wb-chip.done { background: var(--ph-fol-bg, #E6F2EA); color: var(--ph-fol, #3D7254); border-color: color-mix(in srgb, var(--ph-fol, #3D7254) 40%, transparent); }
+
+@keyframes bw-pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes bw-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+@media (min-width: 700px) {
+  .sl-bar { height: 5.5rem; }
+}
+/* Em tela grande o conteúdo vira duas colunas: o skincare ocupa a largura toda (sem deixar buraco ao lado). */
+@media (min-width: 1000px) {
+  .skin-card { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sl-bar i, .sk-ring-fg, .sk-check { transition: none; }
+  .sk-step.just .sk-check, .sk-step.just .sk-check .ic path { animation: none; }
+}
+html.reduce-motion .sl-bar i, html.reduce-motion .sk-ring-fg, html.reduce-motion .sk-check { transition: none; }
+html.reduce-motion .sk-step.just .sk-check, html.reduce-motion .sk-step.just .sk-check .ic path { animation: none; }

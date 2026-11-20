@@ -22,6 +22,12 @@
 //   POST transfer-get  -> o outro aparelho baixa cada pedaço
 //   POST transfer-done -> recebeu: apaga tudo
 //
+// Backup automático (cifrado no aparelho; fica até o último + 7 dias; supabase/sql/05_backup_auto.sql):
+//   POST backup-put    -> um pedaço cifrado de um envio; quando todos chegam, vira o "ultimo" (e o dia)
+//   POST backup-list   -> backups completos deste código (slot, partes, tamanho, data)
+//   POST backup-get    -> baixa um pedaço de um backup (slot + part)
+//   POST backup-delete -> apaga tudo deste código (desligar e apagar do servidor)
+//
 // Sem login: cada aparelho tem um id e um segredo gerados no próprio celular.
 // O servidor guarda só o hash do segredo.
 import webpush from "npm:web-push@3.6.7";
@@ -414,6 +420,128 @@ async function handleTransferDone(body: TransferBody) {
   return json({ ok: true });
 }
 
+/* ---------------- Backup automático (cifrado no aparelho) ---------------- */
+// Mesmo modelo da transferência: o aparelho cifra com uma chave tirada do "código de recuperação" (que
+// não vem para cá) e manda em pedaços; só o conteúdo cifrado, o tamanho e a data ficam no servidor.
+// Cada envio grava as partes numa "versão" (up) nova; só quando TODAS chegaram os ponteiros
+// (js_backup_heads: 'ultimo' e 'dia-AAAA-MM-DD') passam a apontar para ela. Assim um envio interrompido
+// nunca estraga o backup anterior. Ficam o 'ultimo' e os 7 dias mais recentes; sem atividade por 180 dias,
+// tudo é apagado. Tabelas: supabase/sql/05_backup_auto.sql.
+// <backup-auto:inicio>
+const BACKUP_PART_MAX = 1_100_000;      // caracteres base64 por pedaço
+const BACKUP_PARTS_MAX = 24;            // até ~26 MB cifrados (o app limita em ~12 MB com fotos)
+const BACKUP_PUTS_PER_DAY = 40;         // envios (de partes 0) por código por dia
+const BACKUP_DAYS_KEPT = 7;             // além do 'ultimo'
+const BACKUP_INACTIVE_DAYS = 180;       // sem nenhuma atividade: apaga tudo
+const BACKUP_STALE_MS = 60 * 60 * 1000; // parte solta (envio interrompido) só some depois de 1 h
+const BACKUP_ROWS_TOTAL_MAX = 1500;     // trava geral da tabela (evita abuso)
+type BackupBody = { id?: unknown; up?: unknown; part?: unknown; parts?: unknown; data?: unknown; dia?: unknown; meta?: unknown; slot?: unknown };
+const validBackupId = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{64}$/.test(v);
+const validBackupUp = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f]{16,64}$/.test(v);
+const validBackupSlot = (v: unknown): v is string => typeof v === "string" && (v === "ultimo" || /^dia-\d{4}-\d{2}-\d{2}$/.test(v));
+function cleanBackupMeta(v: unknown): string {
+  const s = typeof v === "string" ? v.slice(0, 60) : "";
+  return /^[A-Za-z0-9=;.,_ -]*$/.test(s) ? s : "";
+}
+
+// Marca atividade do código e conta os envios do dia. Devolve { limited: true } passado do limite.
+async function backupTouch(id: string, countPut: boolean) {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: row } = await db.from("js_backup_usage").select("day, puts").eq("id", id).maybeSingle();
+  if (!row && !countPut) return { limited: false }; // listar/baixar de um código desconhecido não cria linha (evita lixo)
+  let puts = row && row.day === today ? Number(row.puts) || 0 : 0;
+  if (countPut) puts++;
+  if (countPut && puts > BACKUP_PUTS_PER_DAY) return { limited: true };
+  await db.from("js_backup_usage").upsert({ id, last_seen: new Date().toISOString(), day: today, puts }, { onConflict: "id" });
+  return { limited: false };
+}
+
+// Apaga tudo de códigos sem atividade há muito tempo (poucos por vez).
+async function backupCleanInactive() {
+  const limit = new Date(Date.now() - BACKUP_INACTIVE_DAYS * 86400000).toISOString();
+  const { data } = await db.from("js_backup_usage").select("id").lt("last_seen", limit).limit(20);
+  for (const r of (data ?? []) as any[]) {
+    await db.from("js_backup_parts").delete().eq("id", r.id);
+    await db.from("js_backup_heads").delete().eq("id", r.id);
+    await db.from("js_backup_usage").delete().eq("id", r.id);
+  }
+}
+
+// Depois de um backup completo: mantém só os 7 dias mais recentes e apaga partes que nenhum ponteiro usa.
+async function backupPrune(id: string) {
+  const { data: heads } = await db.from("js_backup_heads").select("slot, ver").eq("id", id);
+  const all = (heads ?? []) as any[];
+  const dias = all.filter((h: any) => String(h.slot).startsWith("dia-")).sort((a: any, b: any) => (a.slot < b.slot ? 1 : -1));
+  const old = dias.slice(BACKUP_DAYS_KEPT);
+  if (old.length) await db.from("js_backup_heads").delete().eq("id", id).in("slot", old.map((h: any) => h.slot));
+  const keep = all.filter((h: any) => !old.some((o: any) => o.slot === h.slot)).map((h: any) => h.ver);
+  const limit = new Date(Date.now() - BACKUP_STALE_MS).toISOString();
+  let q = db.from("js_backup_parts").delete().eq("id", id).lt("created_at", limit);
+  if (keep.length) q = q.not("ver", "in", "(" + keep.join(",") + ")");
+  await q;
+}
+
+async function handleBackupPut(body: BackupBody) {
+  const part = Number(body.part), parts = Number(body.parts);
+  if (!validBackupId(body.id)) return json({ error: "invalid-id" }, 400);
+  if (!validBackupUp(body.up)) return json({ error: "invalid-up" }, 400);
+  if (!Number.isInteger(parts) || parts < 1 || parts > BACKUP_PARTS_MAX || !Number.isInteger(part) || part < 0 || part >= parts) return json({ error: "invalid-part" }, 400);
+  if (typeof body.data !== "string" || !body.data.length || body.data.length > BACKUP_PART_MAX || !/^[A-Za-z0-9+/=]+$/.test(body.data)) return json({ error: "invalid-data" }, 400);
+  const id = body.id, up = body.up, data = body.data;
+  const dia = typeof body.dia === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.dia) ? body.dia : null;
+  const touch = await backupTouch(id, part === 0);
+  if (touch.limited) return json({ error: "limite-diario" }, 429);
+  if (part === 0) {
+    const { count: total } = await db.from("js_backup_parts").select("id", { count: "exact", head: true });
+    if ((total ?? 0) + parts > BACKUP_ROWS_TOTAL_MAX) return json({ error: "ocupado" }, 429);
+    await backupCleanInactive();
+  }
+  const { error } = await db.from("js_backup_parts").upsert({ id, ver: up, part, data, size: data.length }, { onConflict: "id,ver,part" });
+  if (error) { console.error("backup/put", error); return json({ error: "save-failed" }, 500); }
+  // Chegaram todos os pedaços desta versão?
+  const { data: rows, error: selErr } = await db.from("js_backup_parts").select("part, size").eq("id", id).eq("ver", up);
+  if (selErr) { console.error("backup/check", selErr); return json({ error: "select-failed" }, 500); }
+  const have = new Set(((rows ?? []) as any[]).map((r: any) => Number(r.part)));
+  for (let i = 0; i < parts; i++) if (!have.has(i)) return json({ ok: true, done: false });
+  const size = Math.floor(((rows ?? []) as any[]).reduce((a: number, r: any) => a + (Number(r.size) || 0), 0) * 3 / 4);
+  const now = new Date().toISOString(), meta = cleanBackupMeta(body.meta);
+  const heads: any[] = [{ id, slot: "ultimo", ver: up, parts, size, meta, created_at: now }];
+  if (dia) heads.push({ id, slot: "dia-" + dia, ver: up, parts, size, meta, created_at: now });
+  const { error: headErr } = await db.from("js_backup_heads").upsert(heads, { onConflict: "id,slot" });
+  if (headErr) { console.error("backup/head", headErr); return json({ error: "save-failed" }, 500); }
+  await backupPrune(id);
+  return json({ ok: true, done: true, size });
+}
+
+async function handleBackupList(body: BackupBody) {
+  if (!validBackupId(body.id)) return json({ error: "invalid-id" }, 400);
+  await backupTouch(body.id, false);
+  const { data, error } = await db.from("js_backup_heads").select("slot, parts, size, meta, created_at").eq("id", body.id);
+  if (error) { console.error("backup/list", error); return json({ error: "select-failed" }, 500); }
+  const list = ((data ?? []) as any[]).sort((a: any, b: any) => (a.slot === "ultimo" ? -1 : b.slot === "ultimo" ? 1 : a.slot < b.slot ? 1 : -1));
+  return json({ ok: true, backups: list.map((h: any) => ({ slot: h.slot, parts: h.parts, size: h.size, meta: h.meta, created_at: h.created_at })) });
+}
+
+async function handleBackupGet(body: BackupBody) {
+  const part = Number(body.part ?? 0);
+  if (!validBackupId(body.id) || !validBackupSlot(body.slot) || !Number.isInteger(part) || part < 0 || part >= BACKUP_PARTS_MAX) return json({ error: "invalid-id" }, 400);
+  await backupTouch(body.id, false);
+  const { data: head } = await db.from("js_backup_heads").select("ver, parts, size, created_at").eq("id", body.id).eq("slot", body.slot).maybeSingle();
+  if (!head || part >= head.parts) return json({ error: "nao-encontrado" }, 404);
+  const { data: row } = await db.from("js_backup_parts").select("data").eq("id", body.id).eq("ver", head.ver).eq("part", part).maybeSingle();
+  if (!row) return json({ error: "nao-encontrado" }, 404);
+  return json({ ok: true, part, parts: head.parts, data: row.data, size: head.size, created_at: head.created_at });
+}
+
+async function handleBackupDelete(body: BackupBody) {
+  if (!validBackupId(body.id)) return json({ error: "invalid-id" }, 400);
+  await db.from("js_backup_parts").delete().eq("id", body.id);
+  await db.from("js_backup_heads").delete().eq("id", body.id);
+  await db.from("js_backup_usage").delete().eq("id", body.id);
+  return json({ ok: true });
+}
+// <backup-auto:fim>
+
 /* ---------------- Roteamento ---------------- */
 
 Deno.serve(async (req) => {
@@ -440,6 +568,11 @@ Deno.serve(async (req) => {
     if (route === "transfer-put") return await handleTransferPut(tb);
     if (route === "transfer-get") return await handleTransferGet(tb);
     if (route === "transfer-done") return await handleTransferDone(tb);
+    const bk = body as unknown as BackupBody;
+    if (route === "backup-put") return await handleBackupPut(bk);
+    if (route === "backup-list") return await handleBackupList(bk);
+    if (route === "backup-get") return await handleBackupGet(bk);
+    if (route === "backup-delete") return await handleBackupDelete(bk);
     return json({ error: "not-found" }, 404);
   } catch (e) {
     console.error("js-push", e);

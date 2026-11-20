@@ -1,0 +1,78 @@
+/* J.S. 2.8 — sugestão de carga, treino pelo ciclo e botão de compartilhar recorde.
+   Só tokens do tema (claro/escuro/paletas, definidos em style.css e v26.css); medidas em rem. */
+
+/* ---------- Sugestão de carga (execução do treino) ---------- */
+.sug-chip {
+  display: flex; align-items: center; gap: .625rem; margin: .5rem 0 .75rem; padding: .625rem .75rem; text-align: left;
+  border: .0625rem solid var(--border); border-radius: var(--radius-sm, .75rem); background: var(--surface-2, var(--rose50)); color: var(--text);
+}
+.sug-chip.subir { border-color: color-mix(in srgb, var(--success) 45%, var(--border)); background: var(--success-bg, var(--surface-2)); }
+.sug-chip.reduzir { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
+.sug-chip.warn { border-color: var(--warning); }
+.sug-ic { flex: none; width: 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; background: var(--surface); color: var(--success-ink, var(--success)); }
+.sug-chip.manter .sug-ic { color: var(--m-work, var(--rose700)); }
+.sug-chip.reduzir .sug-ic { color: var(--warning); }
+.sug-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sug-label { font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .0375rem; color: var(--muted); }
+.sug-txt strong { font-size: .9375rem; }
+.sug-txt small:last-child { color: var(--muted); font-size: .8125rem; overflow-wrap: anywhere; }
+.sug-btns { flex: none; display: flex; flex-direction: column; gap: .25rem; }
+.sug-btns .btn { min-height: 2.75rem; }
+@media (max-width: 380px) {
+  .sug-chip { flex-wrap: wrap; }
+  .sug-btns { flex-direction: row; width: 100%; }
+  .sug-btns .btn { flex: 1; }
+}
+
+/* sugestão curta na lista de exercícios da ficha ("↑ 47,5 kg") */
+.ex-sug {
+  display: inline-flex; align-items: center; gap: .1875rem; margin-left: .375rem; padding: .0625rem .375rem; border-radius: 6rem;
+  background: var(--success-bg, var(--surface-2)); color: var(--success-ink, var(--success)); font-size: .6875rem; font-weight: 700; white-space: nowrap; vertical-align: .0625rem;
+}
+
+/* ---------- Compartilhar recorde ---------- */
+.pr-share {
+  display: inline-flex; align-items: center; justify-content: center; gap: .3125rem; flex: none; min-height: 2.75rem; padding: 0 .75rem;
+  border: .0625rem solid var(--rose200); border-radius: 6rem; background: var(--surface); color: var(--rose800); font-size: .75rem; font-weight: 700;
+}
+.pr-share:active { background: var(--rose100); }
+.pr-box li.has-share { flex-direction: row; align-items: center; justify-content: space-between; gap: .5rem; }
+.pr-li-main { display: flex; flex-direction: column; min-width: 0; }
+/* lista de recordes recentes: linha + botão só com o ícone (o texto fica para leitores de tela) */
+.pr-line { display: flex; align-items: center; gap: .25rem; border-bottom: .0625rem solid var(--border); }
+.pr-line:last-child { border-bottom: 0; }
+.pr-line .pr-row { flex: 1; width: auto; min-width: 0; border-bottom: 0; }
+.pr-line .pr-share { width: 2.75rem; padding: 0; }
+.pr-line .pr-share span { position: absolute; width: .0625rem; height: .0625rem; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- Treino pelo ciclo ---------- */
+.cyc-insight { display: flex; align-items: center; gap: .375rem; margin: .5rem 0 0; font-size: .8125rem; color: var(--muted); }
+.cyc-insight strong { color: var(--ph, var(--text)); }
+.cyc-insight .ic { color: var(--pr, var(--ph)); flex: none; }
+
+.cycle-train .ct-week { list-style: none; margin: 0 0 .75rem; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .25rem; }
+.ct-day {
+  display: flex; flex-direction: column; align-items: center; gap: .125rem; padding: .375rem .125rem; min-width: 0;
+  border-radius: .75rem; border: .0625rem solid transparent; background: var(--ph-bg, var(--surface-2, var(--rose50)));
+}
+.ct-day.today { border-color: var(--ph, var(--rose600)); }
+.ct-wd { font-size: .6875rem; font-weight: 700; color: var(--muted); }
+.ct-n { font-size: .9375rem; font-weight: 800; color: var(--ph, var(--text)); }
+.ct-ph { font-size: 1rem; line-height: 1; }
+.ct-plan { min-height: 1.5rem; display: grid; place-items: center; }
+.ct-plan em { font-style: normal; color: var(--muted); }
+.ct-plans { list-style: none; margin: 0 0 .5rem; padding: 0; display: grid; gap: .375rem; }
+.ct-plans li { display: flex; flex-direction: column; padding: .5rem .625rem; border-radius: .75rem; background: var(--surface-2, var(--rose50)); }
+.ct-plans small { color: var(--muted); font-size: .8125rem; }
+.ct-sub { margin: .75rem 0 .375rem; font-size: .875rem; color: var(--rose800); }
+.ct-notes { list-style: none; margin: 0 0 .5rem; padding: 0; display: grid; gap: .375rem; }
+.ct-notes li { display: flex; align-items: flex-start; gap: .5rem; padding: .5rem .625rem; border-radius: .75rem; background: var(--ph-bg, var(--surface-2)); font-size: .875rem; }
+.ct-notes .ph-dot { margin-top: .3125rem; }
+
+@media (min-width: 700px) {
+  .ct-day { padding: .5rem .25rem; }
+  .ct-n { font-size: 1.0625rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sug-chip, .pr-share { transition: none; }
+}

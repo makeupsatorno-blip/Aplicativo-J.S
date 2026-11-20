@@ -14,6 +14,8 @@
     return 'Dia ' + cur.info.day + ' • fase ' + cur.phase.name.toLowerCase() + (cur.late ? ' • atrasada' : cur.inPeriod ? '' : ' • menstruação ' + (cur.daysToNext <= 1 ? (cur.daysToNext ? 'amanhã' : 'hoje') : 'em ' + cur.daysToNext + ' dias'));
   }
 
+  JS.maisTile = tile;
+
   function render(now) {
     var s = JS.store.state, today = C.toDateKey(now);
     var nextHair = R.hairUpcoming(s).filter(function (e) { return e.date >= today; })[0];
@@ -27,6 +29,7 @@
       tile('corpo', 'body', 'm-body', 'Corpo', L.weightKg ? 'Peso ' + JS.graf.fmtNum(L.weightKg.value, 1) + ' kg' + (L.muscleKg ? ' • músculo ' + JS.graf.fmtNum(L.muscleKg.value, 1) + ' kg' : '') : 'Bioimpedância e medidas') +
       tile('graficos', 'chart', 'm-chart', 'Gráficos', 'Painel com tudo do J.S.') +
       tile('agenda', 'calendar', 'm-task', 'Agenda', 'Tudo do mês num calendário') +
+      JS.slots.html('mais.tiles', s, today) +
       tile('config', 'settings', 'm-set', 'Configurações', 'Aparência, avisos, toque atrás, backup') +
       '</div>';
   }

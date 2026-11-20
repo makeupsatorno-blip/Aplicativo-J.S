@@ -550,6 +550,116 @@
     };
   }
 
+  /* ---------------- Sugestão de carga (progressão dupla) ---------------- */
+
+  function fmt(n) { return String(round1(n)).replace('.', ','); }
+
+  // Faixa de repetições: "8-10", "8 a 10", "12–15" → 8..10 etc. Um número só ("10") vale como "8 a 10"
+  // (o piso é 2 repetições abaixo do alvo). Sem número, assume 8 a 10.
+  function parseRepRange(text) {
+    var nums = (String(text == null ? '' : text).match(/\d+/g) || []).map(Number).filter(function (n) { return n > 0 && n <= 200; });
+    if (!nums.length) return { min: 8, max: 10 };
+    var max = Math.max.apply(null, nums);
+    return { min: nums.length > 1 ? Math.min.apply(null, nums) : Math.max(1, max - 2), max: max };
+  }
+  // Passo do aumento: o passo da usuária (Treino → Semana → Passo da carga). Com o passo padrão (1 kg) e
+  // carga a partir de 20 kg, o salto é de 2,5 kg (anilha comum); quem escolheu outro passo mantém o dele.
+  function loadIncrement(load, step) {
+    step = Number(step) > 0 ? Number(step) : 1;
+    return load >= 20 && step === 1 ? 2.5 : step;
+  }
+
+  // Treinos concluídos em que o exercício teve séries com repetição (do mais antigo ao mais novo).
+  // Treino em andamento não conta.
+  function doneEntries(state, exerciseId) {
+    var out = [];
+    doneSessions(state).forEach(function (s) {
+      var sets = [], item = null;
+      s.items.forEach(function (it) {
+        if (it.exerciseId !== exerciseId || !it.sets.length) return;
+        item = item || it;
+        sets = sets.concat(it.sets);
+      });
+      sets = sets.filter(function (st) { return (Number(st.reps) || 0) > 0; });
+      if (sets.length) out.push({ date: s.date, item: item, sets: sets });
+    });
+    return out;
+  }
+  // Resumo de um treino do exercício: carga de trabalho (a mais pesada), repetições, se completou as séries.
+  function workOf(entry, range, plannedOpt) {
+    var planned = Math.max(1, Math.round(Number(plannedOpt) || Number(entry.item && entry.item.targetSets) || entry.sets.length));
+    var counted = entry.sets.slice(0, planned);
+    var loads = entry.sets.map(function (st) { return Number(st.load) || 0; });
+    var top = Math.max.apply(null, loads);
+    var reps = counted.map(function (st) { return Number(st.reps) || 0; });
+    return {
+      date: entry.date, top: top, loads: loads, mixed: loads.some(function (l) { return l !== top; }),
+      planned: planned, done: entry.sets.length, complete: counted.length >= planned,
+      reps: reps, minReps: Math.min.apply(null, reps), avg: reps.reduce(function (a, b) { return a + b; }, 0) / reps.length,
+      allMax: counted.length >= planned && reps.every(function (r) { return r >= range.max; })
+    };
+  }
+
+  // Sugestão para o próximo treino do exercício, pela última vez que ele foi feito.
+  //   opts: { targetReps (faixa da ficha, ex.: "8-10"), targetSets, step (kg) }
+  //   → null (sem histórico) ou { action: 'subir' | 'manter' | 'reduzir', load, from, reps?, headline, reason, warn, basis }
+  //  - subir: todas as séries planejadas feitas e todas com repetições ≥ máximo da faixa → carga + passo
+  //    (peso do corpo, carga 0: sugere uma repetição a mais em cada série, em "reps");
+  //  - manter: ainda não bateu o máximo (ou faltaram séries) → mesma carga, mais uma repetição em cada série;
+  //  - reduzir: duas vezes seguidas, na mesma carga, com média de repetições abaixo do mínimo → cerca de 7,5% a menos.
+  // Nunca altera a ficha: quem decide é a usuária. Se o aumento passar de 10% do recorde de carga, "warn" avisa.
+  // (O valor 'estreia' não é usado: sem histórico, não há o que sugerir.)
+  function suggestLoad(state, exerciseId, opts) {
+    opts = opts || {};
+    var h = doneEntries(state, exerciseId);
+    if (!h.length) return null;
+    var last = h[h.length - 1], prev = h.length > 1 ? h[h.length - 2] : null;
+    var range = parseRepRange(opts.targetReps != null && opts.targetReps !== '' ? opts.targetReps : (last.item && last.item.targetReps));
+    var step = Number(opts.step) > 0 ? Number(opts.step) : (Number((state.workout || {}).loadStep) > 0 ? Number(state.workout.loadStep) : 1);
+    var w = workOf(last, range, opts.targetSets), L = w.top, body = L === 0;
+    var inc = loadIncrement(L, step);
+    var basis = { date: w.date, load: L, repsList: w.reps, minReps: w.minReps, avgReps: round1(w.avg), targetMin: range.min, targetMax: range.max,
+      sets: w.done, planned: w.planned, mixed: w.mixed };
+    var out = { from: L, warn: false, basis: basis };
+
+    // reduzir: só com carga (peso do corpo vira "manter"), duas vezes seguidas na mesma carga
+    if (!body && prev) {
+      var wp = workOf(prev, range, opts.targetSets);
+      if (Math.abs(wp.top - L) < 0.001 && w.avg < range.min && wp.avg < range.min) {
+        var down = roundTo(L * 0.925, inc);
+        if (down >= L) down = round1(L - inc);
+        down = Math.max(0, down);
+        return Object.assign(out, { action: 'reduzir', load: down, headline: 'Hoje vá com ' + fmt(down) + ' kg',
+          reason: 'Nas duas últimas vezes com ' + fmt(L) + ' kg as repetições ficaram abaixo de ' + range.min + '. Reduzir um pouco ajuda a fazer todas as séries com boa técnica e voltar a subir depois.' });
+      }
+    }
+
+    if (w.complete && w.allMax) {
+      if (body) {
+        var more = range.max + 1;
+        return Object.assign(out, { action: 'subir', load: 0, reps: more, headline: 'Hoje tente ' + more + ' repetições',
+          reason: 'Você fez ' + range.max + ' ou mais repetições em todas as séries na última vez. Tente ' + more + ' em cada série (ou adicione carga).' });
+      }
+      var up = round1(L + inc);
+      var best = exerciseBest(state, exerciseId);
+      var warn = !!(best && best.load > 0 && up > best.load * 1.10 + 1e-9);
+      var reason = w.mixed
+        ? 'Você bateu a meta em todas as séries (de ' + fmt(Math.min.apply(null, w.loads)) + ' a ' + fmt(L) + ' kg). Suba a série mais pesada para ' + fmt(up) + ' kg.'
+        : 'Você fez ' + Math.min(w.minReps, range.max) + '/' + range.max + ' repetições em todas as séries com ' + fmt(L) + ' kg na última vez.';
+      if (warn) reason += ' Atenção: esse aumento passa de 10% do seu recorde (' + fmt(best.load) + ' kg); suba só se estiver se sentindo bem.';
+      return Object.assign(out, { action: 'subir', load: up, headline: 'Hoje tente ' + fmt(up) + ' kg', reason: reason, warn: warn });
+    }
+
+    var reason2 = !w.complete
+      ? 'Faltaram séries na última vez (' + w.done + ' de ' + w.planned + '). Repita ' + (body ? 'o mesmo esforço' : fmt(L) + ' kg') + ' e complete todas antes de subir.'
+      : 'Você fez ' + w.reps.join('/') + ' repetições' + (body ? '' : ' com ' + fmt(L) + ' kg') + '. Tente mais 1 repetição em cada série; ao chegar em ' + range.max + ' em todas, é hora de subir.';
+    return Object.assign(out, { action: 'manter', load: L, headline: body ? 'Mais 1 repetição em cada série' : 'Mantenha ' + fmt(L) + ' kg', reason: reason2 });
+  }
+  function roundTo(v, step) { return round1(Math.round(v / step) * step); }
+
+  // A usuária pode desligar as sugestões em Configurações (state.extras.treino.hideSuggestions).
+  function suggestionsEnabled(state) { return !(state.extras && state.extras.treino && state.extras.treino.hideSuggestions); }
+
   /* ---------------- Treinos prontos (js/dados/treinos.js) ---------------- */
 
   // Ficha pronta -> valores de uma ficha da usuária. A carga começa na última usada em cada exercício.
@@ -605,6 +715,7 @@
     lastSet: lastSet, quickSet: quickSet, quickContext: quickContext, exerciseSets: exerciseSets,
     exerciseHistory: exerciseHistory, exerciseTrend: exerciseTrend, trainedExercises: trainedExercises,
     weeklyStats: weeklyStats, monthCalendar: monthCalendar, weeklyMuscleSets: weeklyMuscleSets,
-    exerciseRecords: exerciseRecords, exerciseBest: exerciseBest, recordOf: recordOf, sessionRecords: sessionRecords, recentRecords: recentRecords
+    exerciseRecords: exerciseRecords, exerciseBest: exerciseBest, recordOf: recordOf, sessionRecords: sessionRecords, recentRecords: recentRecords,
+    suggestLoad: suggestLoad, suggestionsEnabled: suggestionsEnabled, parseRepRange: parseRepRange, loadIncrement: loadIncrement
   };
 });

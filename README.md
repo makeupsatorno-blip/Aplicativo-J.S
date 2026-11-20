@@ -1,6 +1,6 @@
 # J.S. — Julia Satorno
 
-Aplicativo pessoal de organização: **Rotina**, **Treino**, **Alimentação** (com tabela nutricional, cardápio e água), **Ciclo menstrual**, **Cronograma capilar**, **Corpo** (bioimpedância e fotos de evolução), **Financeiro** e **Gráficos**, com painel inicial, agenda unificada, busca geral, lembretes e backup.
+Aplicativo pessoal de organização (versão 2.8: Jardim, Resumo semanal, sono, skincare, cardápio da semana, relatório em PDF, backup automático e mais): **Rotina**, **Treino**, **Alimentação** (com tabela nutricional, cardápio e água), **Ciclo menstrual**, **Cronograma capilar**, **Corpo** (bioimpedância e fotos de evolução), **Financeiro** e **Gráficos**, com painel inicial, agenda unificada, busca geral, lembretes e backup.
 Sem login: os dados ficam no próprio aparelho. O único servidor é opcional e serve só para os avisos chegarem com o app fechado (seção 4).
 
 No celular, a barra de baixo tem **Início, Rotina, Treino, Alimentação e Mais** (Cronograma capilar, Financeiro, Ciclo menstrual, Corpo, Gráficos, Agenda e Configurações). A **lupa** no topo abre a busca geral: tarefas, contas, tratamentos, horários de refeição, fichas, exercícios, alimentos e qualquer tela ou ajuste do app. Em tablet deitado ou computador, a barra vira uma coluna lateral com todos os módulos e as telas usam duas colunas.
@@ -39,7 +39,7 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.7.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.8.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
@@ -55,6 +55,8 @@ Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-
 - **Semana fixa e troca do dia:** em Treino → Semana, cada dia da semana recebe uma ficha (ou descanso). Para mudar só um dia (ex.: na terça treinar braço em vez de perna), use **Trocar** em Hoje ou toque no dia em **Mês**. As próximas semanas continuam iguais.
 - **Calendário do mês:** mostra a ficha de cada dia (letra e cor), os treinos feitos (✓) e os descansos.
 - **Recordes pessoais:** o app compara cada série com todo o seu histórico do exercício. **Recorde de carga** = mais pesada do que qualquer série anterior; **recorde de repetições** = mais repetições do que já fez com a mesma carga. A primeira vez que você faz um exercício não conta. Na execução do treino aparece **"Seu recorde: 47 kg × 8"**, e a série que bate o recorde ganha troféu, um aviso grande ("Novo recorde!") e vibração; o registro rápido e o toque atrás também avisam. O resumo do treino destaca os recordes numa caixa, **Treino → Hoje** tem o cartão **Recordes pessoais** (últimos 30 dias), e **Evolução** marca as séries recordistas. Tudo é calculado do histórico: excluir um treino refaz os recordes.
+- **Sugestão de carga:** na execução do treino, o chip **"Sugestão de hoje"** usa o último treino concluído do exercício e a faixa de repetições da ficha (ex.: 8-10). Se você fez todas as séries com o máximo da faixa, sugere **subir** um passo (2,5 kg com o passo padrão e carga a partir de 20 kg). Se ainda não bateu o máximo, sugere **manter** e tentar mais 1 repetição. Se ficou abaixo do mínimo duas vezes seguidas na mesma carga, sugere **reduzir** cerca de 7,5%. Em exercício de peso do corpo, sugere uma repetição a mais. Nada muda sozinho: toque em **Usar** (ou em **Ignorar**). A ficha mostra "↑ 42,5 kg" nos exercícios que podem subir. Dá para desligar em Configurações → Sugestões de carga.
+- **Compartilhar recorde:** botão **Compartilhar** em cada recorde (resumo do treino, "Ver séries" e Recordes pessoais) gera um cartão bonito para enviar ou postar (veja Cartões para compartilhar).
 - **Séries por grupo muscular:** em Treino → Hoje, quantas séries cada grupo (quadríceps, glúteos, costas...) recebeu na semana, comparado com a semana passada, com a referência comum de 10 a 20 séries semanais por grupo.
 - **Execução:** "Iniciar treino" faz uma contagem 3-2-1 e abre o treino em tela cheia, com a tela sempre acesa. Ajuste a carga e as repetições com **+/−** e toque em **Série feita**. O descanso começa sozinho e avisa com bipe e vibração quando acaba. Ao terminar, aparece o resumo (duração, séries, volume e recordes) e a ficha passa a sugerir a última carga usada.
 - **Toque atrás:** com o J.S. aberto no treino, **bata 2 vezes na parte de trás do celular** para abrir a **telinha do peso**: mostra o exercício atual com o peso e as repetições em botões grandes (+, −, +2,5 kg, +5 kg, ou digitar). "Registrar série" (ou bater 2 vezes de novo) salva a série com esse peso; "Só salvar o peso" muda a carga sem registrar. O descanso começa sozinho. Funciona no Android e no iPhone, pelo sensor de movimento. No iPhone o app pede permissão para usar o sensor. Em Configurações → Treino dá para mudar a sensibilidade e **testar e calibrar** com as suas batidas. Com o app fechado, nenhum site instalado consegue ouvir o sensor. Por isso, o toque atrás do próprio celular (Samsung Good Lock/RegiStar, Pixel "Toque rápido") pode ser configurado para **abrir o J.S.**, que vai direto para o treino em andamento.
@@ -93,6 +95,8 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
 - **Água:** no Diário, um copo que enche, gotinhas e os últimos 7 dias. Botões "+1 copo" (do tamanho que você digitar, de 30 ml a 2 L), "+500 ml" e "Outra", com desfazer. A meta é automática (35 ml por kg do último peso, entre 1,5 e 4 L; sem peso, 2 L) ou definida por você. **Lembretes de água** opcionais (de 1 em 1 h até 4 em 4 h, no horário escolhido): param quando você bate a meta do dia, e o aviso de um horário pula se você bebeu há pouco. No Início há o cartão "Água hoje" e o botão **Água** em Adicionar soma um copo.
 - **Meta de proteína e macros por refeição:** o Diário tem o cartão **Proteína** com o total do dia, a meta, quanto falta e quanto veio de cada refeição, e cada refeição mostra seus **P / C / G** (proteínas, carboidratos e gorduras em gramas). A meta é a que você definir (Alimentação → Meta, ou Configurações) ou automática: **gramas por kg do seu último peso** (padrão 1,6 g/kg; dá para escolher de 1,2 a 2,0). Sem peso nem meta, o cartão pede para definir. É referência geral, não prescrição: se uma nutricionista passou metas, use as dela. O Início também mostra a proteína no cartão de calorias.
 - **Refeições salvas (aba Salvas):** monte uma vez refeições que você repete (ex.: "Meu café da manhã") e adicione com **um toque**. Para criar: toque no marcador de uma refeição do Diário (salva o que já está nela), ou em Alimentação → Salvas → **Nova refeição salva** (nome, refeição, alimentos e quantidades). Depois aparecem no atalho da refeição vazia do Diário, no topo de **Adicionar alimento** (as do mesmo tipo primeiro) e na aba Salvas, com desfazer. Dá para editar quantidades, trocar alimentos e excluir; entram no backup e na passagem para outro aparelho. Até 40 refeições, com até 30 alimentos cada.
+- **Cardápio da semana e lista de compras (Mais → Cardápio da semana, ou "Planejar a semana" na aba Salvas):** monte a semana (segunda a domingo) escolhendo, em cada refeição de cada dia, uma das suas refeições salvas. Cada dia mostra kcal e proteína contra as metas. Dá para copiar um dia para outros, repetir a semana passada, **sugerir** (preenche só o que está vazio, em rodízio) e **aplicar o dia ou a semana ao Diário** (pergunta antes de duplicar). A aba **Lista de compras** soma os alimentos planejados (gramas por alimento, agrupados pelo grupo da TACO, com "≈ 6 unidades" quando há porção salva), com itens marcáveis, itens extras e botão para compartilhar ou copiar a lista.
+- **Código de barras:** em "Adicionar alimento" e na aba Tabela, **Ler código de barras**. No Android/Chrome, a câmera lê o código; no iPhone (o Safari não tem leitor), digite os números abaixo do código (o app confere o dígito verificador). O app consulta o **Open Food Facts**, um serviço público: o número do código é enviado a ele, e mais nada. O produto vira um alimento seu (valores por 100 g, porção do rótulo) e vai para o Diário; produtos já cadastrados não consultam de novo. Sem internet, faltando dados ou produto desconhecido, dá para cadastrar à mão com o código anexado.
 - **Repetir refeição:** num dia vazio, o Diário oferece "Repetir o dia de ontem" (ou do último dia com alimentos, até 14 dias). Com o dia começado, cada refeição vazia mostra "Repetir de ontem" com os alimentos daquela refeição. Sempre com desfazer.
 - **Favoritos e recentes:** a estrela ☆ na tabela nutricional de um alimento o deixa nos favoritos. Ao adicionar um alimento, aparecem primeiro os favoritos e depois os usados recentemente, já com a última quantidade.
 - **Diário:** registre o que comeu em cada refeição. Os nutrientes de cada alimento, de cada refeição e do dia vêm da **Tabela TACO** (Tabela Brasileira de Composição de Alimentos, 4ª edição, NEPA/UNICAMP), com 597 alimentos. A tabela completa tem energia, macronutrientes, fibras, sódio, colesterol, minerais e vitaminas. Valores que a TACO não analisou aparecem como "—", nunca como zero. Dá para salvar porções (ex.: "1 unidade = 50 g") e cadastrar alimentos que não estão na tabela.
@@ -117,6 +121,26 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
 - Calendário do mês com menstruação registrada e prevista, período fértil, ovulação e registros; histórico dos ciclos. Aviso opcional 2 dias antes da menstruação prevista.
 - São estimativas pela média (fase lútea de cerca de 14 dias): **não servem como método anticoncepcional** nem substituem a orientação médica. Os dados ficam só no aparelho.
 
+## 3.4 Bem-estar: sono, skincare, Jardim e Resumo
+
+- **Sono (Corpo):** registre quanto dormiu (em horas, ou "dormi às / acordei às", com qualidade de 1 a 5). O cartão mostra a noite passada, a média dos 7 dias, a meta (padrão 8 h, de 4 a 12 h), a dívida de sono da semana em tom gentil e, com dados suficientes, a energia média nas noites em que a meta foi batida contra as outras. É referência geral, não orientação médica, e a relação não prova causa.
+- **Skincare (Cronograma capilar):** passos de manhã e de noite (sugeridos e editáveis), marcação com um toque, sequência de dias e lembretes opcionais por período (o período já feito não avisa; interruptor em Configurações → Notificações). O cartão **Bem-estar** do Início aparece só para quem usa sono ou skincare.
+- **Jardim da Julia (Início):** um cartão com as flores das últimas duas semanas, nascidas dos seus hábitos do dia (treino, meta de água, meta de proteína, tarefas, skincare e sono). Só contam os hábitos que você usa; dia sem hábito não conta nem quebra a sequência, e hoje ainda aberto nunca quebra. Toque para abrir o jardim de 12 semanas, ver os hábitos de cada dia e as conquistas (primeiro recorde, 7 dias de água, semanas floridas, sequência de 30 dias…). Dá para esconder em Configurações. Sem cobrança: semana fraca recebe uma frase acolhedora.
+- **Resumo da semana (Mais):** balanço de domingo a sábado com um texto carinhoso (o mesmo toda vez que você abre a mesma semana), treinos, recordes, alimentação, água, peso, tarefas, sono, skincare, ciclo e o jardim da semana, só do que foi registrado; dá para navegar pelas semanas. No domingo e na segunda o Início mostra "Seu resumo da semana está pronto".
+- **Cartões para compartilhar:** imagens feitas no próprio aparelho (retrato 1080×1350 ou Stories 1080×1920) para recordes, o resumo, o jardim e as conquistas, com Compartilhar e Salvar imagem. Não levam peso, medidas, fotos, sono nem ciclo; o primeiro nome só entra se você marcar.
+- **Treino pelo ciclo (Ciclo):** o cartão mostra os próximos 7 dias com a fase de cada um e a ficha planejada, e "O que seus dados mostram": energia mais baixa ou mais alta por fase, a fase em que vêm mais recordes, frequência de treino e sintomas recorrentes. As frases só aparecem com dados suficientes (6 ou mais registros de energia na fase, 3 ou mais recordes). Em Treino → Hoje, o cartão da fase mostra a energia média daquela fase. Referência geral, não prescrição.
+
+## 3.5 Ferramentas: escrever ou falar, PDF e calendário
+
+- **Escrever ou falar o que fez (lupa do topo):** digite, por exemplo, "tarefa ligar para a mãe amanhã às 15h", "bebi 300 ml", "peso 62,4", "comi 2 ovos no café da manhã" ou "conta de luz 150 reais dia 28". O J.S. mostra um cartão **Entendi: …** e só cria quando você toca em **Criar** (com desfazer); **Editar** abre o formulário já preenchido. Tudo é interpretado no aparelho, sem IA e sem rede. Onde o navegador tem reconhecimento de voz, aparece um **microfone** (no iPhone, use o microfone do teclado).
+- **Relatório em PDF (Configurações):** escolha o período (este mês, mês passado, últimos 30 dias ou personalizado) e as seções (Treino, Alimentação, Medidas, Água; Ciclo e Fotos vêm desligados por serem sensíveis). O PDF é gerado no aparelho, com tabelas, gráficos de carga e as fotos de antes e depois se você quiser, para mostrar à nutricionista ou à personal.
+- **Exportar para o calendário (Agenda):** cria um arquivo .ics com os próximos 12 meses de tarefas (as que se repetem viram regra de repetição, com alarme do lembrete), cronograma capilar, contas, horários de refeição e treinos planejados, para abrir no Google Agenda ou no Calendário da Apple. É uma cópia de hoje: o que mudar depois no J.S. não muda no calendário.
+
+## 3.6 Dados: backup automático, versões e lixeira
+
+- **Backup automático cifrado (Configurações):** o app cria um **código de recuperação de 16 caracteres** (guardado só no aparelho; você precisa confirmar que anotou) e envia sozinho uma cópia cifrada dos seus dados: a última e uma por dia nos últimos 7 dias. O servidor não consegue ler nada, e sem o código ninguém recupera. Não leva as fotos do corpo, a menos que você ligue "Incluir fotos" (até cerca de 12 MB). Faz o backup ao abrir o app (se passou 1 dia e algo mudou) e depois de mudanças. Num aparelho novo: Início → **Restaurar backup automático** → digite o código. Só aparece com `backup: true` em `js/config.js`, depois de publicar `supabase/sql/05_backup_auto.sql` e a função `js-push`. **Não é sincronização ao vivo**: é backup e restauração (mesclar dois aparelhos em tempo real traria de volta o que foi apagado).
+- **Versões e lixeira (Configurações):** uma foto dos dados por dia (14 dias) e uma cópia de segurança antes de restaurar, importar ou apagar tudo (30 dias), só neste aparelho. **Recuperar o que foi apagado** mostra o que existia e sumiu nos últimos 7 dias e traz de volta item por item, sem duplicar. **Voltar tudo** leva o app a um dia, com confirmação e cópia de segurança antes.
+
 ## 4. Notificações
 
 - **Tudo com horário avisa por padrão:** ao pôr a hora numa tarefa, o lembrete vira "15 min antes"; num tratamento, "na hora". Refeições avisam na hora e contas 1 dia antes e no dia. Dá para mudar ou desligar em cada item. Itens antigos sem lembrete aparecem num aviso no painel e em Configurações, com o botão **Ligar todos**.
@@ -125,6 +149,7 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
 - **Com "Avisos com o app fechado" ligado** (Configurações → Notificações), os avisos chegam na hora **mesmo com o app fechado**. Ao permitir as notificações, o app oferece ligar isso uma vez.
 - Funcionam melhor no Android com Chrome. No iPhone, só com o app instalado na tela de início (iOS 16.4 ou mais novo).
 - Por privacidade, o valor das contas não aparece na notificação. Isso pode ser ligado em Configurações.
+- **Skincare** avisa nos horários escolhidos no cartão (interruptor em Configurações → Notificações).
 - **Água** e **Ciclo** também avisam (ligue os lembretes de água em Alimentação → Água). Para o servidor, vão os lembretes de água dos próximos 14 dias, renovados ao abrir o app.
 
 ### Servidor de avisos (Web Push) e do registro rápido
@@ -146,6 +171,7 @@ supabase link --project-ref jmjenkgmicqbftzndvrl
 supabase db query --linked -f supabase/sql/01_tabelas.sql              # tabelas (só na primeira vez)
 supabase db query --linked -f supabase/sql/03_registro_rapido.sql      # registro rápido do iPhone (só na primeira vez)
 supabase db query --linked -f supabase/sql/04_transferencia.sql        # passar para outro aparelho (só na primeira vez)
+supabase db query --linked -f supabase/sql/05_backup_auto.sql          # backup automático cifrado (só na primeira vez)
 supabase secrets set JS_CRON_SECRET=<valor-aleatório>                   # segredo do agendamento
 supabase functions deploy js-push --no-verify-jwt --use-api            # função
 # agendamento: troque SEU-PROJETO e SEU-SEGREDO em supabase/sql/02_agendamento.sql e rode com db query
@@ -172,10 +198,10 @@ supabase functions deploy js-push --no-verify-jwt --use-api            # funçã
 
 ## 6. Testes
 
-As regras de negócio têm testes automáticos. `regras.test.js` cobre recorrência, centavos, contas recorrentes, lembretes e backup. `v2.test.js` cobre fichas, troca do dia, execução, evolução de carga, corpo, TACO, cardápio, tarefa em andamento, o reconhecimento do toque atrás com sinais simulados, os treinos prontos e os desenhos de todos os exercícios. `v27.test.js` cobre os recordes pessoais (carga, repetições, treino em andamento, ordem por data), a meta de proteína e as refeições salvas. `v26.test.js` cobre água (meta, lembretes inteligentes), ciclo menstrual (médias, fases, previsões, atraso, registros), séries por grupo muscular, favoritos e repetir refeição.
+As regras de negócio têm testes automáticos. `regras.test.js` cobre recorrência, centavos, contas recorrentes, lembretes e backup. `v2.test.js` cobre fichas, troca do dia, execução, evolução de carga, corpo, TACO, cardápio, tarefa em andamento, o reconhecimento do toque atrás com sinais simulados, os treinos prontos e os desenhos de todos os exercícios. `v28-*.test.js` cobrem a sugestão de carga e o treino pelo ciclo, sono e skincare, Jardim e Resumo, cardápio da semana e lista de compras, o interpretador de frases, o PDF e o .ics, e o backup cifrado e as versões. `v27.test.js` cobre os recordes pessoais (carga, repetições, treino em andamento, ordem por data), a meta de proteína e as refeições salvas. `v26.test.js` cobre água (meta, lembretes inteligentes), ciclo menstrual (médias, fases, previsões, atraso, registros), séries por grupo muscular, favoritos e repetir refeição.
 
 ```
-node --test testes/regras.test.js testes/v2.test.js testes/v26.test.js testes/v27.test.js
+node --test testes/*.test.js
 ```
 
 ## 7. Estrutura
@@ -189,7 +215,8 @@ aplicativo/
 ├── rapido.html             página do registro rápido aberta pelo atalho do iPhone
 ├── css/style.css           visual (paleta do design system em ../JS_Starter/docs)
 ├── css/v2.css              telas da versão 2 e layout para tablet/computador
-├── css/v26.css             água, ciclo, fotos, busca e as outras novidades da 2.6
+├── css/v26.css             água, ciclo, fotos, busca e as outras novidades da 2.6/2.7
+├── css/treino28.css, jardim.css, planejador.css, ferramentas.css, dados.css, bemestar.css   estilos da 2.8
 ├── fonts/                  Nunito e Cormorant Garamond (licença OFL)
 ├── icons/                  ícones do app gerados a partir da logo
 ├── js/
@@ -202,6 +229,10 @@ aplicativo/
 │   ├── regras-nutricao.js  TACO, diário, meta, cardápio, favoritos e repetir refeição (testadas)
 │   ├── regras-ciclo.js     ciclo menstrual: médias, fases, previsões, energia por fase (testadas)
 │   ├── fotos.js            fotos de evolução (IndexedDB, redução, backup)
+│   ├── slots.js            pontos de encaixe das telas e eventos (cada recurso novo se registra aqui)
+│   ├── regras-bemestar.js, regras-planejador.js   sono/skincare e cardápio da semana (testadas)
+│   ├── falar.js, pdf.js, ics.js                   frases em português, PDF sem bibliotecas e .ics (testados)
+│   ├── jardim.js, cartoes.js, barras.js, relatorio.js, backup-auto.js, versoes.js   Jardim, cartões, código de barras, relatório, backup e versões
 │   ├── toque.js            reconhecimento das 2 batidas atrás do celular
 │   ├── graficos.js         gráficos em SVG (sem bibliotecas)
 │   ├── exanim.js           desenhos animados da execução dos exercícios
@@ -214,16 +245,17 @@ aplicativo/
 │   ├── ui.js               componentes de tela
 │   ├── app.js              navegação, instalação e inicialização
 │   └── telas/              inicio, rotina, treino, sessao (execução), alimentacao, autocuidado (cronograma capilar),
-│                           corpo, ciclo, busca (busca geral), financeiro, graficos, mais, agenda, config
+│                           corpo, ciclo, busca (busca geral e "Entendi"), bemestar (sono e skincare), resumo, planejador, financeiro, graficos, mais, agenda, config
 ├── supabase/
 │   ├── functions/js-push/  servidor de avisos (Edge Function)
 │   └── sql/                tabelas e agendamento a cada minuto
-└── testes/                 regras.test.js, v2.test.js, v26.test.js e v27.test.js
+└── testes/                 regras, v2, v26, v27 e v28-* (treino, bemestar, jardim, planejador, ferramentas, dados)
 ```
 
 A especificação original está em `../JS_Starter/docs/`.
 
 ## 8. Fora desta versão
 
-- Sincronização dos dados entre aparelhos (precisaria de armazenamento em nuvem e consentimento).
+- Sincronização ao vivo entre aparelhos (o app não guarda registro de exclusões; mesclar traria de volta o que foi apagado). Hoje há backup automático, passagem de dados por código e backup em arquivo.
+- Widget na tela inicial, importar dados do Apple Saúde ou Google Fit e aviso exato de fim de descanso com o app fechado: um app instalado pela internet não consegue.
 - Registrar série com o iPhone totalmente fechado (precisaria de um Atalho do iOS chamando o servidor de avisos, com uma fila de toques que o app aplica ao abrir).

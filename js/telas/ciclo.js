@@ -1,7 +1,7 @@
 /* J.S. — Ciclo menstrual: fase de hoje, previsões, registro do dia, calendário, energia e treino por fase */
 (function () {
   'use strict';
-  var JS = window.JS, C = window.JSCore, Cy = window.JSCiclo, ui = JS.ui, esc = ui.esc;
+  var JS = window.JS, C = window.JSCore, R = window.JSRegras, Cy = window.JSCiclo, ui = JS.ui, esc = ui.esc;
   var view = { month: null, date: null };
 
   function today() { return C.toDateKey(new Date()); }
@@ -85,6 +85,38 @@
       '<p class="tip-line"><strong>Treino:</strong> ' + esc(ph.treino) + '</p><p class="tip-line"><strong>Cuidado:</strong> ' + esc(ph.cuidado) + '</p>' +
       '<button type="button" class="link" data-action="go" data-route="treino">Ver o treino de hoje' + ui.icon('right', 16) + '</button></section>';
   }
+  /* ---------------- Treino pelo ciclo ---------------- */
+
+  // Próximos 7 dias (fase + ficha planejada) e o que os dados mostram sobre energia e recordes por fase.
+  function trainingCard(s, t) {
+    var wk = Cy.weekAhead(s, t);
+    if (!wk.length) return '';
+    var ins = Cy.phaseTrainingInsights(s, t), planOf = function (d) { return d.plan ? R.byId(s.workoutPlans, d.plan.id) : null; };
+    var days = wk.map(function (d) {
+      var plan = planOf(d), wd = C.WEEKDAY_SHORT[C.weekday(d.date)];
+      var label = C.formatDateLong(d.date) + ', fase ' + d.phaseName.toLowerCase() + (plan ? ', treino ' + plan.name : d.rest ? ', descanso' : ', sem treino marcado');
+      return '<li class="ct-day ph-' + d.phase + (d.date === t ? ' today' : '') + '" aria-label="' + esc(label) + '">' +
+        '<span class="ct-wd">' + esc(d.date === t ? 'Hoje' : wd) + '</span><span class="ct-n">' + Number(d.date.slice(8)) + '</span>' +
+        '<span class="ct-ph" title="Fase ' + esc(d.phaseName.toLowerCase()) + '" aria-hidden="true">' + d.emoji + '</span>' +
+        '<span class="ct-plan" aria-hidden="true">' + (plan && JS.planBadge ? JS.planBadge(s, plan) : d.rest ? '<em title="Descanso">😴</em>' : '<em>–</em>') + '</span></li>';
+    }).join('');
+    var prevPhase = null;   // a dica da fase aparece só quando a fase muda (evita repetir o mesmo texto)
+    var rows = wk.filter(function (d) { return planOf(d); }).slice(0, 3).map(function (d) {
+      var plan = planOf(d), first = d.phase !== prevPhase;
+      prevPhase = d.phase;
+      return '<li><strong>' + esc(d.date === t ? 'Hoje' : C.WEEKDAY_SHORT[C.weekday(d.date)] + ' ' + C.formatDayMonth(d.date)) + ' • ' + esc(plan.name) + '</strong>' +
+        '<small>Fase ' + esc(d.phaseName.toLowerCase()) + (first ? ': ' + esc(d.tip) : '') + '</small></li>';
+    }).join('');
+    var data = ins.sentences.length
+      ? '<ul class="ct-notes">' + ins.sentences.map(function (x) { return '<li class="ph-' + x.phase + '"><span class="ph-dot" aria-hidden="true"></span><span>' + esc(x.text) + '</span></li>'; }).join('') + '</ul>'
+      : '<p class="muted small">Ainda não dá para ver padrões. Registre sua energia (aqui ou em Treino → Hoje) e treine por alguns ciclos: ' + ins.overall.energyCount + ' de 10 registros de energia até agora. Quando houver dados, este quadro mostra em quais fases você rende mais.</p>';
+    return '<section class="card cycle-train"><div class="card-head"><h2>' + ui.icon('dumbbell', 18) + 'Treino pelo ciclo</h2></div>' +
+      '<ol class="ct-week" aria-label="Próximos 7 dias">' + days + '</ol>' +
+      (rows ? '<ul class="ct-plans">' + rows + '</ul>' : '<p class="muted small">Nenhum treino marcado para os próximos 7 dias. Monte a semana em Treino → Semana.</p>') +
+      '<h3 class="ct-sub">O que seus dados mostram</h3>' + data +
+      '<p class="hint">Referência geral, não é prescrição: cada corpo responde de um jeito. Ouça o seu e ajuste.</p></section>';
+  }
+
   function statsCard(s, t) {
     var ps = Cy.phaseStats(s, t);
     if (!ps) return '';
@@ -158,7 +190,7 @@
         '<p class="hint">Tudo fica só neste aparelho. Previsões são estimativas: não servem como método anticoncepcional.</p></section>';
     }
     var cur = Cy.current(s, t);
-    html += hero(s, cur, t) + dayCard(s, t) + phaseCard(cur) + statsCard(s, t) + calendar(s, t) + historyCard(s) + settingsCard(s);
+    html += hero(s, cur, t) + dayCard(s, t) + phaseCard(cur) + trainingCard(s, t) + statsCard(s, t) + calendar(s, t) + historyCard(s) + settingsCard(s);
     html += '<p class="note">' + ui.icon('info', 14) + ' Previsões pela média dos seus ciclos (fase lútea de cerca de 14 dias). São estimativas: não servem como método anticoncepcional nem substituem a orientação da sua ginecologista.</p>';
     return html;
   }

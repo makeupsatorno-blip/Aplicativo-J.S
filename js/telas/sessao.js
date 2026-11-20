@@ -10,6 +10,7 @@
   var ticker = null, listener = null, wakeLock = null, lastSetAt = 0, hintTimer = null;
   var sensor = 'off'; // off | on | perm | none | denied | unsupported
   var autoTried = false;
+  var sugIgnored = {}; // "Ignorar" na sugestão de carga: some só neste exercício deste treino
 
   function session() { return T.activeSession(JS.store.state); }
   function clock(sec) {
@@ -71,7 +72,7 @@
         '<div class="steppers">' +
         stepper('Carga', 'load', JS.graf.fmtNum(it.load, 1), 'kg', step) +
         stepper('Repetições', 'reps', String(it.reps), 'rep.', 1) +
-        '</div>' +
+        '</div>' + suggestChip(suggestionFor(s, it)) +
         (resting ? restRing() : '') +
         '<button type="button" class="btn-set" data-action="ses-set">' + ui.icon('check', 26) + '<span>Série feita</span></button>' +
         '<div class="ses-links">' +
@@ -93,6 +94,45 @@
       '<button type="button" class="btn ghost danger-text" data-action="ses-discard">Descartar treino</button></div>';
     return html;
   }
+
+  /* ---------------- Sugestão de carga do dia ---------------- */
+
+  // Sugestão pelo último treino concluído do exercício (T.suggestLoad). Nunca muda a carga sozinha.
+  //  - "subir" e "reduzir": aparecem antes da 1ª série do exercício e somem quando a usuária já usa o valor;
+  //  - "manter": dica de "mais 1 repetição", enquanto faltarem séries.
+  function suggestionFor(s, it) {
+    if (!T.suggestionsEnabled(s) || sugIgnored[it.id]) return null;
+    var sg = T.suggestLoad(s, it.exerciseId, { targetReps: it.targetReps, targetSets: it.targetSets });
+    if (!sg) return null;
+    if (sg.action === 'manter') return it.sets.length >= it.targetSets ? null : sg;
+    if (it.sets.length > 0) return null;
+    if (sg.load === 0 ? it.reps === sg.reps : it.load === sg.load) return null;
+    return sg;
+  }
+  function suggestChip(sg) {
+    if (!sg) return '';
+    var icon = sg.action === 'subir' ? 'up' : sg.action === 'reduzir' ? 'down' : 'info';
+    var use = sg.action === 'manter' ? '' : '<button type="button" class="btn small primary" data-action="ses-sug-use">Usar</button>';
+    return '<div class="sug-chip ' + sg.action + (sg.warn ? ' warn' : '') + '" role="note">' +
+      '<span class="sug-ic" aria-hidden="true">' + ui.icon(icon, 16) + '</span>' +
+      '<span class="sug-txt"><small class="sug-label">Sugestão de hoje</small><strong>' + esc(sg.headline) + '</strong><small>' + esc(sg.reason) + '</small></span>' +
+      '<span class="sug-btns">' + use + '<button type="button" class="btn small ghost" data-action="ses-sug-ignore">Ignorar</button></span></div>';
+  }
+  JS.actions['ses-sug-use'] = function () {
+    var x = session(), it = T.currentItem(x);
+    if (!it) return;
+    var sg = suggestionFor(JS.store.state, it);
+    if (!sg) return;
+    var vals = sg.load === 0 ? { reps: sg.reps } : { load: sg.load };
+    JS.store.update(function (st) { T.setItemValues(st, x.id, it.id, vals); });
+    ui.toast(sg.load === 0 ? 'Meta de hoje: ' + sg.reps + ' repetições em cada série.' : 'Carga de hoje: ' + JS.kg(sg.load) + '.');
+  };
+  JS.actions['ses-sug-ignore'] = function () {
+    var x = session(), it = T.currentItem(x);
+    if (!it) return;
+    sugIgnored[it.id] = true;
+    JS.app.render();
+  };
 
   // "Como fazer": dica + vídeo de execução (o vídeo só carrega quando a usuária abre).
   var howtoOpen = null;
@@ -345,6 +385,7 @@
       body: JS.workoutSummaryHtml(summary) + (summary.sets ? '<p class="hint">A ficha agora sugere a última carga usada em cada exercício.</p>' : ''),
       onSubmit: function () { }, submitLabel: 'Fechar', cancelLabel: 'Ver evolução',
       onOpen: function (form) {
+        if (JS.bindPrShare) JS.bindPrShare(form);
         var ghost = form.querySelector('.sheet-foot .btn.ghost');
         if (ghost) ghost.addEventListener('click', function () { JS.treinoView.mode = 'evolucao'; setTimeout(function () { JS.app.render({ enter: 'view:r' }); }, 220); });
       }

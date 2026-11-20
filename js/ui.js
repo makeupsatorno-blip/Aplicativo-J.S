@@ -262,7 +262,8 @@
         b.addEventListener('click', function () { finish(o.options[Number(b.dataset.i)].value); });
       });
       dlg.querySelector('[data-cancel]').addEventListener('click', function () { finish(null); });
-      dlg.onclose = function () { finish(null); };
+      // Um 'close' atrasado do diálogo anterior (confirmações em sequência) não pode cancelar o novo: só vale se ele já fechou.
+      dlg.onclose = function () { if (!dlg.open) finish(null); };
       if (!dlg.open) dlg.showModal();
       restart(dlg, 'in');
     });
@@ -334,8 +335,11 @@
   JS.render = JS.render || {};    // itens de lista reutilizados entre telas
   JS.telas = JS.telas || {};
 
+  // Recursos novos registram ícones próprios: JS.ui.addIcons({ nome: '<path d="…"/>' }) (traço, viewBox 24).
+  function addIcons(map) { Object.keys(map || {}).forEach(function (k) { if (!ICONS[k]) ICONS[k] = map[k]; }); }
+
   JS.ui = {
-    segmented: segmented, monthNav: monthNav,
+    segmented: segmented, monthNav: monthNav, addIcons: addIcons,
     icon: icon, esc: esc, entries: entries, plain: plain,
     input: input, select: select, textarea: textarea, weekdays: weekdays, checkbox: checkbox, chips: chips,
     formValues: formValues, showErrors: showErrors, clearErrors: clearErrors,
