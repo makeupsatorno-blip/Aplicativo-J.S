@@ -39,7 +39,7 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.8.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.8.1'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
@@ -138,7 +138,7 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
 
 ## 3.6 Dados: backup automático, versões e lixeira
 
-- **Backup automático cifrado (Configurações):** o app cria um **código de recuperação de 16 caracteres** (guardado só no aparelho; você precisa confirmar que anotou) e envia sozinho uma cópia cifrada dos seus dados: a última e uma por dia nos últimos 7 dias. O servidor não consegue ler nada, e sem o código ninguém recupera. Não leva as fotos do corpo, a menos que você ligue "Incluir fotos" (até cerca de 12 MB). Faz o backup ao abrir o app (se passou 1 dia e algo mudou) e depois de mudanças. Num aparelho novo: Início → **Restaurar backup automático** → digite o código. Só aparece com `backup: true` em `js/config.js`, depois de publicar `supabase/sql/05_backup_auto.sql` e a função `js-push`. **Não é sincronização ao vivo**: é backup e restauração (mesclar dois aparelhos em tempo real traria de volta o que foi apagado).
+- **Backup automático cifrado (Configurações):** o app cria um **código de recuperação de 16 caracteres** (guardado só no aparelho; você precisa confirmar que anotou) e envia sozinho uma cópia cifrada dos seus dados: a última e uma por dia nos últimos 7 dias. O servidor não consegue ler nada, e sem o código ninguém recupera. Não leva as fotos do corpo, a menos que você ligue "Incluir fotos" (até cerca de 12 MB). Faz o backup ao abrir o app (se passou 1 dia e algo mudou) e depois de mudanças. Num aparelho novo: Início → **Restaurar backup automático** → digite o código. Ligado pelo flag `backup` em `js/config.js` (o servidor — `supabase/sql/05_backup_auto.sql` e as rotas `backup-*` da função `js-push` — está publicado desde a 2.8.1). **Não é sincronização ao vivo**: é backup e restauração (mesclar dois aparelhos em tempo real traria de volta o que foi apagado).
 - **Versões e lixeira (Configurações):** uma foto dos dados por dia (14 dias) e uma cópia de segurança antes de restaurar, importar ou apagar tudo (30 dias), só neste aparelho. **Recuperar o que foi apagado** mostra o que existia e sumiu nos últimos 7 dias e traz de volta item por item, sem duplicar. **Voltar tudo** leva o app a um dia, com confirmação e cópia de segurança antes.
 
 ## 4. Notificações
