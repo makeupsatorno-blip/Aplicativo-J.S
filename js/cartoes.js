@@ -99,12 +99,16 @@
         rose50: v('--rose50', '#FFF7FA'), rose100: v('--rose100', '#FCEBF1'), rose200: v('--rose200', '#F5D5E1'), rose300: v('--rose300', '#E9AFC4'), rose400: v('--rose400', '#D98EAA'),
         rose700: v('--rose700', '#A0526D'), rose800: v('--rose800', '#78465A'), text: v('--text', '#30262B'), muted: v('--muted', '#75676F'), surface: v('--surface', '#FFFFFF'),
         accent: v('--accent', '#A0526D'), lav: v('--lav-soft', '#C9B3DE'), peach: v('--m-kcal-soft', '#E3A383'), centro: v('--flower-center', '#FFF1A8'),
-        fol: v('--ph-fol', '#3D7254'), ovu: v('--ph-ovu', '#8C5820'), pr: v('--pr', '#8C5820')
+        fol: v('--ph-fol', '#3D7254'), ovu: v('--ph-ovu', '#8C5820'), pr: v('--pr', '#8C5820'),
+        // letra dos títulos escolhida em Configurações → Aparência (Delicada, Elegante, Manuscrita ou Suave)
+        fdisp: v('--font-display', '"Cormorant Garamond", Georgia, serif'), fstyle: v('--display-style', 'italic'),
+        fpeso: v('--display-weight', '600'), fk: parseFloat(v('--display-k', '1')) || 1
       };
     }
     function fontes() {
       if (!doc.fonts || !doc.fonts.load) return Promise.resolve();
-      var all = Promise.all([doc.fonts.load('italic 600 64px "Cormorant Garamond"'), doc.fonts.load('600 32px Nunito'), doc.fonts.load('800 32px Nunito')]).catch(function () {});
+      var t = tema();
+      var all = Promise.all([doc.fonts.load(t.fstyle + ' ' + t.fpeso + ' 64px ' + t.fdisp), doc.fonts.load('600 32px Nunito'), doc.fonts.load('800 32px Nunito')]).catch(function () {});
       return Promise.race([all, new Promise(function (r) { setTimeout(r, 1500); })]);
     }
 
@@ -185,7 +189,7 @@
       ctx.save(); ctx.strokeStyle = t.rose200; ctx.lineWidth = 3; caixa(ctx, px, py, pw, ph, 56); ctx.stroke(); ctx.restore();
 
       var inner = pw - 140, cx = W / 2, blocos = [];
-      var disp = function (n) { return 'italic 600 ' + n + 'px "Cormorant Garamond", Georgia, serif'; };
+      var disp = function (n) { return t.fstyle + ' ' + t.fpeso + ' ' + Math.round(n * t.fk) + 'px ' + t.fdisp; };
       var nun = function (w) { return function (n) { return w + ' ' + n + 'px Nunito, system-ui, sans-serif'; }; };
       var gap = function (h) { blocos.push({ h: h, draw: function () {} }); };
 

@@ -616,10 +616,13 @@
 
   /* ---------------- Aparência: tema e paleta (aplicados pelo <head> do index.html: window.JS_THEME) ---------------- */
   var THEMES = [['auto', 'Automático (segue o celular)'], ['light', 'Claro'], ['dark', 'Escuro']];
-  var PALETTES = [['rose', 'Rosé'], ['lavanda', 'Lavanda'], ['pessego', 'Pêssego'], ['nude', 'Nude']];
+  var PALETTES = [['rose', 'Rosé'], ['lavanda', 'Lavanda'], ['pessego', 'Pêssego'], ['nude', 'Nude'],
+    ['salvia', 'Sálvia'], ['nevoa', 'Névoa'], ['cereja', 'Cereja'], ['estacoes', 'Estações']];
+  // Letra dos títulos (o texto corrido continua em Nunito, menos na "Suave", que usa Quicksand também nele).
+  var FONTS = [['delicada', 'Delicada'], ['elegante', 'Elegante'], ['manuscrita', 'Manuscrita'], ['suave', 'Suave']];
   function pick(list, v, def) { return list.some(function (o) { return o[0] === v; }) ? v : def; }
   function appearanceBlock(st) {
-    var th = pick(THEMES, st.theme, 'auto'), pa = pick(PALETTES, st.palette, 'rose');
+    var th = pick(THEMES, st.theme, 'auto'), pa = pick(PALETTES, st.palette, 'rose'), fo = pick(FONTS, st.fontPreset, 'delicada');
     return '<section class="card" id="cfg-look"><div class="card-head"><h2>' + ui.icon('sparkle', 18) + 'Aparência</h2></div>' +
       '<div class="field"><label for="cfg-theme">Tema</label><select id="cfg-theme" data-change="cfg-theme">' + THEMES.map(function (o) {
         return '<option value="' + o[0] + '"' + (th === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
@@ -627,7 +630,13 @@
       '<div class="field"><span class="label" id="cfg-pal-label">Paleta de cores</span><div class="palettes" role="radiogroup" aria-labelledby="cfg-pal-label">' + PALETTES.map(function (o) {
         return '<label class="pal pal-' + o[0] + '"><input type="radio" name="palette" value="' + o[0] + '" data-change="cfg-palette"' + (pa === o[0] ? ' checked' : '') + '>' +
           '<span class="pal-dot" aria-hidden="true"></span><span class="pal-name">' + esc(o[1]) + '</span></label>';
-      }).join('') + '</div></div></section>';
+      }).join('') + '</div><p class="hint">Estações troca a cor sozinha: Sálvia na primavera, Pêssego no verão, Nude no outono e Névoa no inverno.</p></div>' +
+      '<div class="field"><span class="label" id="cfg-font-label">Letra dos títulos</span><div class="fontopts" role="radiogroup" aria-labelledby="cfg-font-label">' + FONTS.map(function (o) {
+        return '<label class="fopt fo-' + o[0] + '"><input type="radio" name="fontPreset" value="' + o[0] + '" data-change="cfg-font"' + (fo === o[0] ? ' checked' : '') + '>' +
+          '<span class="fopt-sample" aria-hidden="true">Julia</span><span class="fopt-name">' + esc(o[1]) + '</span></label>';
+      }).join('') + '</div></div>' +
+      sw('deco', 'Detalhes florais', st.deco !== 'off', 'Florzinhas, ornamentos nos títulos, cantos mais redondos e sombras suaves. Desligado, o visual fica mais liso.', 'cfg-deco') +
+      '</section>';
   }
   JS.changes['cfg-theme'] = function (el) {
     var v = pick(THEMES, el.value, 'auto');
@@ -640,6 +649,18 @@
     if (window.JS_THEME) window.JS_THEME(JS.store.state.settings.theme, v, true);
     JS.store.update(function (s) { s.settings.palette = v; });
     ui.toast('Paleta ' + PALETTES.filter(function (o) { return o[0] === v; })[0][1] + ' aplicada.');
+  };
+  JS.changes['cfg-font'] = function (el) {
+    var v = pick(FONTS, el.value, 'delicada');
+    if (window.JS_STYLE) window.JS_STYLE(v, JS.store.state.settings.deco);
+    JS.store.update(function (s) { s.settings.fontPreset = v; });
+    ui.toast('Letra ' + FONTS.filter(function (o) { return o[0] === v; })[0][1].toLowerCase() + ' aplicada.');
+  };
+  JS.changes['cfg-deco'] = function (el) {
+    var v = el.checked ? 'on' : 'off';
+    if (window.JS_STYLE) window.JS_STYLE(JS.store.state.settings.fontPreset, v);
+    JS.store.update(function (s) { s.settings.deco = v; });
+    ui.toast(v === 'on' ? 'Detalhes florais ligados.' : 'Detalhes florais desligados.');
   };
 
   JS.telas.config = { title: 'Configurações', render: render, after: after };

@@ -64,7 +64,7 @@ button.jd-cel:active { transform: scale(.94); }
 /* ---------- Jardim completo (folha) ---------- */
 .jd-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: .5rem; }
 .jd-sum div { background: var(--rose50); border-radius: .75rem; padding: .625rem; display: flex; flex-direction: column; min-width: 0; }
-.jd-sum strong { font-size: 1.5rem; font-family: var(--font-display); font-style: italic; color: var(--rose800); line-height: 1.1; }
+.jd-sum strong { font-size: calc(1.5rem * var(--display-k, 1)); font-family: var(--font-display); font-style: var(--display-style, italic); color: var(--rose800); line-height: 1.1; }
 .jd-sum span { font-size: .75rem; color: var(--muted); }
 .jd-leg { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem .75rem; padding: 0; margin: 0 0 .75rem; font-size: .6875rem; color: var(--muted); }
 .jd-leg li { display: inline-flex; align-items: center; gap: .125rem; }
@@ -91,7 +91,7 @@ button.jd-cel:active { transform: scale(.94); }
 /* ---------- Resumo semanal ---------- */
 .rs-nav .icon-btn[disabled] { opacity: .3; }
 .rs-hero { background: linear-gradient(180deg, var(--rose100), var(--surface) 85%); }
-.rs-texto { font-family: var(--font-display); font-style: italic; font-size: 1.375rem; line-height: 1.38; color: var(--rose800); margin: .25rem 0 .5rem; }
+.rs-texto { font-family: var(--font-display); font-style: var(--display-style, italic); font-size: calc(1.375rem * var(--display-k, 1)); line-height: 1.38; color: var(--rose800); margin: .25rem 0 .5rem; }
 .rs-dest { margin-top: .25rem; }
 .rs-tiles { margin-bottom: .25rem; }
 .rs-sub { margin: .625rem 0 .125rem; }

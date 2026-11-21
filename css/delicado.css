@@ -1,0 +1,155 @@
+/* J.S. 2.9 — mais delicado e feminino: letras, paletas novas e detalhes florais.
+   Carregado por último (depois de style.css e das folhas das telas).
+   - Letra dos títulos: <html data-font="elegante|manuscrita|suave"> (sem atributo = Delicada, a de sempre).
+   - Detalhes florais: ligados por padrão; <html data-deco="off"> desliga florzinhas, ornamentos e sombras
+     coloridas, e volta ao traço dos ícones e aos cantos de antes.
+   - Paletas novas: <html data-palette="salvia|nevoa|cereja">. "Estações" não tem bloco próprio: o <head>
+     do index.html troca por Sálvia/Pêssego/Nude/Névoa conforme a data (hemisfério sul).
+   Contraste: mesmas regras do style.css (texto >= 4,5:1; conferido por scratchpad/v29/contraste.js). */
+
+/* ---------- 1. Fontes guardadas no app (só baixam se a letra for escolhida). Licença: fonts/OFL.txt ---------- */
+@font-face {
+  font-family: 'Playfair Display'; font-style: normal; font-weight: 500 800; font-display: swap;
+  src: url(../fonts/playfair-display-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Dancing Script'; font-style: normal; font-weight: 500 700; font-display: swap;
+  src: url(../fonts/dancing-script-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Quicksand'; font-style: normal; font-weight: 400 700; font-display: swap;
+  src: url(../fonts/quicksand-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ---------- 2. Estilos de letra ----------
+   Os títulos leem --font-display, --display-style (itálico ou não), --display-weight e --display-k
+   (multiplica o tamanho: cada família tem um "tamanho de olho" diferente). */
+:root { --display-style: italic; --display-weight: 600; --display-k: 1; }
+html[data-font="elegante"] {
+  --font-display: 'Playfair Display', Georgia, "Times New Roman", serif;
+  --display-style: normal; --display-weight: 600; --display-k: .82;
+}
+html[data-font="manuscrita"] {
+  --font-display: 'Dancing Script', 'Segoe Script', 'Brush Script MT', cursive;
+  --display-style: normal; --display-weight: 600; --display-k: 1.06;
+}
+html[data-font="suave"] {
+  --font: 'Quicksand', 'Nunito', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: 'Quicksand', 'Nunito', system-ui, sans-serif;
+  --display-style: normal; --display-weight: 600; --display-k: .86;
+}
+html[data-font="suave"] .page-title, html[data-font="suave"] .hero h1 { letter-spacing: -.01em; }
+
+/* ---------- 3. Paletas novas ---------- */
+:root[data-palette="salvia"] {
+  --l-rose50: #F5FAF6; --l-rose100: #E8F3EA; --l-rose200: #D0E6D4; --l-rose300: #AED0B5; --l-rose400: #85B28F; --l-rose600: #4F8862; --l-rose700: #3A7050; --l-rose800: #2C5640;
+  --l-bg: #FAFCFA; --l-text: #25302A; --l-muted: #5F6E66; --l-border: #E0ECE3; --l-topbar: rgba(245, 250, 246, .9);
+  --l-accent: #3A7050; --l-grad: linear-gradient(135deg, #46805C 0%, #316043 100%);
+  --l-glow: rgba(58, 112, 80, .22); --l-ring: rgba(79, 136, 98, .2); --l-bg-a: rgba(208, 230, 212, .6); --l-bg-b: rgba(245, 225, 226, .4);
+  --l-glow1: rgba(133, 178, 143, .38); --l-glow2: rgba(217, 142, 170, .18);
+  --d-rose50: #1F2A23; --d-rose100: #2A3A2F; --d-rose200: #3D5345; --d-rose300: #58765F; --d-rose400: #7A9C84; --d-rose600: #A5CBAF; --d-rose700: #BDDBC5; --d-rose800: #D6EBDC;
+  --d-bg: #121A15; --d-surface: #1A251E; --d-text: #E9F3EC; --d-muted: #B3C4B9; --d-border: #2F4136; --d-topbar: rgba(20, 30, 24, .9);
+  --d-accent: #9CCBA9; --d-on-accent: #10241A; --d-grad: linear-gradient(135deg, #B0DBBC 0%, #8ABB98 100%);
+  --d-glow: rgba(156, 203, 169, .2); --d-ring: rgba(156, 203, 169, .28); --d-bg-a: rgba(60, 100, 75, .3); --d-bg-b: rgba(110, 60, 88, .16);
+}
+:root[data-palette="nevoa"] {
+  --l-rose50: #F5F8FB; --l-rose100: #E8EFF6; --l-rose200: #D3E0EC; --l-rose300: #B3C8DC; --l-rose400: #8CA8C5; --l-rose600: #5A7CA3; --l-rose700: #43668C; --l-rose800: #324F6F;
+  --l-bg: #F9FBFD; --l-text: #262D35; --l-muted: #636E7A; --l-border: #E1E9F1; --l-topbar: rgba(245, 248, 251, .9);
+  --l-accent: #43668C; --l-grad: linear-gradient(135deg, #4F76A0 0%, #3B5D83 100%);
+  --l-glow: rgba(67, 102, 140, .22); --l-ring: rgba(90, 124, 163, .2); --l-bg-a: rgba(211, 224, 236, .6); --l-bg-b: rgba(235, 225, 243, .4);
+  --l-glow1: rgba(140, 168, 197, .38); --l-glow2: rgba(174, 149, 214, .18);
+  --d-rose50: #1E2630; --d-rose100: #283342; --d-rose200: #3A4A5F; --d-rose300: #566D8A; --d-rose400: #7A93B1; --d-rose600: #A8C0DC; --d-rose700: #C2D4E9; --d-rose800: #DAE6F4;
+  --d-bg: #131920; --d-surface: #1B232D; --d-text: #EAF0F7; --d-muted: #B5C2D0; --d-border: #2F3C4B; --d-topbar: rgba(24, 31, 40, .9);
+  --d-accent: #A3BEE0; --d-on-accent: #12202F; --d-grad: linear-gradient(135deg, #B9D0EC 0%, #8EAED6 100%);
+  --d-glow: rgba(163, 190, 224, .2); --d-ring: rgba(163, 190, 224, .28); --d-bg-a: rgba(60, 90, 130, .3); --d-bg-b: rgba(100, 70, 130, .16);
+}
+:root[data-palette="cereja"] {
+  --l-rose50: #FFF5F6; --l-rose100: #FBE6EA; --l-rose200: #F4CBD4; --l-rose300: #E8A3B3; --l-rose400: #D6738C; --l-rose600: #B83A5E; --l-rose700: #96294A; --l-rose800: #701F39;
+  --l-bg: #FFFAFA; --l-text: #2E2024; --l-muted: #725F66; --l-border: #F2DFE3; --l-topbar: rgba(255, 245, 246, .9);
+  --l-accent: #96294A; --l-grad: linear-gradient(135deg, #A8335A 0%, #85213F 100%);
+  --l-glow: rgba(150, 41, 74, .24); --l-ring: rgba(184, 58, 94, .2); --l-bg-a: rgba(244, 203, 212, .55); --l-bg-b: rgba(226, 214, 243, .35);
+  --l-glow1: rgba(214, 115, 140, .38); --l-glow2: rgba(143, 107, 179, .2);
+  --d-rose50: #2E1A21; --d-rose100: #3F2230; --d-rose200: #5C3042; --d-rose300: #8A4A63; --d-rose400: #B26580; --d-rose600: #E58BA6; --d-rose700: #F0A9BD; --d-rose800: #F8CBD8;
+  --d-bg: #1C1015; --d-surface: #28171E; --d-text: #F8E9EE; --d-muted: #C9AAB5; --d-border: #47303A; --d-topbar: rgba(34, 19, 26, .9);
+  --d-accent: #EE92AE; --d-on-accent: #2A0F1A; --d-grad: linear-gradient(135deg, #F5A8BF 0%, #E0789A 100%);
+  --d-glow: rgba(238, 146, 174, .22); --d-ring: rgba(238, 146, 174, .28); --d-bg-a: rgba(130, 40, 70, .3); --d-bg-b: rgba(90, 64, 130, .16);
+}
+/* Bolinhas de escolha (Configurações → Aparência). "Estações" mostra as quatro cores que ela usa. */
+.pal-salvia .pal-dot { background: var(--pal-salvia); }
+.pal-nevoa .pal-dot { background: var(--pal-nevoa); }
+.pal-cereja .pal-dot { background: var(--pal-cereja); }
+.pal-estacoes .pal-dot { background: var(--pal-estacoes); }
+:root {
+  --pal-salvia: linear-gradient(135deg, #E8F3EA 0%, #85B28F 50%, #3A7050 100%);
+  --pal-nevoa: linear-gradient(135deg, #E8EFF6 0%, #8CA8C5 50%, #43668C 100%);
+  --pal-cereja: linear-gradient(135deg, #F4CBD4 0%, #D6738C 50%, #96294A 100%);
+  --pal-estacoes: conic-gradient(from 45deg, #85B28F 0 25%, #E7A27E 0 50%, #C9A593 0 75%, #8CA8C5 0 100%);
+}
+
+/* ---------- 4. Detalhes florais (desligáveis: data-deco="off") ---------- */
+:root {
+  --flourish: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10'%3E%3Cg fill='none' stroke='%23000' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M2 5h34'/%3E%3Cpath d='M64 5h34' opacity='.45'/%3E%3Cg transform='translate(50 5)'%3E%3Ccircle cx='0' cy='-2.6' r='2.1'/%3E%3Ccircle cx='2.5' cy='-.8' r='2.1'/%3E%3Ccircle cx='1.5' cy='2.1' r='2.1'/%3E%3Ccircle cx='-1.5' cy='2.1' r='2.1'/%3E%3Ccircle cx='-2.5' cy='-.8' r='2.1'/%3E%3C/g%3E%3C/g%3E%3Ccircle cx='50' cy='5' r='1.2' fill='%23000'/%3E%3C/svg%3E");
+  /* sombra dos cartões: tingida com a cor da paleta no claro, preta no escuro */
+  --tint-a: rgba(120, 70, 90, .05); --tint-b: rgba(120, 70, 90, .07);
+}
+@supports (color: color-mix(in srgb, red, blue)) {
+  :root { --tint-a: color-mix(in srgb, var(--rose400) 10%, transparent); --tint-b: color-mix(in srgb, var(--rose400) 17%, transparent); }
+}
+:root[data-theme="dark"] { --tint-a: rgba(0, 0, 0, .22); --tint-b: rgba(0, 0, 0, .28); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --tint-a: rgba(0, 0, 0, .22); --tint-b: rgba(0, 0, 0, .28); }
+}
+:root:not([data-deco="off"]) { --radius: 1.375rem; }
+
+/* Cartões: canto mais redondo, sombra colorida bem leve e uma florzinha "pregada" na borda de cima
+   (fora da área do texto, para não cobrir selos e links); alterna de lado de um cartão para o outro. */
+:where(:root:not([data-deco="off"])) .card { box-shadow: 0 .0625rem .1875rem var(--tint-a), 0 .5rem 1.75rem var(--tint-b); }
+:where(:root:not([data-deco="off"])) .card:not(.warn):not(.danger-zone) { position: relative; }
+:where(:root:not([data-deco="off"])) .card:not(.warn):not(.danger-zone)::after {
+  content: ""; position: absolute; right: 1.5rem; top: -.4375rem; width: 1.0625rem; height: 1.0625rem; pointer-events: none;
+  background: var(--rose300);
+  -webkit-mask: var(--fl1) center / contain no-repeat; mask: var(--fl1) center / contain no-repeat;
+}
+:where(:root:not([data-deco="off"])) .card:not(.warn):not(.danger-zone):nth-child(even)::after {
+  right: auto; left: 1.5rem; background: var(--lav-soft);
+  -webkit-mask-image: var(--fl2); mask-image: var(--fl2);
+}
+
+/* Ícones com traço mais fino. */
+:where(:root:not([data-deco="off"])) svg.ic, :where(:root:not([data-deco="off"])) .top-actions svg, :where(:root:not([data-deco="off"])) .tabbar svg { stroke-width: 1.5; }
+:where(:root:not([data-deco="off"])) .fab svg { stroke-width: 1.75; }
+
+/* Título de cada tela com um raminho de florzinha embaixo. */
+:where(:root:not([data-deco="off"])) .page-title { position: relative; padding-bottom: .625rem; }
+:where(:root:not([data-deco="off"])) .page-title::after {
+  content: ""; position: absolute; left: .125rem; bottom: 0; width: 5.5rem; height: .55rem; pointer-events: none;
+  background: var(--rose300);
+  -webkit-mask: var(--flourish) left center / contain no-repeat; mask: var(--flourish) left center / contain no-repeat;
+}
+
+/* Telas vazias: medalhão com anel duplo e dois raminhos nos cantos. */
+:where(:root:not([data-deco="off"])) .empty:has(> .empty-ic) { position: relative; overflow: hidden; padding: 1.75rem 1rem 1.5rem; }
+:where(:root:not([data-deco="off"])) .empty:has(> .empty-ic)::before, :where(:root:not([data-deco="off"])) .empty:has(> .empty-ic)::after {
+  content: ""; position: absolute; width: 5rem; height: 5rem; pointer-events: none; background: var(--rose300); opacity: .38;
+  -webkit-mask: var(--sprig) center / contain no-repeat; mask: var(--sprig) center / contain no-repeat;
+}
+:where(:root:not([data-deco="off"])) .empty:has(> .empty-ic)::after { right: -.5rem; bottom: -.625rem; transform: scaleX(-1); }
+:where(:root:not([data-deco="off"])) .empty:has(> .empty-ic)::before { left: -.5rem; top: -.625rem; transform: rotate(180deg); opacity: .26; width: 4rem; height: 4rem; }
+:where(:root:not([data-deco="off"])) .empty-ic { width: 3.75rem; height: 3.75rem; box-shadow: 0 0 0 .3125rem var(--rose50), 0 0 0 .375rem var(--rose200); }
+:where(:root:not([data-deco="off"])) .empty > p { position: relative; }
+
+/* ---------- 5. Configurações → Aparência: escolha da letra ---------- */
+.fontopts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.field .fopt { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .125rem; padding: .625rem .375rem .5rem; border: .0625rem solid var(--border); border-radius: 1rem; background: var(--surface); cursor: pointer; margin: 0 !important; color: var(--text) !important; text-align: center; min-height: 4.25rem; }
+.fopt input { position: absolute; opacity: 0; width: .0625rem; height: .0625rem; }
+.fopt:has(input:checked) { border-color: var(--rose400); background: var(--rose50); }
+.fopt:has(input:focus-visible) { outline: .125rem solid var(--rose600); outline-offset: .125rem; }
+.fopt-sample { display: block; font-size: 1.5rem; line-height: 1.15; color: var(--rose800); }
+.fopt-name { display: block; font-size: .75rem; font-weight: 650; color: var(--muted); }
+.fo-delicada .fopt-sample { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 600; }
+.fo-elegante .fopt-sample { font-family: 'Playfair Display', Georgia, serif; font-weight: 600; font-size: 1.25rem; }
+.fo-manuscrita .fopt-sample { font-family: 'Dancing Script', 'Segoe Script', cursive; font-weight: 600; font-size: 1.625rem; }
+.fo-suave .fopt-sample { font-family: 'Quicksand', 'Nunito', system-ui, sans-serif; font-weight: 600; font-size: 1.25rem; }

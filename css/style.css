@@ -370,10 +370,10 @@ html.reduce-motion.theme-anim body, html.reduce-motion.theme-anim body * { trans
 .fab:active { transform: scale(.9) rotate(90deg); box-shadow: 0 .1875rem .625rem var(--accent-glow); }
 
 /* ---------- Títulos ---------- */
-.page-title { font-family: var(--font-display); font-style: italic; font-size: 2.25rem; font-weight: 600; line-height: 1.08; margin: .25rem 0 .75rem; letter-spacing: 0; color: var(--rose800); }
+.page-title { font-family: var(--font-display); font-style: var(--display-style, italic); font-size: calc(2.25rem * var(--display-k, 1)); font-weight: var(--display-weight, 600); line-height: 1.08; margin: .25rem 0 .75rem; letter-spacing: 0; color: var(--rose800); }
 .page-sub { color: var(--muted); margin: -.375rem 0 1rem; }
 .hero { padding: .25rem 0 1rem; }
-.hero h1 { font-family: var(--font-display); font-style: italic; font-size: 2.375rem; font-weight: 600; line-height: 1.08; margin: .375rem 0 .25rem; letter-spacing: 0; color: var(--rose800); }
+.hero h1 { font-family: var(--font-display); font-style: var(--display-style, italic); font-size: calc(2.375rem * var(--display-k, 1)); font-weight: var(--display-weight, 600); line-height: 1.08; margin: .375rem 0 .25rem; letter-spacing: 0; color: var(--rose800); }
 .eyebrow { color: var(--rose700); font-size: .6875rem; font-weight: 700; letter-spacing: .16rem; }
 .muted { color: var(--muted); }
 .small { font-size: .8125rem; }
@@ -624,7 +624,7 @@ html.reduce-motion.theme-anim body, html.reduce-motion.theme-anim body * { trans
 .cal-cell.sel .n { background: var(--accent); color: var(--on-accent); box-shadow: none; }
 .dots { display: flex; gap: .125rem; height: .375rem; }
 .dots i { width: .375rem; height: .375rem; border-radius: 50%; display: block; }
-.day-title { font-family: var(--font-display); font-style: italic; font-size: 1.5rem; font-weight: 600; margin: 0 .125rem .75rem; color: var(--rose800); }
+.day-title { font-family: var(--font-display); font-style: var(--display-style, italic); font-size: calc(1.5rem * var(--display-k, 1)); font-weight: var(--display-weight, 600); margin: 0 .125rem .75rem; color: var(--rose800); }
 
 /* ---------- Folhas e diálogos ---------- */
 dialog { color: var(--text); }
@@ -637,7 +637,7 @@ dialog::backdrop { background: var(--overlay); }
 .sheet[open] { display: flex; }
 .sheet-form { display: flex; flex-direction: column; width: 100%; max-height: 92dvh; }
 .sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; padding: 1.125rem .75rem .625rem 1.25rem; border-bottom: .0625rem solid var(--border); }
-.sheet-head h2 { font-family: var(--font-display); font-style: italic; font-size: 1.625rem; font-weight: 600; line-height: 1.1; color: var(--rose800); overflow-wrap: anywhere; }
+.sheet-head h2 { font-family: var(--font-display); font-style: var(--display-style, italic); font-size: calc(1.625rem * var(--display-k, 1)); font-weight: var(--display-weight, 600); line-height: 1.1; color: var(--rose800); overflow-wrap: anywhere; }
 .sheet-titles { min-width: 0; padding-top: .375rem; }
 .sheet-sub { color: var(--muted); font-size: .8438rem; margin-top: .125rem; }
 .sheet-body { padding: 1rem 1.25rem .5rem; overflow-y: auto; overscroll-behavior: contain; flex: 1; }
@@ -653,7 +653,7 @@ dialog::backdrop { background: var(--overlay); }
 
 .confirm { border: 0; padding: 0; border-radius: 1.625rem; width: calc(100% - 2rem); max-width: 25rem; background: var(--surface); box-shadow: var(--shadow-lg); }
 .confirm-box { padding: 1.375rem 1.25rem 1rem; }
-.confirm-box h2 { font-family: var(--font-display); font-style: italic; font-size: 1.625rem; font-weight: 600; line-height: 1.1; color: var(--rose800); margin-bottom: .5rem; }
+.confirm-box h2 { font-family: var(--font-display); font-style: var(--display-style, italic); font-size: calc(1.625rem * var(--display-k, 1)); font-weight: var(--display-weight, 600); line-height: 1.1; color: var(--rose800); margin-bottom: .5rem; }
 .confirm-box p { color: var(--muted); margin-bottom: 1.125rem; overflow-wrap: anywhere; }
 .confirm-actions { display: flex; flex-direction: column; gap: .5rem; }
 

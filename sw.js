@@ -4,10 +4,10 @@
  * sem internet (ou rede muito lenta), usa a cópia guardada.
  * Ao publicar uma versão nova, aumente o número em VERSION.
  */
-var VERSION = 'js-v2.8.1';
+var VERSION = 'js-v2.9.0';
 var ASSETS = [
-  './', './index.html', './manifest.webmanifest', './css/style.css', './css/v2.css', './css/v26.css', './css/treino28.css', './css/jardim.css', './css/planejador.css', './css/ferramentas.css', './css/dados.css', './css/bemestar.css', './icons/favicon.svg',
-  './fonts/nunito-latin.woff2', './fonts/cormorant-garamond-italic-latin.woff2',
+  './', './index.html', './manifest.webmanifest', './css/style.css', './css/v2.css', './css/v26.css', './css/treino28.css', './css/jardim.css', './css/planejador.css', './css/ferramentas.css', './css/dados.css', './css/bemestar.css', './css/delicado.css', './icons/favicon.svg',
+  './fonts/nunito-latin.woff2', './fonts/cormorant-garamond-italic-latin.woff2', './fonts/playfair-display-latin.woff2', './fonts/dancing-script-latin.woff2', './fonts/quicksand-latin.woff2',
   './js/config.js', './js/intro.js', './js/core.js', './js/regras.js', './js/ui.js', './js/anim.js', './js/store.js',
   './js/notify.js', './js/push.js', './js/app.js', './js/graficos.js', './js/toque.js',
   './js/regras-treino.js', './js/regras-corpo.js', './js/regras-nutricao.js', './js/regras-ciclo.js', './js/fotos.js', './js/transferencia.js', './js/slots.js', './js/regras-bemestar.js', './js/regras-planejador.js', './js/falar.js', './js/pdf.js', './js/ics.js',

@@ -7,7 +7,7 @@ No celular, a barra de baixo tem **Início, Rotina, Treino, Alimentação e Mais
 
 **Tamanho da tela:** o app se adapta sozinho a qualquer aparelho. No celular fica em 100%; em tablet, aumenta conforme o tamanho da tela (até 160%, igual em pé e deitado sempre que o layout permite); em computador com tela larga, aumenta um pouco (até 135%). Se o navegador do tablet estiver no modo "site para computador", que desenha a página com 980 px e encolhe tudo, o app compensa. Em Configurações → Aplicativo → **Tamanho da tela** dá para escolher na mão (90% a 150%) ou voltar ao automático. Por dentro: todo o CSS usa `rem`, e o `<head>` do `index.html` (`window.JS_FIT`) define quanto vale 1rem e recalcula quando a tela gira.
 
-**Aparência:** títulos em Cormorant Garamond itálico e texto em Nunito (as duas guardadas em `fonts/`, funcionam sem internet), tons pastéis e detalhes florais. Em Configurações → **Aparência** dá para escolher o tema (Automático, que segue o celular, Claro ou **Escuro**, em tons de ameixa) e a paleta (**Rosé, Lavanda, Pêssego ou Nude**). Por dentro: todas as cores são variáveis CSS (`css/style.css`), e o `<head>` do `index.html` (`window.JS_THEME`) aplica o tema antes de desenhar a tela.
+**Aparência:** títulos em Cormorant Garamond itálico e texto em Nunito (guardadas em `fonts/`, funcionam sem internet), tons pastéis e detalhes florais. Em Configurações → **Aparência** dá para escolher o tema (Automático, que segue o celular, Claro ou **Escuro**, em tons de ameixa), a paleta (**Rosé, Lavanda, Pêssego, Nude, Sálvia, Névoa, Cereja** ou **Estações**, que muda com a época do ano), a letra dos títulos (Delicada, Elegante, Manuscrita, Suave) e ligar/desligar os detalhes florais (seção 3.7). Por dentro: todas as cores são variáveis CSS (`css/style.css`), e o `<head>` do `index.html` (`window.JS_THEME`) aplica o tema antes de desenhar a tela.
 
 Ele é um app web (PWA): abre no navegador e pode ser **instalado no celular pelo Chrome**, com ícone na tela inicial, abrindo em tela cheia e funcionando sem internet.
 
@@ -39,7 +39,7 @@ No celular:
 
 ### Publicar uma versão nova
 
-Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.8.1'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
+Depois de alterar os arquivos, aumente o número em `sw.js` (`var VERSION = 'js-v2.9.0'`) e em `js/app.js`, faça o commit e envie (`git push`). O GitHub Pages atualiza em cerca de 1 minuto, e com internet o app sempre busca a versão mais recente.
 
 ## 3. Dados e backup — leia isto
 
@@ -141,6 +141,16 @@ Limitações dos sistemas: o J.S. é um app web instalado (PWA). Ele não conseg
 - **Backup automático cifrado (Configurações):** o app cria um **código de recuperação de 16 caracteres** (guardado só no aparelho; você precisa confirmar que anotou) e envia sozinho uma cópia cifrada dos seus dados: a última e uma por dia nos últimos 7 dias. O servidor não consegue ler nada, e sem o código ninguém recupera. Não leva as fotos do corpo, a menos que você ligue "Incluir fotos" (até cerca de 12 MB). Faz o backup ao abrir o app (se passou 1 dia e algo mudou) e depois de mudanças. Num aparelho novo: Início → **Restaurar backup automático** → digite o código. Ligado pelo flag `backup` em `js/config.js` (o servidor — `supabase/sql/05_backup_auto.sql` e as rotas `backup-*` da função `js-push` — está publicado desde a 2.8.1). **Não é sincronização ao vivo**: é backup e restauração (mesclar dois aparelhos em tempo real traria de volta o que foi apagado).
 - **Versões e lixeira (Configurações):** uma foto dos dados por dia (14 dias) e uma cópia de segurança antes de restaurar, importar ou apagar tudo (30 dias), só neste aparelho. **Recuperar o que foi apagado** mostra o que existia e sumiu nos últimos 7 dias e traz de volta item por item, sem duplicar. **Voltar tudo** leva o app a um dia, com confirmação e cópia de segurança antes.
 
+## 3.7 Aparência mais delicada (2.9)
+
+Em Configurações → **Aparência**, além do tema (Automático, Claro ou Escuro):
+
+- **Paleta de cores:** as quatro de antes (Rosé, Lavanda, Pêssego, Nude) e três novas: **Sálvia** (verde suave), **Névoa** (azul acinzentado) e **Cereja** (frutas vermelhas, mais intensa). **Estações** troca sozinha pela estação do ano no Brasil: Sálvia na primavera (a partir de 22/9), Pêssego no verão (21/12), Nude no outono (20/3) e Névoa no inverno (21/6). Todas passam no contraste AA (texto a pelo menos 4,5:1) no claro e no escuro.
+- **Letra dos títulos:** **Delicada** (Cormorant itálico, a de sempre), **Elegante** (Playfair Display), **Manuscrita** (Dancing Script) e **Suave** (Quicksand, que também vira a letra do texto). As fontes ficam em `fonts/` e funcionam sem internet; só baixam quando escolhidas.
+- **Detalhes florais** (liga/desliga): florzinha na borda dos cartões, raminho embaixo do título de cada tela, telas vazias com medalhão e galhinhos, cantos mais redondos, sombras com a cor da paleta e ícones com traço mais fino. Desligado, o visual volta ao liso de antes.
+
+Por dentro: `css/delicado.css` (carregado por último) tem as paletas novas, as letras e os detalhes; os títulos leem `--font-display`, `--display-style`, `--display-weight` e `--display-k` (cada família tem um "tamanho de olho" diferente). O `<head>` do `index.html` aplica tudo antes de desenhar a tela: `window.JS_THEME(tema, paleta)` e `window.JS_STYLE(letra, detalhes)` (guardados em `settings.theme`, `settings.palette`, `settings.fontPreset` e `settings.deco`). Os cartões para compartilhar também usam a letra escolhida. Cada paleta nova precisa de: bloco `:root[data-palette="x"]` com os valores `--l-*` (claro) e `--d-*` (escuro), cor em `THEME_COLORS` (barra do sistema), `--pal-x` e `.pal-x .pal-dot` (bolinha) e a entrada em `PALETTES` de `js/telas/config.js`; o teste `testes/v29-aparencia.test.js` confere tudo isso e o contraste.
+
 ## 4. Notificações
 
 - **Tudo com horário avisa por padrão:** ao pôr a hora numa tarefa, o lembrete vira "15 min antes"; num tratamento, "na hora". Refeições avisam na hora e contas 1 dia antes e no dia. Dá para mudar ou desligar em cada item. Itens antigos sem lembrete aparecem num aviso no painel e em Configurações, com o botão **Ligar todos**.
@@ -217,7 +227,8 @@ aplicativo/
 ├── css/v2.css              telas da versão 2 e layout para tablet/computador
 ├── css/v26.css             água, ciclo, fotos, busca e as outras novidades da 2.6/2.7
 ├── css/treino28.css, jardim.css, planejador.css, ferramentas.css, dados.css, bemestar.css   estilos da 2.8
-├── fonts/                  Nunito e Cormorant Garamond (licença OFL)
+├── css/delicado.css        paletas novas, letras dos títulos e detalhes florais da 2.9 (carregado por último)
+├── fonts/                  Nunito, Cormorant Garamond, Playfair Display, Dancing Script e Quicksand (licença OFL)
 ├── icons/                  ícones do app gerados a partir da logo
 ├── js/
 │   ├── intro.js            intro animada e interativa
@@ -249,7 +260,7 @@ aplicativo/
 ├── supabase/
 │   ├── functions/js-push/  servidor de avisos (Edge Function)
 │   └── sql/                tabelas e agendamento a cada minuto
-└── testes/                 regras, v2, v26, v27 e v28-* (treino, bemestar, jardim, planejador, ferramentas, dados)
+└── testes/                 regras, v2, v26, v27, v28-* (treino, bemestar, jardim, planejador, ferramentas, dados) e v29-aparencia
 ```
 
 A especificação original está em `../JS_Starter/docs/`.

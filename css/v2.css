@@ -107,7 +107,7 @@ body.focus-mode .tabbar, body.focus-mode .fab { display: none !important; }
 body.focus-mode .content { padding-bottom: calc(2.5rem + var(--safe-b)); }
 .ses-top { display: flex; align-items: center; gap: .375rem; margin: 0 0 .625rem -.625rem; }
 .ses-title { flex: 1; min-width: 0; }
-.ses-title h1 { font-family: var(--font-display); font-style: italic; font-size: 1.75rem; font-weight: 600; line-height: 1.15; color: var(--rose800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ses-title h1 { font-family: var(--font-display); font-style: var(--display-style, italic); font-size: calc(1.75rem * var(--display-k, 1)); font-weight: var(--display-weight, 600); line-height: 1.15; color: var(--rose800); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ses-clock { display: flex; flex-direction: column; align-items: flex-end; flex: none; }
 .ses-clock span { font-size: 1.375rem; font-weight: 800; color: var(--m-work); font-variant-numeric: tabular-nums; }
 .ses-clock small { color: var(--muted); font-size: .75rem; }
@@ -536,7 +536,7 @@ html.reduce-motion .pick-video, html.reduce-motion .howto-body { animation: none
 .content[class*="enter-"] .insights li:nth-child(3) { animation-delay: 140ms; }
 .content[class*="enter-"] .insights li:nth-child(4) { animation-delay: 210ms; }
 .content[class*="enter-"] .insights li:nth-child(n+5) { animation-delay: 280ms; }
-.mod-head { display: flex; align-items: center; gap: .625rem; font-family: var(--font-display); font-style: italic; font-size: 1.5rem; font-weight: 600; color: var(--rose800); margin: 1.25rem .125rem .625rem; }
+.mod-head { display: flex; align-items: center; gap: .625rem; font-family: var(--font-display); font-style: var(--display-style, italic); font-size: calc(1.5rem * var(--display-k, 1)); font-weight: var(--display-weight, 600); color: var(--rose800); margin: 1.25rem .125rem .625rem; }
 .mod-ic.sm { width: 2.125rem; height: 2.125rem; border-radius: .6875rem; display: grid; place-items: center; background: var(--rose100); color: var(--rose700); flex: none; }
 .mh-treino .mod-ic { background: var(--m-work-bg); color: var(--m-work); }
 .mh-corpo .mod-ic { background: var(--m-body-bg); color: var(--m-body); }
